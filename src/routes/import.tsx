@@ -73,17 +73,17 @@ function ImportPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <ImportCard
           title="Topvisor — Запросы"
-          desc="Колонки: Запрос, Папка, Группа, URL, Частота, Google, Yandex"
+          desc="XLSX/CSV. Колонки: Запрос, Папка, Группа, URL, Частота, Google, Yandex"
           onFile={(f) => handleFile("topvisor", f)}
         />
         <ImportCard
-          title="Topvisor — Сезонность"
-          desc="Колонки: Запрос, Янв, Фев, …, Дек"
+          title="Сезонность"
+          desc="CSV/XLSX. Колонки: Запрос, Янв, Фев, …, Дек"
           onFile={(f) => handleFile("seasonality", f)}
         />
         <ImportCard
           title="Netpeak Checker"
-          desc="Колонки: URL, Title, Description, H1, Длина текста"
+          desc="XLSX/CSV. Колонки: URL, Title, Description, H1, Длина текста"
           onFile={(f) => handleFile("netpeak", f)}
         />
       </div>
