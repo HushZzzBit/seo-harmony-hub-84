@@ -20,7 +20,7 @@ function ImportPage() {
 
   async function handleFile(kind: "topvisor" | "seasonality" | "netpeak", file: File) {
     try {
-      const rows = await readTabular(file);
+      const rows = await readMatrix(file);
       if (kind === "topvisor") {
         const parsed = parseTopvisorQueries(rows);
         upsertQueries(parsed);
