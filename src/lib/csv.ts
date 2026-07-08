@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import type { Query, UrlRow } from "./types";
 
 export function parseCsv(text: string): Record<string, string>[] {
@@ -9,6 +10,36 @@ export function parseCsv(text: string): Record<string, string>[] {
     transformHeader: (h) => h.trim(),
   });
   return res.data.filter((r) => Object.keys(r).length > 0);
+}
+
+/** Parse XLSX file (ArrayBuffer) — first sheet, headers from row 1 */
+export function parseXlsx(buf: ArrayBuffer): Record<string, string>[] {
+  const wb = XLSX.read(buf, { type: "array" });
+  const rows: Record<string, string>[] = [];
+  for (const name of wb.SheetNames) {
+    const sheet = wb.Sheets[name];
+    const arr = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+      raw: false,
+    });
+    for (const r of arr) {
+      const obj: Record<string, string> = {};
+      for (const k of Object.keys(r)) obj[String(k).trim()] = String(r[k] ?? "");
+      rows.push(obj);
+    }
+  }
+  return rows.filter((r) => Object.keys(r).length > 0);
+}
+
+/** Auto-detect: parse CSV or XLSX from File */
+export async function readTabular(file: File): Promise<Record<string, string>[]> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    const buf = await file.arrayBuffer();
+    return parseXlsx(buf);
+  }
+  const text = await file.text();
+  return parseCsv(text);
 }
 
 const H = (keys: string[], row: Record<string, string>): string | undefined => {
