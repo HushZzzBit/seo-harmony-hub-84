@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { downloadCsv, parseNetpeak, parseSeasonality, parseTopvisorQueries, readTabular, toCsv } from "@/lib/csv";
+import { downloadCsv, parseNetpeak, parseSeasonality, parseTopvisorQueries, readMatrix, toCsv } from "@/lib/csv";
 import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
 
@@ -20,7 +20,7 @@ function ImportPage() {
 
   async function handleFile(kind: "topvisor" | "seasonality" | "netpeak", file: File) {
     try {
-      const rows = await readTabular(file);
+      const rows = await readMatrix(file);
       if (kind === "topvisor") {
         const parsed = parseTopvisorQueries(rows);
         upsertQueries(parsed);
