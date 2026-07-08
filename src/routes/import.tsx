@@ -19,23 +19,23 @@ function ImportPage() {
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
   async function handleFile(kind: "topvisor" | "seasonality" | "netpeak", file: File) {
-    const text = await file.text();
     try {
+      const rows = await readTabular(file);
       if (kind === "topvisor") {
-        const rows = parseTopvisorQueries(text);
-        upsertQueries(rows);
-        add(`Topvisor: загружено ${rows.length} запросов`);
-        toast.success(`Загружено ${rows.length} запросов`);
+        const parsed = parseTopvisorQueries(rows);
+        upsertQueries(parsed);
+        add(`Topvisor: загружено ${parsed.length} запросов из ${file.name}`);
+        toast.success(`Загружено ${parsed.length} запросов`);
       } else if (kind === "seasonality") {
-        const map = parseSeasonality(text);
+        const map = parseSeasonality(rows);
         applySeasonality(map);
         add(`Сезонность: применена к ${Object.keys(map).length} запросам`);
         toast.success("Сезонность применена");
       } else {
-        const rows = parseNetpeak(text);
-        upsertUrls(rows);
-        add(`Netpeak: загружено ${rows.length} URL`);
-        toast.success(`Загружено ${rows.length} URL`);
+        const parsed = parseNetpeak(rows);
+        upsertUrls(parsed);
+        add(`Netpeak: загружено ${parsed.length} URL из ${file.name}`);
+        toast.success(`Загружено ${parsed.length} URL`);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
