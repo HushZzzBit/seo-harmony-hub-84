@@ -193,7 +193,7 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
       folder,
       group,
       url: url || undefined,
-      frequency: 0,
+      frequency: cFreq != null ? (num(String(row[cFreq])) ?? 0) : 0,
       googlePosition: gCol != null ? num(String(row[gCol])) : undefined,
       yandexPosition: yCol != null ? num(String(row[yCol])) : undefined,
       seasonality: new Array(12).fill(0),
