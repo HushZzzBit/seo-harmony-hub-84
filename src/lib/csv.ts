@@ -142,6 +142,17 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
   const cGroup = findCol((h) => h.includes("групп"));
   const cUrl = findCol((h) => h.includes("целев") || h === "url" || h.includes("ссылк"));
   const cTag = findCol((h) => h.includes("тег"));
+  // Frequency columns — prefer "!"W"" (exact match), then any "частот"
+  const freqCols: number[] = [];
+  for (let c = 0; c < header.length; c++) {
+    const h = String(header[c] ?? "").toLowerCase();
+    if (h.includes("частот") || h.includes("frequency") || /\bws\b/.test(h) || /"!?w"?/.test(h)) {
+      freqCols.push(c);
+    }
+  }
+  // Prefer the strictest ("!W") if present
+  const cFreqStrict = freqCols.find((c) => /"!w"/i.test(String(header[c] ?? "")));
+  const cFreq = cFreqStrict ?? freqCols[0];
 
   // Position columns: headers that parse as a date (Excel serial or dd.mm.yyyy)
   type PosCol = { col: number; date: Date; engine: "google" | "yandex" | "other" };
@@ -182,7 +193,7 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
       folder,
       group,
       url: url || undefined,
-      frequency: 0,
+      frequency: cFreq != null ? (num(String(row[cFreq])) ?? 0) : 0,
       googlePosition: gCol != null ? num(String(row[gCol])) : undefined,
       yandexPosition: yCol != null ? num(String(row[yCol])) : undefined,
       seasonality: new Array(12).fill(0),
