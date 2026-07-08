@@ -57,8 +57,8 @@ const num = (v?: string) => {
 };
 
 /** Topvisor: queries with folder/group/url/frequency/positions */
-export function parseTopvisorQueries(text: string): Query[] {
-  const rows = parseCsv(text);
+export function parseTopvisorQueries(input: string | Record<string, string>[]): Query[] {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   return rows.map((r, i) => {
     const phrase = H(["запрос", "phrase", "keyword", "query"], r) ?? "";
     const folder = H(["папк", "folder", "стрим"], r) ?? "Без папки";
@@ -97,9 +97,9 @@ const MONTH_KEYS = [
   ["дек", "dec"],
 ];
 
-/** Seasonality CSV: phrase + 12 monthly columns */
-export function parseSeasonality(text: string): Record<string, number[]> {
-  const rows = parseCsv(text);
+/** Seasonality: phrase + 12 monthly columns */
+export function parseSeasonality(input: string | Record<string, string>[]): Record<string, number[]> {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   const out: Record<string, number[]> = {};
   for (const r of rows) {
     const phrase = H(["запрос", "phrase", "keyword"], r);
@@ -121,8 +121,8 @@ export function parseSeasonality(text: string): Record<string, number[]> {
 }
 
 /** Netpeak: url, title, description, h1, text length */
-export function parseNetpeak(text: string): UrlRow[] {
-  const rows = parseCsv(text);
+export function parseNetpeak(input: string | Record<string, string>[]): UrlRow[] {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   return rows.map((r) => ({
     url: (H(["url", "адрес"], r) ?? "").trim(),
     title: H(["title", "тайтл"], r),
