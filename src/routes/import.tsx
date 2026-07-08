@@ -136,11 +136,11 @@ function ImportCard({ title, desc, onFile }: { title: string; desc: string; onFi
         <input
           ref={ref}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
         />
-        <Button variant="outline" onClick={() => ref.current?.click()} className="w-full">Выбрать CSV</Button>
+        <Button variant="outline" onClick={() => ref.current?.click()} className="w-full">Выбрать файл</Button>
       </CardContent>
     </Card>
   );
