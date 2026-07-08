@@ -1,4 +1,5 @@
 import Papa from "papaparse";
+import * as XLSX from "xlsx";
 import type { Query, UrlRow } from "./types";
 
 export function parseCsv(text: string): Record<string, string>[] {
@@ -9,6 +10,36 @@ export function parseCsv(text: string): Record<string, string>[] {
     transformHeader: (h) => h.trim(),
   });
   return res.data.filter((r) => Object.keys(r).length > 0);
+}
+
+/** Parse XLSX file (ArrayBuffer) — first sheet, headers from row 1 */
+export function parseXlsx(buf: ArrayBuffer): Record<string, string>[] {
+  const wb = XLSX.read(buf, { type: "array" });
+  const rows: Record<string, string>[] = [];
+  for (const name of wb.SheetNames) {
+    const sheet = wb.Sheets[name];
+    const arr = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+      raw: false,
+    });
+    for (const r of arr) {
+      const obj: Record<string, string> = {};
+      for (const k of Object.keys(r)) obj[String(k).trim()] = String(r[k] ?? "");
+      rows.push(obj);
+    }
+  }
+  return rows.filter((r) => Object.keys(r).length > 0);
+}
+
+/** Auto-detect: parse CSV or XLSX from File */
+export async function readTabular(file: File): Promise<Record<string, string>[]> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+    const buf = await file.arrayBuffer();
+    return parseXlsx(buf);
+  }
+  const text = await file.text();
+  return parseCsv(text);
 }
 
 const H = (keys: string[], row: Record<string, string>): string | undefined => {
@@ -26,8 +57,8 @@ const num = (v?: string) => {
 };
 
 /** Topvisor: queries with folder/group/url/frequency/positions */
-export function parseTopvisorQueries(text: string): Query[] {
-  const rows = parseCsv(text);
+export function parseTopvisorQueries(input: string | Record<string, string>[]): Query[] {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   return rows.map((r, i) => {
     const phrase = H(["запрос", "phrase", "keyword", "query"], r) ?? "";
     const folder = H(["папк", "folder", "стрим"], r) ?? "Без папки";
@@ -66,9 +97,9 @@ const MONTH_KEYS = [
   ["дек", "dec"],
 ];
 
-/** Seasonality CSV: phrase + 12 monthly columns */
-export function parseSeasonality(text: string): Record<string, number[]> {
-  const rows = parseCsv(text);
+/** Seasonality: phrase + 12 monthly columns */
+export function parseSeasonality(input: string | Record<string, string>[]): Record<string, number[]> {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   const out: Record<string, number[]> = {};
   for (const r of rows) {
     const phrase = H(["запрос", "phrase", "keyword"], r);
@@ -90,8 +121,8 @@ export function parseSeasonality(text: string): Record<string, number[]> {
 }
 
 /** Netpeak: url, title, description, h1, text length */
-export function parseNetpeak(text: string): UrlRow[] {
-  const rows = parseCsv(text);
+export function parseNetpeak(input: string | Record<string, string>[]): UrlRow[] {
+  const rows = typeof input === "string" ? parseCsv(input) : input;
   return rows.map((r) => ({
     url: (H(["url", "адрес"], r) ?? "").trim(),
     title: H(["title", "тайтл"], r),

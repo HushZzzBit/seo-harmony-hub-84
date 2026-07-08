@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
-import { downloadCsv, parseNetpeak, parseSeasonality, parseTopvisorQueries, toCsv } from "@/lib/csv";
+import { downloadCsv, parseNetpeak, parseSeasonality, parseTopvisorQueries, readTabular, toCsv } from "@/lib/csv";
 import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
 
@@ -19,23 +19,23 @@ function ImportPage() {
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
   async function handleFile(kind: "topvisor" | "seasonality" | "netpeak", file: File) {
-    const text = await file.text();
     try {
+      const rows = await readTabular(file);
       if (kind === "topvisor") {
-        const rows = parseTopvisorQueries(text);
-        upsertQueries(rows);
-        add(`Topvisor: загружено ${rows.length} запросов`);
-        toast.success(`Загружено ${rows.length} запросов`);
+        const parsed = parseTopvisorQueries(rows);
+        upsertQueries(parsed);
+        add(`Topvisor: загружено ${parsed.length} запросов из ${file.name}`);
+        toast.success(`Загружено ${parsed.length} запросов`);
       } else if (kind === "seasonality") {
-        const map = parseSeasonality(text);
+        const map = parseSeasonality(rows);
         applySeasonality(map);
         add(`Сезонность: применена к ${Object.keys(map).length} запросам`);
         toast.success("Сезонность применена");
       } else {
-        const rows = parseNetpeak(text);
-        upsertUrls(rows);
-        add(`Netpeak: загружено ${rows.length} URL`);
-        toast.success(`Загружено ${rows.length} URL`);
+        const parsed = parseNetpeak(rows);
+        upsertUrls(parsed);
+        add(`Netpeak: загружено ${parsed.length} URL из ${file.name}`);
+        toast.success(`Загружено ${parsed.length} URL`);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -73,17 +73,17 @@ function ImportPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <ImportCard
           title="Topvisor — Запросы"
-          desc="Колонки: Запрос, Папка, Группа, URL, Частота, Google, Yandex"
+          desc="XLSX/CSV. Колонки: Запрос, Папка, Группа, URL, Частота, Google, Yandex"
           onFile={(f) => handleFile("topvisor", f)}
         />
         <ImportCard
-          title="Topvisor — Сезонность"
-          desc="Колонки: Запрос, Янв, Фев, …, Дек"
+          title="Сезонность"
+          desc="CSV/XLSX. Колонки: Запрос, Янв, Фев, …, Дек"
           onFile={(f) => handleFile("seasonality", f)}
         />
         <ImportCard
           title="Netpeak Checker"
-          desc="Колонки: URL, Title, Description, H1, Длина текста"
+          desc="XLSX/CSV. Колонки: URL, Title, Description, H1, Длина текста"
           onFile={(f) => handleFile("netpeak", f)}
         />
       </div>
@@ -136,11 +136,11 @@ function ImportCard({ title, desc, onFile }: { title: string; desc: string; onFi
         <input
           ref={ref}
           type="file"
-          accept=".csv,text/csv"
+          accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
         />
-        <Button variant="outline" onClick={() => ref.current?.click()} className="w-full">Выбрать CSV</Button>
+        <Button variant="outline" onClick={() => ref.current?.click()} className="w-full">Выбрать файл</Button>
       </CardContent>
     </Card>
   );
