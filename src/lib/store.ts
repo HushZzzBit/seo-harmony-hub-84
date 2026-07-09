@@ -153,6 +153,7 @@ export const useStore = create<State>()(
           metaHistory: [],
           texts: {},
           folderState: {},
+          groupState: {},
         }),
     }),
     {
