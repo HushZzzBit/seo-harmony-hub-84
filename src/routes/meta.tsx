@@ -540,7 +540,7 @@ function EditableCell({
         spellCheck={false}
       />
       {value && (
-        <div className="px-1.5 pt-0.5 text-[11px] leading-snug break-words">
+        <div className="px-1.5 pt-0.5 text-[10px] leading-snug break-words opacity-80">
           <Highlighted text={value} words={words} />
         </div>
       )}
