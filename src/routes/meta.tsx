@@ -516,6 +516,55 @@ const MetaRow = memo(function MetaRow({
   );
 });
 
+function KeywordsTooltip({ qs }: { qs: Query[] }) {
+  return (
+    <TooltipProvider delayDuration={150}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full p-0.5 text-muted-foreground hover:text-foreground hover:bg-accent transition"
+            aria-label="Ключевые слова"
+          >
+            <AlertCircle className="h-3 w-3" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="bottom"
+          align="start"
+          className="max-w-[340px] bg-popover text-popover-foreground border border-border shadow-lg px-3 py-2"
+        >
+          <div className="text-xs font-semibold mb-1.5 text-foreground">
+            Ключевые слова ({qs.length})
+          </div>
+          <div className="space-y-0.5">
+            {qs.map((q) => (
+              <div key={q.id} className="flex gap-3 text-[11px] leading-snug">
+                <span className="font-medium shrink-0 min-w-[80px] max-w-[160px] truncate" title={q.phrase}>
+                  {q.phrase}
+                </span>
+                <span className="tabular-nums text-muted-foreground shrink-0">
+                  {q.frequency || "—"}
+                </span>
+                {typeof q.googlePosition === "number" && (
+                  <span className="tabular-nums text-muted-foreground shrink-0">
+                    G:{q.googlePosition}
+                  </span>
+                )}
+                {typeof q.yandexPosition === "number" && (
+                  <span className="tabular-nums text-muted-foreground shrink-0">
+                    Я:{q.yandexPosition}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function Field({
   label,
   hint,
