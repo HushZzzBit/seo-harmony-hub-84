@@ -307,15 +307,7 @@ function MetaPage() {
             rec={e.rec}
             freq={e.freq}
             selected={!!e.r.url && selected.has(e.r.url)}
-            onToggleSelect={(v) => {
-              if (!e.r.url) return;
-              setSelected((prev) => {
-                const n = new Set(prev);
-                if (v) n.add(e.r.url);
-                else n.delete(e.r.url);
-                return n;
-              });
-            }}
+            onToggleSelect={handleToggleSelect}
           />
         ))}
         {rows.length === 0 && (
