@@ -152,6 +152,92 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
   );
 }
 
+function GroupsBreakdown({
+  qs, metaEdits, texts,
+}: {
+  qs: ReturnType<typeof useStore.getState>["queries"];
+  metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
+  texts: ReturnType<typeof useStore.getState>["texts"];
+}) {
+  const groups = useMemo(() => {
+    const byGroup = new Map<string, typeof qs>();
+    for (const q of qs) {
+      if (!byGroup.has(q.group)) byGroup.set(q.group, []);
+      byGroup.get(q.group)!.push(q);
+    }
+    return Array.from(byGroup.entries())
+      .map(([group, items]) => {
+        const urlSet = new Set(items.map((q) => q.url).filter(Boolean)) as Set<string>;
+        const total = urlSet.size;
+        const arr = Array.from(urlSet);
+        const metaDone = arr.filter((u) => metaEdits[u]?.status === "done").length;
+        const metaCsv = arr.filter((u) => metaEdits[u]?.status === "in_csv").length;
+        const metaProg = arr.filter((u) => metaEdits[u]?.status === "in_progress").length;
+        const textDone = arr.filter((u) => texts[u]?.status === "done").length;
+        const textCsv = arr.filter((u) => texts[u]?.status === "in_csv").length;
+        const textReady = arr.filter((u) => texts[u]?.status === "ready").length;
+        const gPos = items.map((q) => q.googlePosition ?? 0);
+        const yPos = items.map((q) => q.yandexPosition ?? 0);
+        return {
+          group, total, queries: items.length,
+          metaDone, metaCsv, metaProg,
+          textDone, textCsv, textReady,
+          avgG: avg(gPos), avgY: avg(yPos),
+        };
+      })
+      .sort((a, b) => a.group.localeCompare(b.group));
+  }, [qs, metaEdits, texts]);
+
+  if (groups.length === 0) return null;
+
+  return (
+    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-muted/50">
+        <span>Группы ({groups.length})</span>
+        <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+      </summary>
+      <div className="divide-y divide-border/60">
+        {groups.map((g) => (
+          <div key={g.group} className="px-3 py-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-medium truncate" title={g.group}>{g.group}</span>
+              <span className="text-muted-foreground tabular-nums shrink-0">
+                {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
+              </span>
+            </div>
+            <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
+            <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function MiniBar({
+  label, total, done, inCsv, inProgress,
+}: { label: string; total: number; done: number; inCsv: number; inProgress: number }) {
+  const w = (n: number) => (total ? `${(n / total) * 100}%` : "0%");
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] text-muted-foreground w-12 shrink-0">{label}</span>
+      <div className="h-1.5 flex-1 rounded-full bg-muted/60 overflow-hidden flex">
+        {total > 0 && (
+          <>
+            <div className="h-full bg-chart-2" style={{ width: w(done) }} />
+            <div className="h-full bg-chart-1" style={{ width: w(inCsv) }} />
+            <div className="h-full bg-chart-4" style={{ width: w(inProgress) }} />
+          </>
+        )}
+      </div>
+      <span className="text-[10px] text-muted-foreground tabular-nums w-16 text-right shrink-0">
+        {done}/{total}
+      </span>
+    </div>
+  );
+}
+
+
 function FolderCard({
   folder, qs, urls, metaEdits, texts, state, onChangeStatus, onChangePlan,
 }: {
