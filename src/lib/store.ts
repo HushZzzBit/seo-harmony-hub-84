@@ -146,6 +146,11 @@ export const useStore = create<State>()(
           folderState: {},
         }),
     }),
-    { name: "seo-analytics-v1" },
+    {
+      name: "seo-analytics-v1",
+      storage: createJSONStorage(() =>
+        typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
+      ),
+    },
   ),
 );
