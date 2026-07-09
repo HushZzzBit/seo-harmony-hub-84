@@ -16,6 +16,7 @@ import {
 } from "@/lib/seo";
 import type { Priority, Query, Status } from "@/lib/types";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
+import { VariableHint } from "@/components/VariableHint";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
@@ -155,7 +156,10 @@ function MetaPage() {
     <AppShell>
       <div className="flex items-end justify-between mb-4 gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">Meta Tags</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">Meta Tags</h1>
+            <VariableHint />
+          </div>
           <p className="text-sm text-muted-foreground">
             Инлайн-редактирование с подсветкой ключевых слов
           </p>

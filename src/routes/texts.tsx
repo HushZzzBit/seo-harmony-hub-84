@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
 import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import type { TextStatus } from "@/lib/types";
 
@@ -124,7 +125,10 @@ function TextsPage() {
     <AppShell>
       <div className="flex items-end justify-between mb-4 gap-2 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold">SEO Texts</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">SEO Texts</h1>
+            <VariableHint />
+          </div>
           <p className="text-sm text-muted-foreground">Планирование и написание текстов</p>
         </div>
         <div className="flex gap-2 flex-wrap">
