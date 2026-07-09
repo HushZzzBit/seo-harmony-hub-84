@@ -14,7 +14,7 @@ export const Route = createFileRoute("/import")({
 });
 
 function ImportPage() {
-  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, clearAll } = useStore();
+  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, setText, clearAll } = useStore();
   const [log, setLog] = useState<string[]>([]);
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
