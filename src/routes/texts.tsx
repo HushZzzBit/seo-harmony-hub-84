@@ -173,30 +173,28 @@ function TextsPage() {
         </div>
       </div>
 
-      {selected.size > 0 && (
-        <div className="mb-3 flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-muted/40">
-          <span className="text-sm">Выбрано: <span className="font-medium">{selected.size}</span></span>
-          <div className="flex items-center gap-2 ml-auto">
-            <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TextStatus)}>
-              <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              disabled={!bulkStatus}
-              onClick={() => {
-                if (!bulkStatus) return;
-                for (const u of selected) setText(u, { status: bulkStatus as TextStatus });
-                setSelected(new Set());
-                setBulkStatus("");
-              }}
-            >Применить</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Снять выбор</Button>
-          </div>
+      <div className="mb-3 flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-muted/40">
+        <span className="text-sm">Выбрано: <span className="font-medium">{selected.size}</span></span>
+        <div className="flex items-center gap-2 ml-auto">
+          <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TextStatus)}>
+            <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
+            <SelectContent>
+              {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            disabled={selected.size === 0 || !bulkStatus}
+            onClick={() => {
+              if (!bulkStatus) return;
+              for (const u of selected) setText(u, { status: bulkStatus as TextStatus });
+              setSelected(new Set());
+              setBulkStatus("");
+            }}
+          >Применить</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Снять выбор</Button>
         </div>
-      )}
+      </div>
 
       <Card>
         <CardContent className="p-0 overflow-auto">
