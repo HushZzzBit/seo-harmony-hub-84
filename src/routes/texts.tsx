@@ -13,6 +13,7 @@ import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/texts")({
