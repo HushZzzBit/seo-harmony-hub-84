@@ -69,6 +69,15 @@ function MetaPage() {
     });
   }, [queries, folder, group, search, statusFilter, metaEdits]);
 
+  // Сбрасываем окно рендера при смене фильтров, чтобы страница не тормозила
+  // на выборках в тысячи URL.
+  useEffect(() => {
+    setLimit(PAGE_SIZE);
+  }, [folder, group, search, statusFilter]);
+
+  const visible = rows.slice(0, limit);
+  const hasMore = rows.length > visible.length;
+
   return (
     <AppShell>
       <div className="flex items-end justify-between mb-4 gap-2 flex-wrap">
