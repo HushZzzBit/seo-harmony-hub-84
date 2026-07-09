@@ -42,10 +42,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto glass-strong rounded-2xl p-3 text-[11px] text-muted-foreground">
-          <div className="font-medium text-foreground mb-0.5">Liquid UI</div>
-          Полупрозрачные поверхности с блюром — как в App Store и Play Market.
-        </div>
       </aside>
       <main className="flex-1 min-w-0 overflow-x-hidden pr-2">{children}</main>
     </div>
