@@ -37,7 +37,7 @@ const priorityLabel: Record<Priority, string> = { high: "Высокий", medium
 const PAGE_SIZE = 50;
 
 function MetaPage() {
-  const { queries, urls, metaEdits } = useStore();
+  const { queries, urls, metaEdits, setMetaEdit } = useStore();
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -46,6 +46,8 @@ function MetaPage() {
   const [sortKey, setSortKey] = useState<SortKey>("priority");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<Status | "">("");
 
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
