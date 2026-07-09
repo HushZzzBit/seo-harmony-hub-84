@@ -140,14 +140,11 @@ function Dashboard() {
           </Section>
 
           <Section title="Аналитика">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Kpi label="Ср. поз. Google" value={scope.avgG.toFixed(1)} />
-              <Kpi label="% TOP3 Google" value={`${scope.top3G}%`} />
-              <Kpi label="% TOP10 Google" value={`${scope.top10G}%`} />
-              <Kpi label="Ср. поз. Яндекс" value={scope.avgY.toFixed(1)} />
-              <Kpi label="% TOP3 Яндекс" value={`${scope.top3Y}%`} />
-              <Kpi label="% TOP10 Яндекс" value={`${scope.top10Y}%`} />
-            </div>
+            <PriorityMonths
+              qs={folderQs}
+              selectedGroup={selectedGroup}
+              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+            />
           </Section>
 
           <Section title="Проработка">
