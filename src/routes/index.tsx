@@ -30,11 +30,13 @@ export const Route = createFileRoute("/")({
 const statusLabel: Record<Status, string> = {
   not_started: "Не начато",
   in_progress: "В работе",
+  in_csv: "В файле CSV",
   done: "Завершено",
 };
 const statusColor: Record<Status, string> = {
   not_started: "bg-muted text-muted-foreground",
   in_progress: "bg-chart-4/20 text-foreground",
+  in_csv: "bg-chart-1/20 text-foreground",
   done: "bg-chart-2/30 text-foreground",
 };
 
@@ -64,6 +66,8 @@ function Dashboard() {
       const e = metaEdits[u!];
       return !(e?.title || r?.title);
     }).length;
+    const doneMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "done").length;
+    const inCsvMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "in_csv").length;
     const ready = Array.from(urlSet).filter((u) => {
       const r = urls[u!]; const e = metaEdits[u!];
       return (e?.title || r?.title) && r?.hasText;
@@ -76,6 +80,8 @@ function Dashboard() {
       top3: pct(top3G, queries.length),
       top10: pct(top10G, queries.length),
       noText, noMeta, ready,
+      doneMeta, inCsvMeta,
+      donePct: pct(doneMeta, urlSet.size),
     };
   }, [queries, urls, metaEdits]);
 
@@ -93,9 +99,10 @@ function Dashboard() {
         <Kpi label="Ср. позиция" value={kpi.avgPos} />
         <Kpi label="% TOP3" value={`${kpi.top3}%`} />
         <Kpi label="% TOP10" value={`${kpi.top10}%`} />
-        <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
+        <Kpi label="В файле CSV" value={kpi.inCsvMeta} />
+        <Kpi label="Готово" value={`${kpi.doneMeta} · ${kpi.donePct}%`} tone="good" />
         <Kpi label="Без Meta" value={kpi.noMeta} tone="destructive" />
-        <Kpi label="Готовых" value={kpi.ready} tone="good" />
+        <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
         <Kpi label="Запросов" value={queries.length} />
       </div>
 
@@ -160,6 +167,10 @@ function FolderCard({
   const top3Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
   const top10Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
   const metaDone = Array.from(urlSet).filter((u) => metaEdits[u]?.title).length;
+  const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
+  const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
+  const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
+  const donePctFolder = urlSet.size ? Math.round((doneUrls / urlSet.size) * 100) : 0;
   const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "ready" || texts[u]?.status === "published").length;
   const seasonality = groupSeasonality(qs);
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
@@ -181,6 +192,26 @@ function FolderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-muted-foreground">Проработка URL</span>
+            <span className="tabular-nums font-medium">{doneUrls}/{urlSet.size} · {donePctFolder}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden flex">
+            {urlSet.size > 0 && (
+              <>
+                <div className="h-full bg-chart-2" style={{ width: `${(doneUrls / urlSet.size) * 100}%` }} title={`Готово: ${doneUrls}`} />
+                <div className="h-full bg-chart-1" style={{ width: `${(inCsvUrls / urlSet.size) * 100}%` }} title={`В файле CSV: ${inCsvUrls}`} />
+                <div className="h-full bg-chart-4" style={{ width: `${(inProgUrls / urlSet.size) * 100}%` }} title={`В работе: ${inProgUrls}`} />
+              </>
+            )}
+          </div>
+          <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+            <span><span className="inline-block size-2 rounded-full bg-chart-2 mr-1 align-middle" />Готово {doneUrls}</span>
+            <span><span className="inline-block size-2 rounded-full bg-chart-1 mr-1 align-middle" />В CSV {inCsvUrls}</span>
+            <span><span className="inline-block size-2 rounded-full bg-chart-4 mr-1 align-middle" />В работе {inProgUrls}</span>
+          </div>
+        </div>
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />

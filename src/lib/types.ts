@@ -1,4 +1,4 @@
-export type Status = "not_started" | "in_progress" | "done";
+export type Status = "not_started" | "in_progress" | "in_csv" | "done";
 export type Priority = "high" | "medium" | "low";
 export type TextStatus = "not_assigned" | "in_progress" | "review" | "ready" | "published";
 
