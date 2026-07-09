@@ -378,10 +378,11 @@ function FolderCard({
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
-          <Metric label="TOP3 G" value={`${pct(top3G, filteredQs.length)}%`} />
-          <Metric label="TOP10 G" value={`${pct(top10G, filteredQs.length)}%`} />
-          <Metric label="TOP3 Y" value={`${pct(top3Y, filteredQs.length)}%`} />
-          <Metric label="TOP10 Y" value={`${pct(top10Y, filteredQs.length)}%`} />
+          <Metric label="TOP3 G" value={`${pct(top3G, gPosAll.length)}%`} />
+          <Metric label="TOP10 G" value={`${pct(top10G, gPosAll.length)}%`} />
+          <Metric label="TOP3 Y" value={`${pct(top3Y, yPosAll.length)}%`} />
+          <Metric label="TOP10 Y" value={`${pct(top10Y, yPosAll.length)}%`} />
+
           <Metric label="Meta" value={`${metaDone}/${urlSet.size}`} />
           <Metric label="Text" value={`${textDone}/${urlSet.size}`} />
         </div>
