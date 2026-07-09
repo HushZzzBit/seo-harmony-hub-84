@@ -42,9 +42,12 @@ function TextsPage() {
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [sortKey, setSortKey] = useState<SortKey>("priority");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TextStatus | "">("");
 
   const folders = useMemo(() => Array.from(new Set(queries.map((q) => q.folder))).sort(), [queries]);
   const categories = useMemo(() => {
