@@ -248,9 +248,14 @@ function GroupsBreakdown({
                 <span className={`truncate ${active ? "font-semibold text-primary" : "font-medium"}`} title={g.group}>
                   {g.group}
                 </span>
-                <span className="text-muted-foreground tabular-nums shrink-0">
-                  {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <Badge className={`text-[10px] px-1 py-0 h-4 ${statusColor[groupState[`${folder}::${g.group}`]?.status ?? "not_started"]}`}>
+                    {statusLabel[groupState[`${folder}::${g.group}`]?.status ?? "not_started"]}
+                  </Badge>
+                  <span className="text-muted-foreground tabular-nums shrink-0">
+                    {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
+                  </span>
+                </div>
               </div>
               <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
               <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
