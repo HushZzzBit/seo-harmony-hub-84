@@ -300,7 +300,6 @@ function EditableCell({
   onChange,
   onCommit,
   words,
-  maxLen,
   rows = 1,
 }: {
   value: string;
@@ -322,63 +321,56 @@ function EditableCell({
   }, [value]);
 
   return (
-    <div className="relative">
-      <div className="text-[11px] leading-snug rounded px-1.5 py-1 border border-transparent hover:border-border focus-within:border-ring focus-within:bg-background transition-colors relative">
-        <HighlightedOverlay text={value} words={words} maxLen={maxLen} />
-        <textarea
-          ref={ref}
-          rows={rows}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={(e) => onCommit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              (e.target as HTMLTextAreaElement).blur();
-            }
-          }}
-          className="w-full resize-none bg-transparent leading-snug focus:outline-none text-transparent caret-foreground selection:bg-primary/30 absolute inset-0 px-1.5 py-1"
-          style={{ position: "absolute" }}
-          spellCheck={false}
-        />
-      </div>
+    <div>
+      <textarea
+        ref={ref}
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={(e) => onCommit(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          }
+        }}
+        className="w-full resize-none bg-transparent text-xs leading-snug rounded px-1.5 py-1 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        spellCheck={false}
+      />
+      {value && (
+        <div className="px-1.5 pt-0.5 text-[11px] leading-snug break-words">
+          <Highlighted text={value} words={words} />
+        </div>
+      )}
     </div>
   );
 }
 
-function HighlightedOverlay({
-  text,
-  words,
-  maxLen,
-}: {
-  text: string;
-  words: Set<string>;
-  maxLen?: number;
-}) {
+function Highlighted({ text, words }: { text: string; words: Set<string> }) {
   const seen = new Map<string, number>();
   const parts = text.split(/(\s+)/);
   return (
-    <div className="whitespace-pre-wrap break-words leading-snug pointer-events-none">
+    <span className="text-muted-foreground/70">
       {parts.map((p, i) => {
         const norm = p.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/gi, "");
         if (!norm) return <span key={i}>{p}</span>;
-        const isKw = words.has(norm);
-        if (!isKw) return <span key={i}>{p}</span>;
+        if (!words.has(norm)) return <span key={i}>{p}</span>;
         const count = (seen.get(norm) ?? 0) + 1;
         seen.set(norm, count);
         return (
           <span
             key={i}
-            className={count > 1 ? "bg-chart-4/40 rounded-sm" : "bg-chart-2/35 rounded-sm"}
+            className={
+              count > 1
+                ? "bg-chart-4/50 rounded px-0.5 text-foreground"
+                : "bg-chart-2/40 rounded px-0.5 text-foreground"
+            }
           >
             {p}
           </span>
         );
       })}
-      {text.length === 0 && <span className="text-muted-foreground/50">—</span>}
-      {maxLen && text.length > maxLen && (
-        <span className="text-destructive"> (+{text.length - maxLen})</span>
-      )}
-    </div>
+    </span>
   );
 }
+
