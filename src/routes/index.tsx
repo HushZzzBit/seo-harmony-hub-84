@@ -276,3 +276,39 @@ function Metric({ label, value }: { label: string; value: string | number }) {
     </div>
   );
 }
+
+function ProgressStrip({
+  label, total, done, inCsv, inProgress, inProgressLabel = "В работе",
+}: {
+  label: string;
+  total: number;
+  done: number;
+  inCsv: number;
+  inProgress: number;
+  inProgressLabel?: string;
+}) {
+  const pctDone = total ? Math.round((done / total) * 100) : 0;
+  const w = (n: number) => (total ? `${(n / total) * 100}%` : "0%");
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="tabular-nums font-medium">{done}/{total} · {pctDone}%</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden flex">
+        {total > 0 && (
+          <>
+            <div className="h-full bg-chart-2" style={{ width: w(done) }} title={`Готово: ${done}`} />
+            <div className="h-full bg-chart-1" style={{ width: w(inCsv) }} title={`В файле CSV: ${inCsv}`} />
+            <div className="h-full bg-chart-4" style={{ width: w(inProgress) }} title={`${inProgressLabel}: ${inProgress}`} />
+          </>
+        )}
+      </div>
+      <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+        <span><span className="inline-block size-2 rounded-full bg-chart-2 mr-1 align-middle" />Готово {done}</span>
+        <span><span className="inline-block size-2 rounded-full bg-chart-1 mr-1 align-middle" />В CSV {inCsv}</span>
+        <span><span className="inline-block size-2 rounded-full bg-chart-4 mr-1 align-middle" />{inProgressLabel} {inProgress}</span>
+      </div>
+    </div>
+  );
+}
