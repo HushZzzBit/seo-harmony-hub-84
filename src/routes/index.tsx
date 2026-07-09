@@ -119,18 +119,7 @@ function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {Array.from(grouped.entries()).map(([folder, qs]) => (
-            <FolderCard
-              key={folder}
-              folder={folder}
-              qs={qs}
-              urls={urls}
-              metaEdits={metaEdits}
-              texts={texts}
-            />
-          ))}
-        </div>
+        <FolderPicker grouped={grouped} urls={urls} metaEdits={metaEdits} texts={texts} />
       )}
     </AppShell>
   );
@@ -148,6 +137,79 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
     </Card>
   );
 }
+
+function FolderPicker({
+  grouped, urls, metaEdits, texts,
+}: {
+  grouped: Map<string, ReturnType<typeof useStore.getState>["queries"]>;
+  urls: ReturnType<typeof useStore.getState>["urls"];
+  metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
+  texts: ReturnType<typeof useStore.getState>["texts"];
+}) {
+  const folders = useMemo(() => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)), [grouped]);
+  const [selected, setSelected] = useState<string>(folders[0] ?? "");
+  const [search, setSearch] = useState("");
+  const active = folders.includes(selected) ? selected : folders[0];
+  const lower = search.trim().toLowerCase();
+  const filtered = lower ? folders.filter((f) => f.toLowerCase().includes(lower)) : folders;
+  const qs = grouped.get(active) ?? [];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Папка:</span>
+            <input
+              type="text"
+              placeholder="Поиск папки..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <span className="text-xs text-muted-foreground shrink-0">{filtered.length} / {folders.length}</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
+            {filtered.map((f) => {
+              const isActive = f === active;
+              return (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setSelected(f)}
+                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background border-border hover:bg-muted"
+                  }`}
+                >
+                  {f}
+                  <span className={`ml-1.5 text-[10px] ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
+                    {(grouped.get(f) ?? []).length}
+                  </span>
+                </button>
+              );
+            })}
+            {filtered.length === 0 && (
+              <div className="text-xs text-muted-foreground px-2 py-1">Нет совпадений</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      {active && (
+        <FolderCard
+          key={active}
+          folder={active}
+          qs={qs}
+          urls={urls}
+          metaEdits={metaEdits}
+          texts={texts}
+        />
+      )}
+    </div>
+  );
+}
+
 
 function GroupsBreakdown({
   qs, metaEdits, texts, selectedGroup, onSelectGroup, folder, groupState,
