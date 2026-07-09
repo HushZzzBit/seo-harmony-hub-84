@@ -536,11 +536,11 @@ function EditableCell({
             (e.target as HTMLTextAreaElement).blur();
           }
         }}
-        className="w-full resize-none bg-transparent text-xs leading-snug rounded px-1.5 py-1 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        className="w-full resize-none bg-transparent text-sm leading-snug rounded px-2 py-1.5 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
         spellCheck={false}
       />
       {value && (
-        <div className="px-1.5 pt-0.5 text-[11px] leading-snug break-words">
+        <div className="px-1.5 pt-0.5 text-[10px] leading-snug break-words opacity-80">
           <Highlighted text={value} words={words} />
         </div>
       )}
