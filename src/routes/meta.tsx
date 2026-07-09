@@ -508,7 +508,7 @@ const MetaRow = memo(function MetaRow({
       </CardContent>
     </Card>
   );
-}
+});
 
 function Field({
   label,
