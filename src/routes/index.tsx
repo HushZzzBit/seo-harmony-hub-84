@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -16,7 +16,6 @@ import { useStore } from "@/lib/store";
 import { avg, groupSeasonality, MONTHS, pct, peakMonth, priorityForGroup, recommendedMonth } from "@/lib/seo";
 import type { Status } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClientOnly } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   ssr: false,
