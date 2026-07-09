@@ -140,6 +140,11 @@ export const useStore = create<State>()(
         const prev = get().folderState[folder] ?? { folder, status: "not_started" as const };
         set({ folderState: { ...get().folderState, [folder]: { ...prev, ...patch } } });
       },
+      setGroupState: (folder, group, patch) => {
+        const key = `${folder}::${group}`;
+        const prev = get().groupState[key] ?? { status: "not_started" as const };
+        set({ groupState: { ...get().groupState, [key]: { ...prev, ...patch } } });
+      },
       clearAll: () =>
         set({
           queries: [],
