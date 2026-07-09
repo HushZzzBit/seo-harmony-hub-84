@@ -41,7 +41,7 @@ const statusColor: Record<Status, string> = {
 };
 
 function Dashboard() {
-  const { queries, urls, metaEdits, texts, folderState, setFolderState } = useStore();
+  const { queries, urls, metaEdits, texts } = useStore();
 
   const grouped = useMemo(() => {
     const byFolder = new Map<string, typeof queries>();
@@ -128,9 +128,6 @@ function Dashboard() {
               urls={urls}
               metaEdits={metaEdits}
               texts={texts}
-              state={folderState[folder]}
-              onChangeStatus={(s) => setFolderState(folder, { status: s })}
-              onChangePlan={(d) => setFolderState(folder, { plannedDate: d })}
             />
           ))}
         </div>
@@ -153,13 +150,15 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
 }
 
 function GroupsBreakdown({
-  qs, metaEdits, texts, selectedGroup, onSelectGroup,
+  qs, metaEdits, texts, selectedGroup, onSelectGroup, folder, groupState,
 }: {
   qs: ReturnType<typeof useStore.getState>["queries"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
   selectedGroup: string | null;
   onSelectGroup: (g: string | null) => void;
+  folder: string;
+  groupState: Record<string, { status: Status; plannedDate?: string }>;
 }) {
   const [search, setSearch] = useState("");
   const lowerSearch = search.trim().toLowerCase();
@@ -249,9 +248,14 @@ function GroupsBreakdown({
                 <span className={`truncate ${active ? "font-semibold text-primary" : "font-medium"}`} title={g.group}>
                   {g.group}
                 </span>
-                <span className="text-muted-foreground tabular-nums shrink-0">
-                  {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <Badge className={`text-[10px] px-1 py-0 h-4 ${statusColor[groupState[`${folder}::${g.group}`]?.status ?? "not_started"]}`}>
+                    {statusLabel[groupState[`${folder}::${g.group}`]?.status ?? "not_started"]}
+                  </Badge>
+                  <span className="text-muted-foreground tabular-nums shrink-0">
+                    {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
+                  </span>
+                </div>
               </div>
               <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
               <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
@@ -292,17 +296,15 @@ function MiniBar({
 
 
 function FolderCard({
-  folder, qs, urls, metaEdits, texts, state, onChangeStatus, onChangePlan,
+  folder, qs, urls, metaEdits, texts,
 }: {
   folder: string;
   qs: ReturnType<typeof useStore.getState>["queries"];
   urls: ReturnType<typeof useStore.getState>["urls"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
-  state?: { status: Status; plannedDate?: string };
-  onChangeStatus: (s: Status) => void;
-  onChangePlan: (d: string) => void;
 }) {
+  const { groupState, setGroupState } = useStore();
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const filteredQs = useMemo(
     () => (selectedGroup ? qs.filter((q) => q.group === selectedGroup) : qs),
@@ -328,7 +330,6 @@ function FolderCard({
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
   const peak = peakMonth(seasonality);
   const rec = recommendedMonth(seasonality);
-  const status: Status = state?.status ?? "not_started";
 
   return (
     <Card className="overflow-hidden">
@@ -345,7 +346,6 @@ function FolderCard({
               {selectedGroup ? "1" : groups.size} {selectedGroup ? "группа" : "групп"} · {urlSet.size} URL · {filteredQs.length} запросов
             </div>
           </div>
-          <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -370,6 +370,8 @@ function FolderCard({
           texts={texts}
           selectedGroup={selectedGroup}
           onSelectGroup={setSelectedGroup}
+          folder={folder}
+          groupState={groupState}
         />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
@@ -403,22 +405,31 @@ function FolderCard({
           <span>Старт работ: <b className="text-foreground">{MONTHS[rec]}</b></span>
           <span>Приоритет: <b className="text-foreground">{priorityForGroup(seasonality)}</b></span>
         </div>
-        <div className="flex items-center gap-2 pt-1">
-          <Select value={status} onValueChange={(v) => onChangeStatus(v as Status)}>
-            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="done">Завершено</SelectItem>
-            </SelectContent>
-          </Select>
-          <input
-            type="date"
-            className="h-8 text-xs px-2 rounded-md border border-input bg-background"
-            value={state?.plannedDate ?? ""}
-            onChange={(e) => onChangePlan(e.target.value)}
-          />
-        </div>
+        {selectedGroup && (
+          <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+            <Badge className={statusColor[groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"]}>
+              {statusLabel[groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"]}
+            </Badge>
+            <Select
+              value={groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"}
+              onValueChange={(v) => setGroupState(folder, selectedGroup, { status: v as Status })}
+            >
+              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Не начато</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="in_csv">В файле CSV</SelectItem>
+                <SelectItem value="done">Завершено</SelectItem>
+              </SelectContent>
+            </Select>
+            <input
+              type="date"
+              className="h-8 text-xs px-2 rounded-md border border-input bg-background"
+              value={groupState[`${folder}::${selectedGroup}`]?.plannedDate ?? ""}
+              onChange={(e) => setGroupState(folder, selectedGroup, { plannedDate: e.target.value })}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );

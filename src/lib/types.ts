@@ -60,3 +60,8 @@ export interface FolderState {
   plannedDate?: string;
   lastImport?: number;
 }
+
+export interface GroupState {
+  status: Status;
+  plannedDate?: string;
+}

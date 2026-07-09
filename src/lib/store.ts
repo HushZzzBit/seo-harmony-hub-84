@@ -52,6 +52,7 @@ function debouncedLocalStorage(): Storage {
 
 import type {
   FolderState,
+  GroupState,
   MetaEdit,
   MetaHistoryEntry,
   Query,
@@ -66,6 +67,7 @@ interface State {
   metaHistory: MetaHistoryEntry[];
   texts: Record<string, TextRow>;
   folderState: Record<string, FolderState>;
+  groupState: Record<string, GroupState>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -73,6 +75,7 @@ interface State {
   setMetaEdit: (url: string, patch: Partial<MetaEdit>) => void;
   setText: (url: string, patch: Partial<TextRow>) => void;
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
+  setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
   clearAll: () => void;
 }
 
@@ -85,6 +88,7 @@ export const useStore = create<State>()(
       metaHistory: [],
       texts: {},
       folderState: {},
+      groupState: {},
 
       upsertQueries: (rows) => {
         const map = new Map(get().queries.map((q) => [q.id, q]));
@@ -136,6 +140,11 @@ export const useStore = create<State>()(
         const prev = get().folderState[folder] ?? { folder, status: "not_started" as const };
         set({ folderState: { ...get().folderState, [folder]: { ...prev, ...patch } } });
       },
+      setGroupState: (folder, group, patch) => {
+        const key = `${folder}::${group}`;
+        const prev = get().groupState[key] ?? { status: "not_started" as const };
+        set({ groupState: { ...get().groupState, [key]: { ...prev, ...patch } } });
+      },
       clearAll: () =>
         set({
           queries: [],
@@ -144,6 +153,7 @@ export const useStore = create<State>()(
           metaHistory: [],
           texts: {},
           folderState: {},
+          groupState: {},
         }),
     }),
     {
