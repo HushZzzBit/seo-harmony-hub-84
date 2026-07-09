@@ -94,8 +94,7 @@
   --shadow-glass:
     0 1px 0 oklch(1 0 0 / 0.7) inset,
     0 0 0 1px oklch(0.7 0.02 258 / 0.12),
-    0 10px 30px -12px oklch(0.2 0.05 260 / 0.18),
-    0 24px 60px -30px oklch(0.2 0.05 260 / 0.25);
+    0 4px 14px -4px oklch(0.2 0.05 260 / 0.12);
 }
 
 .dark {
@@ -141,8 +140,7 @@
   --shadow-glass:
     0 1px 0 oklch(1 0 0 / 0.08) inset,
     0 0 0 1px oklch(1 0 0 / 0.06),
-    0 10px 30px -12px oklch(0 0 0 / 0.4),
-    0 24px 60px -30px oklch(0 0 0 / 0.55);
+    0 4px 14px -4px oklch(0 0 0 / 0.25);
 }
 
 @layer base {
@@ -211,6 +209,5 @@
   box-shadow:
     0 1px 0 oklch(1 0 0 / 0.7) inset,
     0 0 0 1px oklch(0.62 0.18 258 / 0.25),
-    0 18px 40px -14px oklch(0.2 0.05 260 / 0.25),
-    0 30px 80px -30px oklch(0.2 0.05 260 / 0.35);
+    0 6px 18px -4px oklch(0.2 0.05 260 / 0.18);
 }
