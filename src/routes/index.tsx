@@ -289,17 +289,15 @@ function MiniBar({
 
 
 function FolderCard({
-  folder, qs, urls, metaEdits, texts, state, onChangeStatus, onChangePlan,
+  folder, qs, urls, metaEdits, texts,
 }: {
   folder: string;
   qs: ReturnType<typeof useStore.getState>["queries"];
   urls: ReturnType<typeof useStore.getState>["urls"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
-  state?: { status: Status; plannedDate?: string };
-  onChangeStatus: (s: Status) => void;
-  onChangePlan: (d: string) => void;
 }) {
+  const { groupState, setGroupState } = useStore();
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const filteredQs = useMemo(
     () => (selectedGroup ? qs.filter((q) => q.group === selectedGroup) : qs),
