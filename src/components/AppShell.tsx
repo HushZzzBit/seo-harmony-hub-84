@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { BarChart3, FileText, Tags, Upload, Sparkles } from "lucide-react";
+import { BarChart3, FileText, Tags, Upload } from "lucide-react";
+import logoAsset from "@/assets/seo-ggsel-logo.png.asset.json";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
