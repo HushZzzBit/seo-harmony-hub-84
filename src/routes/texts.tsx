@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
-import { groupSeasonality, MONTHS, recommendedMonth } from "@/lib/seo";
+import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { TextStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/texts")({
@@ -28,14 +29,28 @@ const statusLabel: Record<TextStatus, string> = {
 
 const PAGE_SIZE = 50;
 
+type SortKey = "priority" | "group" | "url" | "planMonth" | "hasText" | "length" | "assignee" | "status";
+type SortDir = "asc" | "desc";
+
+const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
 function TextsPage() {
   const { queries, urls, texts, setText } = useStore();
   const [folder, setFolder] = useState("all");
+  const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [sortKey, setSortKey] = useState<SortKey>("priority");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const folders = useMemo(() => Array.from(new Set(queries.map((q) => q.folder))).sort(), [queries]);
+  const categories = useMemo(() => {
+    const src = folder === "all" ? queries : queries.filter((q) => q.folder === folder);
+    return Array.from(new Set(src.map((q) => q.group))).sort();
+  }, [queries, folder]);
+
+  useEffect(() => { setCategory("all"); }, [folder]);
 
   const rows = useMemo(() => {
     const byUrl = new Map<string, { folder: string; group: string; url: string; qs: typeof queries }>();
@@ -44,18 +59,65 @@ function TextsPage() {
       if (!byUrl.has(key)) byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
     }
-    return Array.from(byUrl.values()).filter((r) => {
+    const now = new Date().getMonth();
+    const enriched = Array.from(byUrl.values()).filter((r) => {
       if (folder !== "all" && r.folder !== folder) return false;
+      if (category !== "all" && r.group !== category) return false;
       if (search && !(r.url + r.group).toLowerCase().includes(search.toLowerCase())) return false;
       const st = texts[r.url]?.status ?? "not_assigned";
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
+    }).map((r) => {
+      const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
+      const uRow = urls[r.url];
+      const seasonality = groupSeasonality(r.qs);
+      const planMonth = t.plannedMonth ?? recommendedMonth(seasonality);
+      const has = uRow?.hasText || !!t.text;
+      const len = (t.text ? stripHtml(t.text).length : uRow?.textLength) ?? 0;
+      const prio = priorityForGroup(seasonality);
+      const dist = (recommendedMonth(seasonality) - now + 12) % 12;
+      return { r, t, uRow, seasonality, planMonth, has, len, prio, dist };
     });
-  }, [queries, folder, search, statusFilter, texts]);
 
-  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, search, statusFilter]);
+    const dir = sortDir === "asc" ? 1 : -1;
+    const cmp = (a: typeof enriched[number], b: typeof enriched[number]): number => {
+      switch (sortKey) {
+        case "priority": {
+          const d = priorityRank[a.prio] - priorityRank[b.prio];
+          return (d !== 0 ? d : a.dist - b.dist) * dir;
+        }
+        case "group": return (a.r.folder + a.r.group).localeCompare(b.r.folder + b.r.group) * dir;
+        case "url": return a.r.url.localeCompare(b.r.url) * dir;
+        case "planMonth": return (a.planMonth - b.planMonth) * dir;
+        case "hasText": return (Number(a.has) - Number(b.has)) * dir;
+        case "length": return (a.len - b.len) * dir;
+        case "assignee": return (a.t.assignee ?? "").localeCompare(b.t.assignee ?? "") * dir;
+        case "status": return (a.t.status ?? "").localeCompare(b.t.status ?? "") * dir;
+      }
+    };
+    return enriched.sort(cmp);
+  }, [queries, folder, category, search, statusFilter, texts, urls, sortKey, sortDir]);
+
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+
+  const SortHeader = ({ k, children, className = "text-left" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
+    const Icon = sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
+    return (
+      <th className={`p-2 ${className}`}>
+        <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition uppercase text-xs">
+          {children}
+          <Icon className={`h-3 w-3 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
+        </button>
+      </th>
+    );
+  };
 
   return (
     <AppShell>
@@ -73,6 +135,13 @@ function TextsPage() {
               {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Категория" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все категории</SelectItem>
+              {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -88,26 +157,30 @@ function TextsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="text-left p-2">Папка / Группа</th>
-                <th className="text-left p-2">URL</th>
-                <th className="text-left p-2">Плановый месяц</th>
-                <th className="text-center p-2">Текст</th>
-                <th className="text-right p-2">Длина</th>
-                <th className="text-left p-2">Исполнитель</th>
-                <th className="text-left p-2">Статус</th>
+                <SortHeader k="priority">Приоритет</SortHeader>
+                <SortHeader k="group">Папка / Группа</SortHeader>
+                <SortHeader k="url">URL</SortHeader>
+                <SortHeader k="planMonth">Плановый месяц</SortHeader>
+                <SortHeader k="hasText" className="text-center">Текст</SortHeader>
+                <SortHeader k="length" className="text-right">Длина</SortHeader>
+                <SortHeader k="assignee">Исполнитель</SortHeader>
+                <SortHeader k="status">Статус</SortHeader>
                 <th className="p-2"></th>
               </tr>
             </thead>
             <tbody>
-              {visible.map((r) => {
-                const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
-                const uRow = urls[r.url];
-                const seasonality = groupSeasonality(r.qs);
-                const planMonth = t.plannedMonth ?? recommendedMonth(seasonality);
-                const has = uRow?.hasText || !!t.text;
-                const len = (t.text ? stripHtml(t.text).length : uRow?.textLength) ?? 0;
+              {visible.map(({ r, t, has, len, planMonth, seasonality, prio }) => {
+                const prioStyle = prio === "high"
+                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
+                  : prio === "medium"
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
+                  : "bg-muted text-muted-foreground border-border";
+                const prioLabel = prio === "high" ? "Высокий" : prio === "medium" ? "Средний" : "Низкий";
                 return (
                   <tr key={r.url || r.folder + r.group} className="border-t border-border hover:bg-muted/30">
+                    <td className="p-2 align-top">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
+                    </td>
                     <td className="p-2 align-top">
                       <div className="text-xs text-muted-foreground">{r.folder}</div>
                       <div className="font-medium">{r.group}</div>
@@ -137,7 +210,7 @@ function TextsPage() {
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
               )}
             </tbody>
           </table>
@@ -158,6 +231,7 @@ function TextsPage() {
     </AppShell>
   );
 }
+
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
