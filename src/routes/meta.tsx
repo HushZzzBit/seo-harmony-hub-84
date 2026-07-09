@@ -348,7 +348,7 @@ function MetaPage() {
   );
 }
 
-function MetaRow({
+const MetaRow = memo(function MetaRow({
   row,
   prio,
   rec,
@@ -361,10 +361,17 @@ function MetaRow({
   rec: number;
   freq: number;
   selected: boolean;
-  onToggleSelect: (v: boolean) => void;
+  onToggleSelect: (url: string, v: boolean) => void;
 }) {
-  const { urls, metaEdits, setMetaEdit } = useStore();
-  const m = metaFor(row.url, urls, metaEdits);
+  // Row-scoped selectors — this row only re-renders when its own data changes.
+  const urlRow = useStore((s) => s.urls[row.url]);
+  const metaEdit = useStore((s) => s.metaEdits[row.url]);
+  const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const m = useMemo(
+    () => metaFor(row.url, urlRow ? { [row.url]: urlRow } : {}, metaEdit ? { [row.url]: metaEdit } : {}),
+    [row.url, urlRow, metaEdit],
+  );
+
 
   const words = useMemo(() => extractWords(row.qs.map((q) => q.phrase)), [row.qs]);
   const wordSet = useMemo(() => new Set(words.map((w) => w.word)), [words]);
