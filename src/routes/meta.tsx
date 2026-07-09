@@ -343,11 +343,15 @@ function MetaRow({
   prio,
   rec,
   freq,
+  selected,
+  onToggleSelect,
 }: {
   row: Row;
   prio: Priority;
   rec: number;
   freq: number;
+  selected: boolean;
+  onToggleSelect: (v: boolean) => void;
 }) {
   const { urls, metaEdits, setMetaEdit } = useStore();
   const m = metaFor(row.url, urls, metaEdits);
