@@ -14,7 +14,7 @@ export const Route = createFileRoute("/import")({
 });
 
 function ImportPage() {
-  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, clearAll } = useStore();
+  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, clearAll } = useStore();
   const [log, setLog] = useState<string[]>([]);
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
@@ -44,23 +44,37 @@ function ImportPage() {
     }
   }
 
+  // Экспортируются только URL со статусом «В файле CSV».
+  // После выгрузки такие строки автоматически переводятся в «Готово» —
+  // это питает динамику проработки на дашборде.
+  const exportUrls = Array.from(
+    new Set(
+      queries
+        .map((q) => q.url)
+        .filter((u): u is string => !!u && metaEdits[u]?.status === "in_csv"),
+    ),
+  );
+
   function exportCms() {
-    const seen = new Set<string>();
-    const out: Record<string, unknown>[] = [];
-    for (const q of queries) {
-      const u = q.url; if (!u || seen.has(u)) continue; seen.add(u);
+    if (!exportUrls.length) {
+      toast.error("Нет URL со статусом «В файле CSV»");
+      return;
+    }
+    const out = exportUrls.map((u) => {
       const m = metaFor(u, urls, metaEdits);
-      out.push({
+      return {
         url: u,
         title: m.h1,
         seo_title: m.title,
         seo_desc: m.description,
         seo_text: texts[u]?.text ?? urls[u]?.text ?? "",
-      });
-    }
-    if (!out.length) { toast.error("Нет данных для экспорта"); return; }
+      };
+    });
     downloadCsv(`seo-export-${Date.now()}.csv`, toCsv(out));
-    toast.success(`Экспортировано ${out.length} URL`);
+    const at = Date.now();
+    for (const u of exportUrls) setMetaEdit(u, { status: "done", updatedAt: at });
+    add(`Экспорт: ${out.length} URL → статус «Готово»`);
+    toast.success(`Экспортировано ${out.length} URL, статусы обновлены`);
   }
 
   return (
