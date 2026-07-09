@@ -215,6 +215,7 @@ function FolderCard({
           inProgress={textReady}
           inProgressLabel="Готов к выгрузке"
         />
+        <GroupsBreakdown qs={qs} metaEdits={metaEdits} texts={texts} />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
