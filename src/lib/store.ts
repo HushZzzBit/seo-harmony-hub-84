@@ -52,6 +52,7 @@ function debouncedLocalStorage(): Storage {
 
 import type {
   FolderState,
+  GroupState,
   MetaEdit,
   MetaHistoryEntry,
   Query,
