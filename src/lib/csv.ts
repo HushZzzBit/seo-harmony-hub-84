@@ -185,8 +185,13 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
     if (!phrase) continue;
     const group = String((cGroup >= 0 ? row[cGroup] : "") || "").trim() || "Без группы";
     const tag = cTag >= 0 ? String(row[cTag] ?? "").trim() : "";
-    const folder = tag && tag !== "Тег по умолчанию" ? tag : group;
     const url = cUrl >= 0 ? String(row[cUrl] ?? "").trim() : "";
+    // «Папка» — раздел сайта из URL (например, /non-gaming/, /in-gaming/).
+    // Fallback: тег Topvisor (если не дефолтный) → «/».
+    const urlFolder = folderFromUrl(url);
+    const folder =
+      urlFolder ||
+      (tag && tag !== "Тег по умолчанию" ? tag : "/");
     out.push({
       id: `${folder}::${group}::${phrase}::${i}`,
       phrase,
@@ -200,6 +205,18 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
     });
   }
   return out;
+}
+
+/** Извлекает первый сегмент пути из URL как «папку»: /non-gaming/ */
+function folderFromUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const u = url.match(/^https?:\/\//i) ? new URL(url) : new URL("https://x" + (url.startsWith("/") ? url : "/" + url));
+    const seg = u.pathname.split("/").filter(Boolean)[0];
+    return seg ? `/${seg}/` : "/";
+  } catch {
+    return "";
+  }
 }
 
 /* ------------------------------------------------------------------ */
