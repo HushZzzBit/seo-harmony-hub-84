@@ -201,7 +201,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function PickerRow({
-  label, count, items, selected, onSelect, counts, countLabel, allowClear, emptyText,
+  label, count, items, selected, onSelect, counts, countLabel, allowClear, emptyText, hideSearch,
 }: {
   label: string;
   count: number;
@@ -212,22 +212,25 @@ function PickerRow({
   countLabel: string;
   allowClear?: boolean;
   emptyText?: string;
+  hideSearch?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const lower = search.trim().toLowerCase();
-  const filtered = lower ? items.filter((i) => i.toLowerCase().includes(lower)) : items;
+  const filtered = !hideSearch && lower ? items.filter((i) => i.toLowerCase().includes(lower)) : items;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium shrink-0 w-16">{label}</span>
-        <input
-          type="text"
-          placeholder={`Поиск (${count})...`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        />
+        {!hideSearch && (
+          <input
+            type="text"
+            placeholder={`Поиск (${count})...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        )}
         {allowClear && selected && (
           <button
             type="button"
@@ -237,8 +240,8 @@ function PickerRow({
             Сбросить
           </button>
         )}
-        <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-          {filtered.length}/{count}
+        <span className={`text-xs text-muted-foreground shrink-0 tabular-nums ${hideSearch ? "ml-auto" : ""}`}>
+          {hideSearch ? count : `${filtered.length}/${count}`}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
