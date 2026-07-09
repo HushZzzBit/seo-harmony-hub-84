@@ -74,18 +74,10 @@ function Dashboard() {
 
   const scope = useMemo(() => {
     const urlSet = new Set(scopeQs.map((q) => q.url).filter(Boolean)) as Set<string>;
-    const gPos = scopeQs.map((q) => q.googlePosition).filter((v): v is number => typeof v === "number" && v > 0);
-    const yPos = scopeQs.map((q) => q.yandexPosition).filter((v): v is number => typeof v === "number" && v > 0);
     const arr = Array.from(urlSet);
     return {
       urlSet,
       urls: urlSet.size,
-      avgG: avg(gPos),
-      avgY: avg(yPos),
-      top3G: pct(gPos.filter((p) => p <= 3).length, gPos.length),
-      top10G: pct(gPos.filter((p) => p <= 10).length, gPos.length),
-      top3Y: pct(yPos.filter((p) => p <= 3).length, yPos.length),
-      top10Y: pct(yPos.filter((p) => p <= 10).length, yPos.length),
       metaDone: arr.filter((u) => metaEdits[u]?.status === "done").length,
       metaCsv: arr.filter((u) => metaEdits[u]?.status === "in_csv").length,
       metaProg: arr.filter((u) => metaEdits[u]?.status === "in_progress").length,
