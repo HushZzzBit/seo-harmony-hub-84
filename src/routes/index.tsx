@@ -30,11 +30,13 @@ export const Route = createFileRoute("/")({
 const statusLabel: Record<Status, string> = {
   not_started: "Не начато",
   in_progress: "В работе",
+  in_csv: "В файле CSV",
   done: "Завершено",
 };
 const statusColor: Record<Status, string> = {
   not_started: "bg-muted text-muted-foreground",
   in_progress: "bg-chart-4/20 text-foreground",
+  in_csv: "bg-chart-1/20 text-foreground",
   done: "bg-chart-2/30 text-foreground",
 };
 
