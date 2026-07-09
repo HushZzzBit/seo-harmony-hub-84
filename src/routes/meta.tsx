@@ -177,6 +177,12 @@ function MetaRow({ row }: { row: Row }) {
             <span className="text-muted-foreground">
               Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span>
             </span>
+            <span className="text-muted-foreground" title="Средняя позиция в Google">
+              G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span>
+            </span>
+            <span className="text-muted-foreground" title="Средняя позиция в Яндекс">
+              Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span>
+            </span>
             <span
               className={
                 "tabular-nums " +
