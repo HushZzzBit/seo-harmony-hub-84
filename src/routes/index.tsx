@@ -66,6 +66,8 @@ function Dashboard() {
       const e = metaEdits[u!];
       return !(e?.title || r?.title);
     }).length;
+    const doneMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "done").length;
+    const inCsvMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "in_csv").length;
     const ready = Array.from(urlSet).filter((u) => {
       const r = urls[u!]; const e = metaEdits[u!];
       return (e?.title || r?.title) && r?.hasText;
@@ -78,6 +80,8 @@ function Dashboard() {
       top3: pct(top3G, queries.length),
       top10: pct(top10G, queries.length),
       noText, noMeta, ready,
+      doneMeta, inCsvMeta,
+      donePct: pct(doneMeta, urlSet.size),
     };
   }, [queries, urls, metaEdits]);
 
