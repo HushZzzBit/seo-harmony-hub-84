@@ -175,20 +175,18 @@ function Dashboard() {
               <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
             </div>
           </Section>
-
-
-          {activeFolder && (
-            <FolderCard
-              key={activeFolder}
-              folder={activeFolder}
-              qs={folderQs}
-              urls={urls}
-              metaEdits={metaEdits}
-              texts={texts}
-              selectedGroup={selectedGroup}
-              onSelectGroup={setSelectedGroup}
-            />
-          )}
+          <Section title="Проработка">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />
+              <Kpi label="Meta: в CSV" value={scope.metaCsv} />
+              <Kpi label="Meta: в работе" value={scope.metaProg} />
+              <Kpi label="Без Meta" value={scope.metaNo} tone="destructive" />
+              <Kpi label="Тексты: готово" value={`${scope.textDone} · ${pct(scope.textDone, scope.urls)}%`} tone="good" />
+              <Kpi label="Тексты: в CSV" value={scope.textCsv} />
+              <Kpi label="Тексты: готовы" value={scope.textReady} />
+              <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
+            </div>
+          </Section>
         </div>
       )}
     </AppShell>
