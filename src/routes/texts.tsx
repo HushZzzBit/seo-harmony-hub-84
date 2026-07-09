@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
-import { groupSeasonality, MONTHS, recommendedMonth } from "@/lib/seo";
+import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import type { TextStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/texts")({
