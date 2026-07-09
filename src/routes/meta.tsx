@@ -95,13 +95,17 @@ function MetaPage() {
         const rec = recommendedMonth(seasonality);
         const dist = (rec - now + 12) % 12;
         const freq = r.qs.reduce((a, q) => a + (q.frequency || 0), 0);
-        const m = metaFor(r.url, urls, metaEdits);
-        const words = extractWords(r.qs.map((q) => q.phrase));
-        const wordSet = new Set(words.map((w) => w.word));
-        const used = new Set<string>();
-        for (const t of [m.title, m.description, m.h1])
-          for (const w of tokenize(t)) if (wordSet.has(w)) used.add(w);
-        const coverage = wordSet.size ? Math.round((used.size / wordSet.size) * 100) : 0;
+        // Coverage is expensive; only compute when needed for sort. Otherwise MetaRow computes locally.
+        let coverage = 0;
+        if (sortKey === "coverage") {
+          const m = metaFor(r.url, urls, metaEdits);
+          const words = extractWords(r.qs.map((q) => q.phrase));
+          const wordSet = new Set(words.map((w) => w.word));
+          const used = new Set<string>();
+          for (const t of [m.title, m.description, m.h1])
+            for (const w of tokenize(t)) if (wordSet.has(w)) used.add(w);
+          coverage = wordSet.size ? Math.round((used.size / wordSet.size) * 100) : 0;
+        }
         const status: Status = metaEdits[r.url]?.status ?? "not_started";
         return { r, seasonality, prio, rec, dist, freq, coverage, status };
       })
