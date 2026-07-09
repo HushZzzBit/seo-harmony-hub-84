@@ -179,13 +179,17 @@ function Dashboard() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, noCard }: { title: string; children: React.ReactNode; noCard?: boolean }) {
   return (
     <section>
       <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">{title}</h2>
-      <Card>
-        <CardContent className="p-4">{children}</CardContent>
-      </Card>
+      {noCard ? (
+        <div className="space-y-4">{children}</div>
+      ) : (
+        <Card>
+          <CardContent className="p-4">{children}</CardContent>
+        </Card>
+      )}
     </section>
   );
 }
