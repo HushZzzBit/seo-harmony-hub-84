@@ -428,7 +428,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (o) setValue(t.text ?? urls[url]?.text ?? "");
+        if (o) setValue(t.text ?? urlText ?? "");
       }}
     >
       <DialogTrigger asChild>
