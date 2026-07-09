@@ -74,18 +74,10 @@ function Dashboard() {
 
   const scope = useMemo(() => {
     const urlSet = new Set(scopeQs.map((q) => q.url).filter(Boolean)) as Set<string>;
-    const gPos = scopeQs.map((q) => q.googlePosition).filter((v): v is number => typeof v === "number" && v > 0);
-    const yPos = scopeQs.map((q) => q.yandexPosition).filter((v): v is number => typeof v === "number" && v > 0);
     const arr = Array.from(urlSet);
     return {
       urlSet,
       urls: urlSet.size,
-      avgG: avg(gPos),
-      avgY: avg(yPos),
-      top3G: pct(gPos.filter((p) => p <= 3).length, gPos.length),
-      top10G: pct(gPos.filter((p) => p <= 10).length, gPos.length),
-      top3Y: pct(yPos.filter((p) => p <= 3).length, yPos.length),
-      top10Y: pct(yPos.filter((p) => p <= 10).length, yPos.length),
       metaDone: arr.filter((u) => metaEdits[u]?.status === "done").length,
       metaCsv: arr.filter((u) => metaEdits[u]?.status === "in_csv").length,
       metaProg: arr.filter((u) => metaEdits[u]?.status === "in_progress").length,
@@ -148,14 +140,11 @@ function Dashboard() {
           </Section>
 
           <Section title="Аналитика">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-              <Kpi label="Ср. поз. Google" value={scope.avgG.toFixed(1)} />
-              <Kpi label="% TOP3 Google" value={`${scope.top3G}%`} />
-              <Kpi label="% TOP10 Google" value={`${scope.top10G}%`} />
-              <Kpi label="Ср. поз. Яндекс" value={scope.avgY.toFixed(1)} />
-              <Kpi label="% TOP3 Яндекс" value={`${scope.top3Y}%`} />
-              <Kpi label="% TOP10 Яндекс" value={`${scope.top10Y}%`} />
-            </div>
+            <PriorityMonths
+              qs={folderQs}
+              selectedGroup={selectedGroup}
+              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+            />
           </Section>
 
           <Section title="Проработка">
@@ -171,13 +160,6 @@ function Dashboard() {
             </div>
           </Section>
 
-          <Section title="Приоритет по сезону">
-            <PriorityMonths
-              qs={folderQs}
-              selectedGroup={selectedGroup}
-              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
-            />
-          </Section>
 
           {activeFolder && (
             <FolderCard
