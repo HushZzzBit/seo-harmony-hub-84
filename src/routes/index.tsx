@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -153,11 +153,13 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
 }
 
 function GroupsBreakdown({
-  qs, metaEdits, texts,
+  qs, metaEdits, texts, selectedGroup, onSelectGroup,
 }: {
   qs: ReturnType<typeof useStore.getState>["queries"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
+  selectedGroup: string | null;
+  onSelectGroup: (g: string | null) => void;
 }) {
   const groups = useMemo(() => {
     const byGroup = new Map<string, typeof qs>();
@@ -191,28 +193,59 @@ function GroupsBreakdown({
   if (groups.length === 0) return null;
 
   return (
-    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden">
+    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden" open={selectedGroup !== null}>
       <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-muted/50">
-        <span>Группы ({groups.length})</span>
-        <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+        <span>
+          Группы ({groups.length})
+          {selectedGroup && (
+            <span className="ml-2 text-muted-foreground font-normal">
+              · выбрана: <b className="text-foreground">{selectedGroup}</b>
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          {selectedGroup && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectGroup(null); }}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
+            >
+              Сбросить
+            </button>
+          )}
+          <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+        </span>
       </summary>
       <div className="divide-y divide-border/60">
-        {groups.map((g) => (
-          <div key={g.group} className="px-3 py-2 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium truncate" title={g.group}>{g.group}</span>
-              <span className="text-muted-foreground tabular-nums shrink-0">
-                {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
-              </span>
-            </div>
-            <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
-            <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
-          </div>
-        ))}
+        {groups.map((g) => {
+          const active = selectedGroup === g.group;
+          return (
+            <button
+              key={g.group}
+              type="button"
+              onClick={() => onSelectGroup(active ? null : g.group)}
+              className={`w-full text-left px-3 py-2 space-y-1.5 transition-colors ${
+                active ? "bg-primary/10" : "hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className={`truncate ${active ? "font-semibold text-primary" : "font-medium"}`} title={g.group}>
+                  {g.group}
+                </span>
+                <span className="text-muted-foreground tabular-nums shrink-0">
+                  {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
+                </span>
+              </div>
+              <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
+              <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
+            </button>
+          );
+        })}
       </div>
     </details>
   );
 }
+
 
 function MiniBar({
   label, total, done, inCsv, inProgress,
@@ -250,23 +283,28 @@ function FolderCard({
   onChangeStatus: (s: Status) => void;
   onChangePlan: (d: string) => void;
 }) {
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const filteredQs = useMemo(
+    () => (selectedGroup ? qs.filter((q) => q.group === selectedGroup) : qs),
+    [qs, selectedGroup],
+  );
   const groups = new Set(qs.map((q) => q.group));
-  const urlSet = new Set(qs.map((q) => q.url).filter(Boolean)) as Set<string>;
-  const gPos = qs.map((q) => q.googlePosition ?? 0);
-  const yPos = qs.map((q) => q.yandexPosition ?? 0);
-  const top3G = qs.filter((q) => (q.googlePosition ?? 999) <= 3).length;
-  const top10G = qs.filter((q) => (q.googlePosition ?? 999) <= 10).length;
-  const top3Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
-  const top10Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
+  const urlSet = new Set(filteredQs.map((q) => q.url).filter(Boolean)) as Set<string>;
+  const gPos = filteredQs.map((q) => q.googlePosition ?? 0);
+  const yPos = filteredQs.map((q) => q.yandexPosition ?? 0);
+  const top3G = filteredQs.filter((q) => (q.googlePosition ?? 999) <= 3).length;
+  const top10G = filteredQs.filter((q) => (q.googlePosition ?? 999) <= 10).length;
+  const top3Y = filteredQs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
+  const top10Y = filteredQs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
   const metaDone = Array.from(urlSet).filter((u) => metaEdits[u]?.title).length;
   const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
   const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
   const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
-  
+
   const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "done").length;
   const textInCsv = Array.from(urlSet).filter((u) => texts[u]?.status === "in_csv").length;
   const textReady = Array.from(urlSet).filter((u) => texts[u]?.status === "ready").length;
-  const seasonality = groupSeasonality(qs);
+  const seasonality = groupSeasonality(filteredQs);
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
   const peak = peakMonth(seasonality);
   const rec = recommendedMonth(seasonality);
@@ -277,9 +315,14 @@ function FolderCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">{folder}</CardTitle>
+            <CardTitle className="text-base">
+              {folder}
+              {selectedGroup && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">/ {selectedGroup}</span>
+              )}
+            </CardTitle>
             <div className="text-xs text-muted-foreground mt-1">
-              {groups.size} групп · {urlSet.size} URL · {qs.length} запросов
+              {selectedGroup ? "1" : groups.size} {selectedGroup ? "группа" : "групп"} · {urlSet.size} URL · {filteredQs.length} запросов
             </div>
           </div>
           <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
@@ -301,14 +344,20 @@ function FolderCard({
           inProgress={textReady}
           inProgressLabel="Готов к выгрузке"
         />
-        <GroupsBreakdown qs={qs} metaEdits={metaEdits} texts={texts} />
+        <GroupsBreakdown
+          qs={qs}
+          metaEdits={metaEdits}
+          texts={texts}
+          selectedGroup={selectedGroup}
+          onSelectGroup={setSelectedGroup}
+        />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
-          <Metric label="TOP3 G" value={`${pct(top3G, qs.length)}%`} />
-          <Metric label="TOP10 G" value={`${pct(top10G, qs.length)}%`} />
-          <Metric label="TOP3 Y" value={`${pct(top3Y, qs.length)}%`} />
-          <Metric label="TOP10 Y" value={`${pct(top10Y, qs.length)}%`} />
+          <Metric label="TOP3 G" value={`${pct(top3G, filteredQs.length)}%`} />
+          <Metric label="TOP10 G" value={`${pct(top10G, filteredQs.length)}%`} />
+          <Metric label="TOP3 Y" value={`${pct(top3Y, filteredQs.length)}%`} />
+          <Metric label="TOP10 Y" value={`${pct(top10Y, filteredQs.length)}%`} />
           <Metric label="Meta" value={`${metaDone}/${urlSet.size}`} />
           <Metric label="Text" value={`${textDone}/${urlSet.size}`} />
         </div>
