@@ -275,35 +275,34 @@ function MetaPage() {
             <span className="text-sm text-muted-foreground">
               Выбрано: <span className="font-medium text-foreground">{selected.size}</span>
             </span>
-            {selected.size > 0 && (
-              <div className="flex items-center gap-2 ml-auto">
-                <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Status)}>
-                  <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_started">Не начато</SelectItem>
-                    <SelectItem value="in_progress">В работе</SelectItem>
-                    <SelectItem value="in_csv">В файле CSV</SelectItem>
-                    <SelectItem value="done">Готово</SelectItem>
-                  </SelectContent>
-                </Select>
-                <button
-                  type="button"
-                  disabled={selected.size === 0 || !bulkStatus}
-                  onClick={() => {
-                    if (!bulkStatus) return;
-                    for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
-                    setSelected(new Set());
-                    setBulkStatus("");
-                  }}
-                  className="h-8 px-3 text-xs rounded-md bg-primary text-primary-foreground disabled:opacity-40 hover:opacity-90 transition"
-                >Применить</button>
-                <button
-                  type="button"
-                  onClick={() => setSelected(new Set())}
-                  className="h-8 px-2 text-xs rounded-md hover:bg-accent transition"
-                >Снять выбор</button>
-              </div>
-            )}
+            <div className="flex items-center gap-2 ml-auto">
+              <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Status)}>
+                <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="not_started">Не начато</SelectItem>
+                  <SelectItem value="in_progress">В работе</SelectItem>
+                  <SelectItem value="in_csv">В файле CSV</SelectItem>
+                  <SelectItem value="done">Готово</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                disabled={selected.size === 0 || !bulkStatus}
+                onClick={() => {
+                  if (!bulkStatus) return;
+                  for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
+                  setSelected(new Set());
+                  setBulkStatus("");
+                }}
+                className="h-8 px-3 text-xs rounded-md bg-primary text-primary-foreground disabled:opacity-40 hover:opacity-90 transition"
+              >Применить</button>
+              <button
+                type="button"
+                disabled={selected.size === 0}
+                onClick={() => setSelected(new Set())}
+                className="h-8 px-2 text-xs rounded-md hover:bg-accent transition disabled:opacity-40"
+              >Снять выбор</button>
+            </div>
           </div>
         );
       })()}
