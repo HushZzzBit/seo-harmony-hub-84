@@ -153,11 +153,13 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
 }
 
 function GroupsBreakdown({
-  qs, metaEdits, texts,
+  qs, metaEdits, texts, selectedGroup, onSelectGroup,
 }: {
   qs: ReturnType<typeof useStore.getState>["queries"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
+  selectedGroup: string | null;
+  onSelectGroup: (g: string | null) => void;
 }) {
   const groups = useMemo(() => {
     const byGroup = new Map<string, typeof qs>();
@@ -191,28 +193,59 @@ function GroupsBreakdown({
   if (groups.length === 0) return null;
 
   return (
-    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden">
+    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden" open={selectedGroup !== null}>
       <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-muted/50">
-        <span>Группы ({groups.length})</span>
-        <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+        <span>
+          Группы ({groups.length})
+          {selectedGroup && (
+            <span className="ml-2 text-muted-foreground font-normal">
+              · выбрана: <b className="text-foreground">{selectedGroup}</b>
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-2">
+          {selectedGroup && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSelectGroup(null); }}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
+            >
+              Сбросить
+            </button>
+          )}
+          <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
+        </span>
       </summary>
       <div className="divide-y divide-border/60">
-        {groups.map((g) => (
-          <div key={g.group} className="px-3 py-2 space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="font-medium truncate" title={g.group}>{g.group}</span>
-              <span className="text-muted-foreground tabular-nums shrink-0">
-                {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
-              </span>
-            </div>
-            <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
-            <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
-          </div>
-        ))}
+        {groups.map((g) => {
+          const active = selectedGroup === g.group;
+          return (
+            <button
+              key={g.group}
+              type="button"
+              onClick={() => onSelectGroup(active ? null : g.group)}
+              className={`w-full text-left px-3 py-2 space-y-1.5 transition-colors ${
+                active ? "bg-primary/10" : "hover:bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className={`truncate ${active ? "font-semibold text-primary" : "font-medium"}`} title={g.group}>
+                  {g.group}
+                </span>
+                <span className="text-muted-foreground tabular-nums shrink-0">
+                  {g.total} URL · {g.queries} зпр · G {g.avgG.toFixed(1)} · Y {g.avgY.toFixed(1)}
+                </span>
+              </div>
+              <MiniBar label="Meta" total={g.total} done={g.metaDone} inCsv={g.metaCsv} inProgress={g.metaProg} />
+              <MiniBar label="Тексты" total={g.total} done={g.textDone} inCsv={g.textCsv} inProgress={g.textReady} />
+            </button>
+          );
+        })}
       </div>
     </details>
   );
 }
+
 
 function MiniBar({
   label, total, done, inCsv, inProgress,
