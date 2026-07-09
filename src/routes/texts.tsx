@@ -199,6 +199,27 @@ function TextsPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
+                <th className="p-2 w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Выбрать все"
+                    className="accent-primary cursor-pointer"
+                    checked={visible.length > 0 && visible.every((e) => e.r.url && selected.has(e.r.url))}
+                    ref={(el) => {
+                      if (!el) return;
+                      const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
+                      el.indeterminate = selCount > 0 && selCount < visible.length;
+                    }}
+                    onChange={(e) => {
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) visible.forEach((v) => v.r.url && next.add(v.r.url));
+                        else visible.forEach((v) => v.r.url && next.delete(v.r.url));
+                        return next;
+                      });
+                    }}
+                  />
+                </th>
                 <SortHeader k="priority">Приоритет</SortHeader>
                 <SortHeader k="group">Папка / Группа</SortHeader>
                 <SortHeader k="url">URL</SortHeader>
@@ -218,8 +239,27 @@ function TextsPage() {
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
                   : "bg-muted text-muted-foreground border-border";
                 const prioLabel = prio === "high" ? "Высокий" : prio === "medium" ? "Средний" : "Низкий";
+                const isSel = !!r.url && selected.has(r.url);
                 return (
-                  <tr key={r.url || r.folder + r.group} className="border-t border-border hover:bg-muted/30">
+                  <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
+                    <td className="p-2 align-top">
+                      <input
+                        type="checkbox"
+                        aria-label="Выбрать строку"
+                        disabled={!r.url}
+                        checked={isSel}
+                        className="accent-primary cursor-pointer"
+                        onChange={(e) => {
+                          if (!r.url) return;
+                          setSelected((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(r.url);
+                            else next.delete(r.url);
+                            return next;
+                          });
+                        }}
+                      />
+                    </td>
                     <td className="p-2 align-top">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
                     </td>
@@ -252,7 +292,7 @@ function TextsPage() {
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
+                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
               )}
             </tbody>
           </table>
