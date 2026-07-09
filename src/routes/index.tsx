@@ -272,6 +272,21 @@ function PickerRow({
   );
 }
 
+function Kpi({ label, value, tone }: { label: string; value: string | number; tone?: "destructive" | "good" }) {
+  const color =
+    tone === "destructive" ? "text-destructive" : tone === "good" ? "text-chart-2" : "text-foreground";
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-semibold ${color}`}>{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+
 
 
 function GroupsBreakdown({
