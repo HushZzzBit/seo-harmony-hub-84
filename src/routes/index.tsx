@@ -99,9 +99,10 @@ function Dashboard() {
         <Kpi label="Ср. позиция" value={kpi.avgPos} />
         <Kpi label="% TOP3" value={`${kpi.top3}%`} />
         <Kpi label="% TOP10" value={`${kpi.top10}%`} />
-        <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
+        <Kpi label="В файле CSV" value={kpi.inCsvMeta} />
+        <Kpi label="Готово" value={`${kpi.doneMeta} · ${kpi.donePct}%`} tone="good" />
         <Kpi label="Без Meta" value={kpi.noMeta} tone="destructive" />
-        <Kpi label="Готовых" value={kpi.ready} tone="good" />
+        <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
         <Kpi label="Запросов" value={queries.length} />
       </div>
 
