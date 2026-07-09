@@ -188,12 +188,14 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
     const group = String((cGroup >= 0 ? row[cGroup] : "") || "").trim() || "Без группы";
     const tag = cTag >= 0 ? String(row[cTag] ?? "").trim() : "";
     const url = cUrl >= 0 ? String(row[cUrl] ?? "").trim() : "";
-    // «Папка» — раздел сайта из URL (например, /non-gaming/, /in-gaming/).
-    // Fallback: тег Topvisor (если не дефолтный) → «/».
-    const urlFolder = folderFromUrl(url);
+    const folderRaw = cFolder >= 0 ? String(row[cFolder] ?? "").trim() : "";
+    // «Папка» — сначала берём одноимённую колонку Topvisor, затем URL,
+    // затем нестандартный тег, иначе «/».
     const folder =
-      urlFolder ||
+      folderRaw ||
+      folderFromUrl(url) ||
       (tag && tag !== "Тег по умолчанию" ? tag : "/");
+
     out.push({
       id: `${folder}::${group}::${phrase}::${i}`,
       phrase,
