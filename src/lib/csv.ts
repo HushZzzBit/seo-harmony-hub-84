@@ -112,7 +112,10 @@ function parseHeaderDate(v: string): Date | null {
 /*   engine spans "Google"/"Yandex" and per-date position columns)     */
 /* ------------------------------------------------------------------ */
 
-export function parseTopvisorQueries(matrix: string[][]): Query[] {
+export function parseTopvisorQueries(
+  matrix: string[][],
+  opts: { engineHint?: "google" | "yandex" } = {},
+): Query[] {
   if (!matrix.length) return [];
 
   // 1) Locate header row (the one containing "Запрос…")
@@ -140,11 +143,17 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
 
   const cPhrase = findCol((h) => h.startsWith("запрос"));
   const cGroup = findCol((h) => h.includes("групп"));
-  const cUrl = findCol((h) => h.includes("целев") || h === "url" || h.includes("ссылк"));
+  // «Целевая ссылка» / URL — исключаем «Последняя проверка …» и «Релевантная …»
+  const cUrl = header.findIndex((h) => {
+    const s = String(h ?? "").toLowerCase().trim();
+    if (!s) return false;
+    if (s.includes("последняя проверка") || s.includes("релевантн")) return false;
+    return s.includes("целев") || s === "url" || s.includes("ссылк");
+  });
   const cTag = findCol((h) => h.includes("тег"));
   const cFolder = findCol((h) => h === "папка" || h.startsWith("папка"));
 
-  // Frequency columns — prefer "!"W"" (exact match), then any "частот"
+  // Frequency columns — предпочитаем «!W», затем Yandex/Wordstat
   const freqCols: number[] = [];
   for (let c = 0; c < header.length; c++) {
     const h = String(header[c] ?? "").toLowerCase();
@@ -152,9 +161,9 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
       freqCols.push(c);
     }
   }
-  // Prefer the strictest ("!W") if present
   const cFreqStrict = freqCols.find((c) => /"!w"/i.test(String(header[c] ?? "")));
-  const cFreq = cFreqStrict ?? freqCols[0];
+  const cFreqYandex = freqCols.find((c) => /yandex|яндекс|wordstat/i.test(String(header[c] ?? "")));
+  const cFreq = cFreqStrict ?? cFreqYandex ?? freqCols[0];
 
   // Position columns: headers that parse as a date (Excel serial or dd.mm.yyyy)
   type PosCol = { col: number; date: Date; engine: "google" | "yandex" | "other" };
@@ -162,12 +171,18 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
   for (let c = 0; c < header.length; c++) {
     const d = parseHeaderDate(String(header[c]));
     if (!d) continue;
-    const eng = String(engineRow[c] ?? "").toLowerCase();
-    const engine: PosCol["engine"] = eng.includes("google")
+    const engRow = String(engineRow[c] ?? "").toLowerCase();
+    // Ищем движок в строке-спане, в соседних заголовках и в подсказке из имени файла
+    const neighborHeaders = [header[c - 1], header[c + 1], header[c - 2], header[c + 2]]
+      .map((h) => String(h ?? "").toLowerCase())
+      .join(" ");
+    const combined = `${engRow} ${neighborHeaders}`;
+    let engine: PosCol["engine"] = combined.includes("google")
       ? "google"
-      : eng.includes("yandex") || eng.includes("яндекс")
+      : combined.includes("yandex") || combined.includes("яндекс")
       ? "yandex"
       : "other";
+    if (engine === "other" && opts.engineHint) engine = opts.engineHint;
     posCols.push({ col: c, date: d, engine });
   }
   const latestPer = (engine: "google" | "yandex"): number | undefined => {
