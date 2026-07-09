@@ -5,8 +5,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
-import { extractWords, metaFor, tokenize } from "@/lib/seo";
-import type { Query, Status } from "@/lib/types";
+import {
+  extractWords,
+  groupSeasonality,
+  metaFor,
+  MONTHS,
+  priorityForGroup,
+  recommendedMonth,
+  tokenize,
+} from "@/lib/seo";
+import type { Priority, Query, Status } from "@/lib/types";
+import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
@@ -18,15 +27,23 @@ export const Route = createFileRoute("/meta")({
 });
 
 type Row = { folder: string; group: string; url: string; qs: Query[] };
+type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
+type SortDir = "asc" | "desc";
+
+const priorityRank: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+const priorityLabel: Record<Priority, string> = { high: "Высокий", medium: "Средний", low: "Низкий" };
 
 const PAGE_SIZE = 50;
 
 function MetaPage() {
-  const { queries, metaEdits } = useStore();
+  const { queries, urls, metaEdits } = useStore();
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("priority");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const folders = useMemo(
@@ -34,7 +51,6 @@ function MetaPage() {
     [queries],
   );
 
-  // Группы — либо все, либо ограниченные выбранной папкой
   const groups = useMemo(
     () =>
       Array.from(
@@ -47,7 +63,7 @@ function MetaPage() {
     [queries, folder],
   );
 
-  const rows = useMemo<Row[]>(() => {
+  const rows = useMemo(() => {
     const byUrl = new Map<string, Row>();
     for (const q of queries) {
       const key = q.url ?? `~${q.folder}/${q.group}`;
@@ -55,28 +71,85 @@ function MetaPage() {
         byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
     }
-    return Array.from(byUrl.values()).filter((r) => {
-      if (folder !== "all" && r.folder !== folder) return false;
-      if (group !== "all" && r.group !== group) return false;
-      if (
-        search &&
-        !(r.url + r.group + r.folder).toLowerCase().includes(search.toLowerCase())
-      )
-        return false;
-      const st = metaEdits[r.url]?.status ?? "not_started";
-      if (statusFilter !== "all" && st !== statusFilter) return false;
-      return true;
-    });
-  }, [queries, folder, group, search, statusFilter, metaEdits]);
+    const now = new Date().getMonth();
+    const enriched = Array.from(byUrl.values())
+      .filter((r) => {
+        if (folder !== "all" && r.folder !== folder) return false;
+        if (group !== "all" && r.group !== group) return false;
+        if (
+          search &&
+          !(r.url + r.group + r.folder).toLowerCase().includes(search.toLowerCase())
+        )
+          return false;
+        const st = metaEdits[r.url]?.status ?? "not_started";
+        if (statusFilter !== "all" && st !== statusFilter) return false;
+        return true;
+      })
+      .map((r) => {
+        const seasonality = groupSeasonality(r.qs);
+        const prio = priorityForGroup(seasonality);
+        const rec = recommendedMonth(seasonality);
+        const dist = (rec - now + 12) % 12;
+        const freq = r.qs.reduce((a, q) => a + (q.frequency || 0), 0);
+        const m = metaFor(r.url, urls, metaEdits);
+        const words = extractWords(r.qs.map((q) => q.phrase));
+        const wordSet = new Set(words.map((w) => w.word));
+        const used = new Set<string>();
+        for (const t of [m.title, m.description, m.h1])
+          for (const w of tokenize(t)) if (wordSet.has(w)) used.add(w);
+        const coverage = wordSet.size ? Math.round((used.size / wordSet.size) * 100) : 0;
+        const status: Status = metaEdits[r.url]?.status ?? "not_started";
+        return { r, seasonality, prio, rec, dist, freq, coverage, status };
+      })
+      .filter((e) => priorityFilter === "all" || e.prio === priorityFilter);
 
-  // Сбрасываем окно рендера при смене фильтров, чтобы страница не тормозила
-  // на выборках в тысячи URL.
+    const dir = sortDir === "asc" ? 1 : -1;
+    enriched.sort((a, b) => {
+      switch (sortKey) {
+        case "priority": {
+          const d = priorityRank[a.prio] - priorityRank[b.prio];
+          return (d !== 0 ? d : a.dist - b.dist) * dir;
+        }
+        case "season":
+          return (a.dist - b.dist) * dir;
+        case "coverage":
+          return (a.coverage - b.coverage) * dir;
+        case "freq":
+          return (a.freq - b.freq) * dir;
+        case "status":
+          return a.status.localeCompare(b.status) * dir;
+        case "url":
+          return (a.r.folder + a.r.group + a.r.url).localeCompare(
+            b.r.folder + b.r.group + b.r.url,
+          ) * dir;
+      }
+    });
+    return enriched;
+  }, [queries, folder, group, search, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
+
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [folder, group, search, statusFilter]);
+  }, [folder, group, search, statusFilter, priorityFilter, sortKey, sortDir]);
 
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(k);
+      setSortDir("asc");
+    }
+  };
+
+  const sortLabel: Record<SortKey, string> = {
+    priority: "Приоритет",
+    season: "Сезонность",
+    coverage: "Покрытие",
+    freq: "Частота",
+    status: "Статус",
+    url: "URL",
+  };
 
   return (
     <AppShell>
@@ -101,35 +174,30 @@ function MetaPage() {
               setGroup("all");
             }}
           >
-            <SelectTrigger className="w-48 h-9">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все папки</SelectItem>
-              {folders.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f}
-                </SelectItem>
-              ))}
+              {folders.map((f) => (<SelectItem key={f} value={f}>{f}</SelectItem>))}
             </SelectContent>
           </Select>
           <Select value={group} onValueChange={setGroup}>
-            <SelectTrigger className="w-48 h-9">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все группы</SelectItem>
-              {groups.map((g) => (
-                <SelectItem key={g} value={g}>
-                  {g}
-                </SelectItem>
-              ))}
+              {groups.map((g) => (<SelectItem key={g} value={g}>{g}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все приоритеты</SelectItem>
+              <SelectItem value="high">Высокий</SelectItem>
+              <SelectItem value="medium">Средний</SelectItem>
+              <SelectItem value="low">Низкий</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
               <SelectItem value="not_started">Не начато</SelectItem>
@@ -138,12 +206,39 @@ function MetaPage() {
               <SelectItem value="done">Готово</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-1 rounded-md border border-border h-9 px-1">
+            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+              <SelectTrigger className="h-7 border-0 shadow-none text-xs w-32 px-2">
+                <ArrowUpDown className="h-3 w-3 mr-1 opacity-60" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(sortLabel).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button
+              type="button"
+              onClick={() => toggleSort(sortKey)}
+              className="h-7 px-1.5 rounded hover:bg-accent"
+              title={sortDir === "asc" ? "По возрастанию" : "По убыванию"}
+            >
+              {sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="space-y-2">
-        {visible.map((r) => (
-          <MetaRow key={r.url || r.folder + r.group} row={r} />
+        {visible.map((e) => (
+          <MetaRow
+            key={e.r.url || e.r.folder + e.r.group}
+            row={e.r}
+            prio={e.prio}
+            rec={e.rec}
+            freq={e.freq}
+          />
         ))}
         {rows.length === 0 && (
           <Card>
@@ -173,7 +268,17 @@ function MetaPage() {
   );
 }
 
-function MetaRow({ row }: { row: Row }) {
+function MetaRow({
+  row,
+  prio,
+  rec,
+  freq,
+}: {
+  row: Row;
+  prio: Priority;
+  rec: number;
+  freq: number;
+}) {
   const { urls, metaEdits, setMetaEdit } = useStore();
   const m = metaFor(row.url, urls, metaEdits);
 
@@ -183,6 +288,7 @@ function MetaRow({ row }: { row: Row }) {
   const [title, setTitle] = useState(m.title);
   const [desc, setDesc] = useState(m.description);
   const [h1, setH1] = useState(m.h1);
+  const [expanded, setExpanded] = useState(false);
   const status: Status = metaEdits[row.url]?.status ?? "not_started";
 
   useEffect(() => {
@@ -192,7 +298,6 @@ function MetaRow({ row }: { row: Row }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [m.title, m.description, m.h1]);
 
-  const freq = row.qs.reduce((a, q) => a + (q.frequency || 0), 0);
   const avgPos = (key: "googlePosition" | "yandexPosition") => {
     const vals = row.qs.map((q) => q[key]).filter((v): v is number => typeof v === "number" && v > 0);
     return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0;
@@ -225,11 +330,29 @@ function MetaRow({ row }: { row: Row }) {
           ? "border-l-chart-4"
           : "border-l-border";
 
+  const prioStyle =
+    prio === "high"
+      ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
+      : prio === "medium"
+        ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
+        : "bg-muted text-muted-foreground border-border";
+
   return (
     <Card className={`border-l-4 ${statusRing}`}>
       <CardContent className="p-3">
-        {/* Header row: URL + status + meta */}
-        <div className="flex items-center justify-between gap-3 mb-2">
+        {/* Compact header */}
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            title={expanded ? "Скрыть детали" : "Показать детали"}
+          >
+            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
+            {priorityLabel[prio]}
+          </span>
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {row.folder} · {row.group}
@@ -238,38 +361,37 @@ function MetaRow({ row }: { row: Row }) {
               {row.url || "—"}
             </div>
           </div>
-          <div className="flex items-center gap-3 text-xs shrink-0">
-            <span className="text-muted-foreground">
-              Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span>
-            </span>
-            <span className="text-muted-foreground" title="Средняя позиция в Google">
-              G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span>
-            </span>
-            <span className="text-muted-foreground" title="Средняя позиция в Яндекс">
-              Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span>
-            </span>
-            <span
-              className={
-                "tabular-nums " +
-                (coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground")
-              }
-              title={`${usedAll.size} из ${wordSet.size} ключевых слов`}
-            >
-              {coverage}%
-            </span>
-            <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
-              <SelectTrigger className="h-7 text-xs w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="not_started">Не начато</SelectItem>
-                <SelectItem value="in_progress">В работе</SelectItem>
-                <SelectItem value="in_csv">В файле CSV</SelectItem>
-                <SelectItem value="done">Готово</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <span
+            className={
+              "tabular-nums text-xs shrink-0 " +
+              (coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground")
+            }
+            title={`${usedAll.size} из ${wordSet.size} ключевых слов`}
+          >
+            {coverage}%
+          </span>
+          <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
+            <SelectTrigger className="h-7 text-xs w-36 shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_started">Не начато</SelectItem>
+              <SelectItem value="in_progress">В работе</SelectItem>
+              <SelectItem value="in_csv">В файле CSV</SelectItem>
+              <SelectItem value="done">Готово</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
+        {expanded && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 pl-6 text-muted-foreground">
+            <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
+            <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
+            <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
+            <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
+            <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
+          </div>
+        )}
 
         {/* Two-column: edits | keywords */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
@@ -453,4 +575,3 @@ function Highlighted({ text, words }: { text: string; words: Set<string> }) {
     </span>
   );
 }
-
