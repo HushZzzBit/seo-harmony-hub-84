@@ -150,13 +150,15 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
 }
 
 function GroupsBreakdown({
-  qs, metaEdits, texts, selectedGroup, onSelectGroup,
+  qs, metaEdits, texts, selectedGroup, onSelectGroup, folder, groupState,
 }: {
   qs: ReturnType<typeof useStore.getState>["queries"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
   selectedGroup: string | null;
   onSelectGroup: (g: string | null) => void;
+  folder: string;
+  groupState: Record<string, { status: Status; plannedDate?: string }>;
 }) {
   const [search, setSearch] = useState("");
   const lowerSearch = search.trim().toLowerCase();
