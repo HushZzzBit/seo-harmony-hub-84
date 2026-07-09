@@ -380,7 +380,7 @@ const MetaRow = memo(function MetaRow({
   const [desc, setDesc] = useState(m.description);
   const [h1, setH1] = useState(m.h1);
   const [expanded, setExpanded] = useState(false);
-  const status: Status = metaEdits[row.url]?.status ?? "not_started";
+  const status: Status = metaEdit?.status ?? "not_started";
 
   useEffect(() => {
     setTitle(m.title);
