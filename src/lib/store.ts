@@ -1,5 +1,55 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
+
+/**
+ * Асинхронное/дебаунсенное localStorage:
+ * запись сериализованного стора выполняется не чаще раза в 400мс
+ * и через requestIdleCallback — чтобы импорт больших XLSX не блокировал UI.
+ */
+function debouncedLocalStorage(): Storage {
+  const pending = new Map<string, string>();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const idle: (cb: () => void) => void =
+    typeof window !== "undefined" && "requestIdleCallback" in window
+      ? (cb) => (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(cb)
+      : (cb) => setTimeout(cb, 0);
+
+  const flush = () => {
+    timer = null;
+    idle(() => {
+      for (const [k, v] of pending) {
+        try {
+          localStorage.setItem(k, v);
+        } catch {
+          /* quota / private mode — тихо игнорируем */
+        }
+      }
+      pending.clear();
+    });
+  };
+
+  return {
+    getItem: (k) => localStorage.getItem(k),
+    setItem: (k, v) => {
+      pending.set(k, v);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(flush, 400);
+    },
+    removeItem: (k) => {
+      pending.delete(k);
+      localStorage.removeItem(k);
+    },
+    clear: () => {
+      pending.clear();
+      localStorage.clear();
+    },
+    key: (i) => localStorage.key(i),
+    get length() {
+      return localStorage.length;
+    },
+  };
+}
+
 import type {
   FolderState,
   MetaEdit,
@@ -96,6 +146,11 @@ export const useStore = create<State>()(
           folderState: {},
         }),
     }),
-    { name: "seo-analytics-v1" },
+    {
+      name: "seo-analytics-v1",
+      storage: createJSONStorage(() =>
+        typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
+      ),
+    },
   ),
 );

@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,11 +26,14 @@ const statusLabel: Record<TextStatus, string> = {
   done: "Готово",
 };
 
+const PAGE_SIZE = 50;
+
 function TextsPage() {
   const { queries, urls, texts, setText } = useStore();
   const [folder, setFolder] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   const folders = useMemo(() => Array.from(new Set(queries.map((q) => q.folder))).sort(), [queries]);
 
@@ -49,6 +52,10 @@ function TextsPage() {
       return true;
     });
   }, [queries, folder, search, statusFilter, texts]);
+
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, search, statusFilter]);
+  const visible = rows.slice(0, limit);
+  const hasMore = rows.length > visible.length;
 
   return (
     <AppShell>
@@ -92,7 +99,7 @@ function TextsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {visible.map((r) => {
                 const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
                 const uRow = urls[r.url];
                 const seasonality = groupSeasonality(r.qs);
@@ -134,6 +141,18 @@ function TextsPage() {
               )}
             </tbody>
           </table>
+          {hasMore && (
+            <div className="flex items-center justify-center gap-3 py-3 border-t border-border text-xs text-muted-foreground">
+              <span>Показано {visible.length} из {rows.length}</span>
+              <button
+                type="button"
+                onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition"
+              >
+                Показать ещё {Math.min(PAGE_SIZE, rows.length - visible.length)}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </AppShell>

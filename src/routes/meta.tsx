@@ -19,12 +19,15 @@ export const Route = createFileRoute("/meta")({
 
 type Row = { folder: string; group: string; url: string; qs: Query[] };
 
+const PAGE_SIZE = 50;
+
 function MetaPage() {
   const { queries, metaEdits } = useStore();
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
@@ -65,6 +68,15 @@ function MetaPage() {
       return true;
     });
   }, [queries, folder, group, search, statusFilter, metaEdits]);
+
+  // Сбрасываем окно рендера при смене фильтров, чтобы страница не тормозила
+  // на выборках в тысячи URL.
+  useEffect(() => {
+    setLimit(PAGE_SIZE);
+  }, [folder, group, search, statusFilter]);
+
+  const visible = rows.slice(0, limit);
+  const hasMore = rows.length > visible.length;
 
   return (
     <AppShell>
@@ -130,7 +142,7 @@ function MetaPage() {
       </div>
 
       <div className="space-y-2">
-        {rows.map((r) => (
+        {visible.map((r) => (
           <MetaRow key={r.url || r.folder + r.group} row={r} />
         ))}
         {rows.length === 0 && (
@@ -139,6 +151,22 @@ function MetaPage() {
               Нет строк. Загрузите данные во вкладке Import.
             </CardContent>
           </Card>
+        )}
+        {hasMore && (
+          <div className="flex justify-center py-3">
+            <button
+              type="button"
+              onClick={() => setLimit((n) => n + PAGE_SIZE)}
+              className="text-xs px-4 py-2 rounded-lg border border-border hover:bg-accent transition"
+            >
+              Показать ещё {Math.min(PAGE_SIZE, rows.length - visible.length)} из {rows.length - visible.length}
+            </button>
+          </div>
+        )}
+        {rows.length > 0 && (
+          <div className="text-center text-[11px] text-muted-foreground py-1">
+            Показано {visible.length} из {rows.length}
+          </div>
         )}
       </div>
     </AppShell>
