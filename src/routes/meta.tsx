@@ -437,7 +437,7 @@ const MetaRow = memo(function MetaRow({
             aria-label="Выбрать"
             disabled={!row.url}
             checked={selected}
-            onChange={onToggleSelect}
+            onChange={(v) => onToggleSelect(row.url, v)}
           />
           <button
             type="button"
