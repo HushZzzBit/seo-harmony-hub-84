@@ -77,6 +77,28 @@ function ImportPage() {
     toast.success(`Экспортировано ${out.length} URL, статусы обновлены`);
   }
 
+  // Аналог для SEO-текстов: экспорт только текстов со статусом «В файле CSV»,
+  // затем автоматический перевод в «Готово».
+  const exportTextUrls = Object.values(texts)
+    .filter((t) => t.status === "in_csv" && (t.text ?? "").trim().length > 0)
+    .map((t) => t.url);
+
+  function exportTexts() {
+    if (!exportTextUrls.length) {
+      toast.error("Нет текстов со статусом «В файле CSV»");
+      return;
+    }
+    const out = exportTextUrls.map((u) => ({
+      url: u,
+      seo_text: texts[u]?.text ?? "",
+    }));
+    downloadCsv(`seo-texts-${Date.now()}.csv`, toCsv(out));
+    const at = Date.now();
+    for (const u of exportTextUrls) setText(u, { status: "done", updatedAt: at });
+    add(`Экспорт текстов: ${out.length} URL → статус «Готово»`);
+    toast.success(`Экспортировано ${out.length} текстов, статусы обновлены`);
+  }
+
   return (
     <AppShell>
       <div className="mb-6">
