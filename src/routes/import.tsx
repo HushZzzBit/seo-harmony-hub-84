@@ -104,9 +104,16 @@ function ImportPage() {
 
       <Card className="mb-6">
         <CardHeader><CardTitle>Экспорт CSV для CMS</CardTitle></CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text</div>
-          <Button onClick={exportCms}>Скачать CSV</Button>
+        <CardContent className="flex items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground">
+            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text.
+            <br />
+            В файл попадают только URL со статусом <b>«В файле CSV»</b> (сейчас {exportUrls.length}).
+            После скачивания статус меняется на <b>«Готово»</b>.
+          </div>
+          <Button onClick={exportCms} disabled={!exportUrls.length}>
+            Скачать CSV ({exportUrls.length})
+          </Button>
         </CardContent>
       </Card>
 
