@@ -38,7 +38,10 @@ const priorityLabel: Record<Priority, string> = { high: "Высокий", medium
 const PAGE_SIZE = 50;
 
 function MetaPage() {
-  const { queries, urls, metaEdits, setMetaEdit } = useStore();
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const setMetaEdit = useStore((s) => s.setMetaEdit);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
