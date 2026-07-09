@@ -125,6 +125,7 @@ function Dashboard() {
                 onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
                 counts={(f) => (grouped.get(f) ?? []).length}
                 countLabel="запр."
+                hideSearch
               />
               <PickerRow
                 label="Группа"
