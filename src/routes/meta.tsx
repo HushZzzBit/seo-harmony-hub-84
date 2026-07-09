@@ -17,6 +17,7 @@ import {
 import type { Priority, Query, Status } from "@/lib/types";
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
+import { RoundCheckbox } from "@/components/RoundCheckbox";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
