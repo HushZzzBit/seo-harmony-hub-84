@@ -68,6 +68,8 @@ function Dashboard() {
     }).length;
     const doneMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "done").length;
     const inCsvMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "in_csv").length;
+    const doneText = Array.from(urlSet).filter((u) => texts[u!]?.status === "done").length;
+    const inCsvText = Array.from(urlSet).filter((u) => texts[u!]?.status === "in_csv").length;
     const ready = Array.from(urlSet).filter((u) => {
       const r = urls[u!]; const e = metaEdits[u!];
       return (e?.title || r?.title) && r?.hasText;
@@ -81,9 +83,11 @@ function Dashboard() {
       top10: pct(top10G, queries.length),
       noText, noMeta, ready,
       doneMeta, inCsvMeta,
+      doneText, inCsvText,
       donePct: pct(doneMeta, urlSet.size),
+      donePctText: pct(doneText, urlSet.size),
     };
-  }, [queries, urls, metaEdits]);
+  }, [queries, urls, metaEdits, texts]);
 
   return (
     <AppShell>
