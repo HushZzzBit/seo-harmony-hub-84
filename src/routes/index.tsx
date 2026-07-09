@@ -41,7 +41,7 @@ const statusColor: Record<Status, string> = {
 };
 
 function Dashboard() {
-  const { queries, urls, metaEdits, texts, folderState, setFolderState } = useStore();
+  const { queries, urls, metaEdits, texts } = useStore();
 
   const grouped = useMemo(() => {
     const byFolder = new Map<string, typeof queries>();
