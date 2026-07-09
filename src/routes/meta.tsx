@@ -22,12 +22,26 @@ type Row = { folder: string; group: string; url: string; qs: Query[] };
 function MetaPage() {
   const { queries, metaEdits } = useStore();
   const [folder, setFolder] = useState<string>("all");
+  const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
     [queries],
+  );
+
+  // Группы — либо все, либо ограниченные выбранной папкой
+  const groups = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          queries
+            .filter((q) => folder === "all" || q.folder === folder)
+            .map((q) => q.group),
+        ),
+      ).sort(),
+    [queries, folder],
   );
 
   const rows = useMemo<Row[]>(() => {
@@ -40,6 +54,7 @@ function MetaPage() {
     }
     return Array.from(byUrl.values()).filter((r) => {
       if (folder !== "all" && r.folder !== folder) return false;
+      if (group !== "all" && r.group !== group) return false;
       if (
         search &&
         !(r.url + r.group + r.folder).toLowerCase().includes(search.toLowerCase())
@@ -49,7 +64,7 @@ function MetaPage() {
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
     });
-  }, [queries, folder, search, statusFilter, metaEdits]);
+  }, [queries, folder, group, search, statusFilter, metaEdits]);
 
   return (
     <AppShell>
@@ -67,7 +82,13 @@ function MetaPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-56 h-9"
           />
-          <Select value={folder} onValueChange={setFolder}>
+          <Select
+            value={folder}
+            onValueChange={(v) => {
+              setFolder(v);
+              setGroup("all");
+            }}
+          >
             <SelectTrigger className="w-48 h-9">
               <SelectValue />
             </SelectTrigger>
@@ -76,6 +97,19 @@ function MetaPage() {
               {folders.map((f) => (
                 <SelectItem key={f} value={f}>
                   {f}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={group} onValueChange={setGroup}>
+            <SelectTrigger className="w-48 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все группы</SelectItem>
+              {groups.map((g) => (
+                <SelectItem key={g} value={g}>
+                  {g}
                 </SelectItem>
               ))}
             </SelectContent>
