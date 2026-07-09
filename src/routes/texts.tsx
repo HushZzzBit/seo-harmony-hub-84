@@ -99,7 +99,7 @@ function TextsPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {visible.map((r) => {
                 const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
                 const uRow = urls[r.url];
                 const seasonality = groupSeasonality(r.qs);
@@ -141,6 +141,18 @@ function TextsPage() {
               )}
             </tbody>
           </table>
+          {hasMore && (
+            <div className="flex items-center justify-center gap-3 py-3 border-t border-border text-xs text-muted-foreground">
+              <span>Показано {visible.length} из {rows.length}</span>
+              <button
+                type="button"
+                onClick={() => setLimit((n) => n + PAGE_SIZE)}
+                className="px-3 py-1.5 rounded-lg border border-border hover:bg-accent transition"
+              >
+                Показать ещё {Math.min(PAGE_SIZE, rows.length - visible.length)}
+              </button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </AppShell>
