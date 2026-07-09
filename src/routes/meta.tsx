@@ -273,7 +273,7 @@ function MetaPage() {
               }}
             />
             <span className="text-sm text-muted-foreground">
-              {selected.size > 0 ? <>Выбрано: <span className="font-medium text-foreground">{selected.size}</span></> : "Выбрать все на странице"}
+              Выбрано: <span className="font-medium text-foreground">{selected.size}</span>
             </span>
             {selected.size > 0 && (
               <div className="flex items-center gap-2 ml-auto">
@@ -288,7 +288,7 @@ function MetaPage() {
                 </Select>
                 <button
                   type="button"
-                  disabled={!bulkStatus}
+                  disabled={selected.size === 0 || !bulkStatus}
                   onClick={() => {
                     if (!bulkStatus) return;
                     for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
