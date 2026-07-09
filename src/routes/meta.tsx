@@ -456,8 +456,9 @@ const MetaRow = memo(function MetaRow({
             {priorityLabel[prio]}
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               {row.folder} · {row.group}
+              <KeywordsTooltip qs={row.qs} />
             </div>
             <div className="text-xs font-mono text-foreground/80 truncate" title={row.url}>
               {row.url || "—"}
