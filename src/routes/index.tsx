@@ -52,64 +52,59 @@ function Dashboard() {
     return byFolder;
   }, [queries]);
 
-  const kpi = useMemo(() => {
-    const folders = new Set(queries.map((q) => q.folder));
-    const groups = new Set(queries.map((q) => `${q.folder}::${q.group}`));
-    const urlSet = new Set(queries.map((q) => q.url).filter(Boolean));
-    const gPos = queries.map((q) => q.googlePosition ?? 0);
-    const yPos = queries.map((q) => q.yandexPosition ?? 0);
-    const top3G = queries.filter((q) => (q.googlePosition ?? 999) <= 3).length;
-    const top10G = queries.filter((q) => (q.googlePosition ?? 999) <= 10).length;
-    const noText = Array.from(urlSet).filter((u) => !(urls[u!]?.hasText)).length;
-    const noMeta = Array.from(urlSet).filter((u) => {
-      const r = urls[u!];
-      const e = metaEdits[u!];
-      return !(e?.title || r?.title);
-    }).length;
-    const doneMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "done").length;
-    const inCsvMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "in_csv").length;
-    const doneText = Array.from(urlSet).filter((u) => texts[u!]?.status === "done").length;
-    const inCsvText = Array.from(urlSet).filter((u) => texts[u!]?.status === "in_csv").length;
-    const ready = Array.from(urlSet).filter((u) => {
-      const r = urls[u!]; const e = metaEdits[u!];
-      return (e?.title || r?.title) && r?.hasText;
-    }).length;
+  const folders = useMemo(
+    () => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)),
+    [grouped],
+  );
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const activeFolder = folders.includes(selectedFolder) ? selectedFolder : folders[0] ?? "";
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+
+  const folderQs = grouped.get(activeFolder) ?? [];
+  const scopeQs = useMemo(
+    () => (selectedGroup ? folderQs.filter((q) => q.group === selectedGroup) : folderQs),
+    [folderQs, selectedGroup],
+  );
+
+  const groupList = useMemo(() => {
+    const s = new Set<string>();
+    folderQs.forEach((q) => s.add(q.group));
+    return Array.from(s).sort((a, b) => a.localeCompare(b));
+  }, [folderQs]);
+
+  const scope = useMemo(() => {
+    const urlSet = new Set(scopeQs.map((q) => q.url).filter(Boolean)) as Set<string>;
+    const gPos = scopeQs.map((q) => q.googlePosition).filter((v): v is number => typeof v === "number" && v > 0);
+    const yPos = scopeQs.map((q) => q.yandexPosition).filter((v): v is number => typeof v === "number" && v > 0);
+    const arr = Array.from(urlSet);
     return {
-      folders: folders.size,
-      groups: groups.size,
+      urlSet,
       urls: urlSet.size,
-      avgPos: avg([...gPos, ...yPos]).toFixed(1),
-      top3: pct(top3G, queries.length),
-      top10: pct(top10G, queries.length),
-      noText, noMeta, ready,
-      doneMeta, inCsvMeta,
-      doneText, inCsvText,
-      donePct: pct(doneMeta, urlSet.size),
-      donePctText: pct(doneText, urlSet.size),
+      avgG: avg(gPos),
+      avgY: avg(yPos),
+      top3G: pct(gPos.filter((p) => p <= 3).length, gPos.length),
+      top10G: pct(gPos.filter((p) => p <= 10).length, gPos.length),
+      top3Y: pct(yPos.filter((p) => p <= 3).length, yPos.length),
+      top10Y: pct(yPos.filter((p) => p <= 10).length, yPos.length),
+      metaDone: arr.filter((u) => metaEdits[u]?.status === "done").length,
+      metaCsv: arr.filter((u) => metaEdits[u]?.status === "in_csv").length,
+      metaProg: arr.filter((u) => metaEdits[u]?.status === "in_progress").length,
+      metaNo: arr.filter((u) => {
+        const r = urls[u]; const e = metaEdits[u];
+        return !(e?.title || r?.title);
+      }).length,
+      textDone: arr.filter((u) => texts[u]?.status === "done").length,
+      textCsv: arr.filter((u) => texts[u]?.status === "in_csv").length,
+      textReady: arr.filter((u) => texts[u]?.status === "ready").length,
+      textNo: arr.filter((u) => !(urls[u]?.hasText)).length,
     };
-  }, [queries, urls, metaEdits, texts]);
+  }, [scopeQs, urls, metaEdits, texts]);
 
   return (
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <p className="text-sm text-muted-foreground">Общее состояние проекта</p>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-6">
-        <Kpi label="Папки" value={kpi.folders} />
-        <Kpi label="Группы" value={kpi.groups} />
-        <Kpi label="URL" value={kpi.urls} />
-        <Kpi label="Ср. позиция" value={kpi.avgPos} />
-        <Kpi label="% TOP3" value={`${kpi.top3}%`} />
-        <Kpi label="% TOP10" value={`${kpi.top10}%`} />
-        <Kpi label="Meta: в CSV" value={kpi.inCsvMeta} />
-        <Kpi label="Meta: готово" value={`${kpi.doneMeta} · ${kpi.donePct}%`} tone="good" />
-        <Kpi label="Тексты: в CSV" value={kpi.inCsvText} />
-        <Kpi label="Тексты: готово" value={`${kpi.doneText} · ${kpi.donePctText}%`} tone="good" />
-        <Kpi label="Без Meta" value={kpi.noMeta} tone="destructive" />
-        <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
-        <Kpi label="Запросов" value={queries.length} />
       </div>
 
       {grouped.size === 0 ? (
@@ -119,9 +114,161 @@ function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <FolderPicker grouped={grouped} urls={urls} metaEdits={metaEdits} texts={texts} />
+        <div className="space-y-4">
+          <Section title="Данные">
+            <div className="space-y-3">
+              <PickerRow
+                label="Папка"
+                count={folders.length}
+                items={folders}
+                selected={activeFolder}
+                onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
+                counts={(f) => (grouped.get(f) ?? []).length}
+                countLabel="запр."
+              />
+              <PickerRow
+                label="Группа"
+                count={groupList.length}
+                items={groupList}
+                selected={selectedGroup}
+                onSelect={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+                counts={(g) => folderQs.filter((q) => q.group === g).length}
+                countLabel="запр."
+                allowClear
+                emptyText="В выбранной папке нет групп"
+              />
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Kpi label="URL в скоупе" value={scope.urls} />
+                <Kpi label="Запросов" value={scopeQs.length} />
+                <Kpi label="Групп" value={selectedGroup ? 1 : groupList.length} />
+                <Kpi label="Папок" value={folders.length} />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Аналитика">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <Kpi label="Ср. поз. Google" value={scope.avgG.toFixed(1)} />
+              <Kpi label="% TOP3 Google" value={`${scope.top3G}%`} />
+              <Kpi label="% TOP10 Google" value={`${scope.top10G}%`} />
+              <Kpi label="Ср. поз. Яндекс" value={scope.avgY.toFixed(1)} />
+              <Kpi label="% TOP3 Яндекс" value={`${scope.top3Y}%`} />
+              <Kpi label="% TOP10 Яндекс" value={`${scope.top10Y}%`} />
+            </div>
+          </Section>
+
+          <Section title="Проработка">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />
+              <Kpi label="Meta: в CSV" value={scope.metaCsv} />
+              <Kpi label="Meta: в работе" value={scope.metaProg} />
+              <Kpi label="Без Meta" value={scope.metaNo} tone="destructive" />
+              <Kpi label="Тексты: готово" value={`${scope.textDone} · ${pct(scope.textDone, scope.urls)}%`} tone="good" />
+              <Kpi label="Тексты: в CSV" value={scope.textCsv} />
+              <Kpi label="Тексты: готовы" value={scope.textReady} />
+              <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
+            </div>
+          </Section>
+
+          {activeFolder && (
+            <FolderCard
+              key={activeFolder}
+              folder={activeFolder}
+              qs={folderQs}
+              urls={urls}
+              metaEdits={metaEdits}
+              texts={texts}
+              selectedGroup={selectedGroup}
+              onSelectGroup={setSelectedGroup}
+            />
+          )}
+        </div>
       )}
     </AppShell>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section>
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2 px-1">{title}</h2>
+      <Card>
+        <CardContent className="p-4">{children}</CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function PickerRow({
+  label, count, items, selected, onSelect, counts, countLabel, allowClear, emptyText,
+}: {
+  label: string;
+  count: number;
+  items: string[];
+  selected: string | null;
+  onSelect: (v: string) => void;
+  counts: (v: string) => number;
+  countLabel: string;
+  allowClear?: boolean;
+  emptyText?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const lower = search.trim().toLowerCase();
+  const filtered = lower ? items.filter((i) => i.toLowerCase().includes(lower)) : items;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium shrink-0 w-16">{label}</span>
+        <input
+          type="text"
+          placeholder={`Поиск (${count})...`}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+        {allowClear && selected && (
+          <button
+            type="button"
+            onClick={() => onSelect(selected)}
+            className="text-[10px] px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground"
+          >
+            Сбросить
+          </button>
+        )}
+        <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+          {filtered.length}/{count}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+        {items.length === 0 ? (
+          <div className="text-xs text-muted-foreground px-2 py-1">{emptyText ?? "Нет данных"}</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-xs text-muted-foreground px-2 py-1">Нет совпадений</div>
+        ) : (
+          filtered.map((i) => {
+            const isActive = i === selected;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onSelect(i)}
+                className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background border-border hover:bg-muted"
+                }`}
+              >
+                {i}
+                <span className={`ml-1.5 text-[10px] ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
+                  {counts(i)} {countLabel}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -138,77 +285,8 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
   );
 }
 
-function FolderPicker({
-  grouped, urls, metaEdits, texts,
-}: {
-  grouped: Map<string, ReturnType<typeof useStore.getState>["queries"]>;
-  urls: ReturnType<typeof useStore.getState>["urls"];
-  metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
-  texts: ReturnType<typeof useStore.getState>["texts"];
-}) {
-  const folders = useMemo(() => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)), [grouped]);
-  const [selected, setSelected] = useState<string>(folders[0] ?? "");
-  const [search, setSearch] = useState("");
-  const active = folders.includes(selected) ? selected : folders[0];
-  const lower = search.trim().toLowerCase();
-  const filtered = lower ? folders.filter((f) => f.toLowerCase().includes(lower)) : folders;
-  const qs = grouped.get(active) ?? [];
 
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardContent className="p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground shrink-0">Папка:</span>
-            <input
-              type="text"
-              placeholder="Поиск папки..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-            <span className="text-xs text-muted-foreground shrink-0">{filtered.length} / {folders.length}</span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto">
-            {filtered.map((f) => {
-              const isActive = f === active;
-              return (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setSelected(f)}
-                  className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
-                    isActive
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background border-border hover:bg-muted"
-                  }`}
-                >
-                  {f}
-                  <span className={`ml-1.5 text-[10px] ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
-                    {(grouped.get(f) ?? []).length}
-                  </span>
-                </button>
-              );
-            })}
-            {filtered.length === 0 && (
-              <div className="text-xs text-muted-foreground px-2 py-1">Нет совпадений</div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-      {active && (
-        <FolderCard
-          key={active}
-          folder={active}
-          qs={qs}
-          urls={urls}
-          metaEdits={metaEdits}
-          texts={texts}
-        />
-      )}
-    </div>
-  );
-}
+
 
 
 function GroupsBreakdown({
@@ -358,16 +436,20 @@ function MiniBar({
 
 
 function FolderCard({
-  folder, qs, urls, metaEdits, texts,
+  folder, qs, urls, metaEdits, texts, selectedGroup: controlledGroup, onSelectGroup,
 }: {
   folder: string;
   qs: ReturnType<typeof useStore.getState>["queries"];
   urls: ReturnType<typeof useStore.getState>["urls"];
   metaEdits: ReturnType<typeof useStore.getState>["metaEdits"];
   texts: ReturnType<typeof useStore.getState>["texts"];
+  selectedGroup?: string | null;
+  onSelectGroup?: (g: string | null) => void;
 }) {
   const { groupState, setGroupState } = useStore();
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [internalGroup, setInternalGroup] = useState<string | null>(null);
+  const selectedGroup = controlledGroup !== undefined ? controlledGroup : internalGroup;
+  const setSelectedGroup = onSelectGroup ?? setInternalGroup;
   const filteredQs = useMemo(
     () => (selectedGroup ? qs.filter((q) => q.group === selectedGroup) : qs),
     [qs, selectedGroup],
