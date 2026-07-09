@@ -171,6 +171,14 @@ function Dashboard() {
             </div>
           </Section>
 
+          <Section title="Приоритет по сезону">
+            <PriorityMonths
+              qs={folderQs}
+              selectedGroup={selectedGroup}
+              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+            />
+          </Section>
+
           {activeFolder && (
             <FolderCard
               key={activeFolder}
