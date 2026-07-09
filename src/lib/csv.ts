@@ -142,6 +142,8 @@ export function parseTopvisorQueries(matrix: string[][]): Query[] {
   const cGroup = findCol((h) => h.includes("групп"));
   const cUrl = findCol((h) => h.includes("целев") || h === "url" || h.includes("ссылк"));
   const cTag = findCol((h) => h.includes("тег"));
+  const cFolder = findCol((h) => h === "папка" || h.startsWith("папка"));
+
   // Frequency columns — prefer "!"W"" (exact match), then any "частот"
   const freqCols: number[] = [];
   for (let c = 0; c < header.length; c++) {
