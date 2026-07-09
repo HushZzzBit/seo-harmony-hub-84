@@ -53,6 +53,16 @@ function MetaPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
 
+  const handleToggleSelect = useCallback((url: string, v: boolean) => {
+    if (!url) return;
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (v) n.add(url);
+      else n.delete(url);
+      return n;
+    });
+  }, []);
+
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
     [queries],
