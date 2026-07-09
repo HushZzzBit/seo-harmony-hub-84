@@ -67,6 +67,7 @@ interface State {
   metaHistory: MetaHistoryEntry[];
   texts: Record<string, TextRow>;
   folderState: Record<string, FolderState>;
+  groupState: Record<string, GroupState>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -74,6 +75,7 @@ interface State {
   setMetaEdit: (url: string, patch: Partial<MetaEdit>) => void;
   setText: (url: string, patch: Partial<TextRow>) => void;
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
+  setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
   clearAll: () => void;
 }
 
