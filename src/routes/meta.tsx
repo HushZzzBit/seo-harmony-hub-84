@@ -536,7 +536,7 @@ function EditableCell({
             (e.target as HTMLTextAreaElement).blur();
           }
         }}
-        className="w-full resize-none bg-transparent text-xs leading-snug rounded px-1.5 py-1 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        className="w-full resize-none bg-transparent text-sm leading-snug rounded px-2 py-1.5 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
         spellCheck={false}
       />
       {value && (
