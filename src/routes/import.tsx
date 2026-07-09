@@ -123,28 +123,14 @@ function ImportPage() {
         <CardHeader><CardTitle>Экспорт CSV для CMS</CardTitle></CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground">
-            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text.
+            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text (HTML).
             <br />
-            В файл попадают только URL со статусом <b>«В файле CSV»</b> (сейчас {exportUrls.length}).
-            После скачивания статус меняется на <b>«Готово»</b>.
+            Единый файл: строка на каждый URL со статусом <b>«В файле CSV»</b> (мета и/или текст).
+            Незаполненные поля остаются пустыми. URL записывается без «https://ggsel.net».
+            Сейчас к выгрузке: <b>{exportUrls.length}</b>. После скачивания статусы «В файле CSV» → «Готово».
           </div>
           <Button onClick={exportCms} disabled={!exportUrls.length}>
             Скачать CSV ({exportUrls.length})
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader><CardTitle>Экспорт SEO-текстов</CardTitle></CardHeader>
-        <CardContent className="flex items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">
-            Поля: url, seo_text (HTML).
-            <br />
-            В файл попадают только тексты со статусом <b>«В файле CSV»</b> (сейчас {exportTextUrls.length}).
-            После скачивания статус меняется на <b>«Готово»</b>.
-          </div>
-          <Button onClick={exportTexts} disabled={!exportTextUrls.length}>
-            Скачать CSV ({exportTextUrls.length})
           </Button>
         </CardContent>
       </Card>
