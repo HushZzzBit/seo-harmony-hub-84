@@ -13,6 +13,7 @@ import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus } from "@/lib/types";
 
 export const Route = createFileRoute("/texts")({
@@ -200,25 +201,30 @@ function TextsPage() {
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-2 w-8">
-                  <input
-                    type="checkbox"
-                    aria-label="Выбрать все"
-                    className="accent-primary cursor-pointer"
-                    checked={visible.length > 0 && visible.every((e) => e.r.url && selected.has(e.r.url))}
-                    ref={(el) => {
-                      if (!el) return;
-                      const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
-                      el.indeterminate = selCount > 0 && selCount < visible.length;
-                    }}
-                    onChange={(e) => {
-                      setSelected((prev) => {
-                        const next = new Set(prev);
-                        if (e.target.checked) visible.forEach((v) => v.r.url && next.add(v.r.url));
-                        else visible.forEach((v) => v.r.url && next.delete(v.r.url));
-                        return next;
-                      });
-                    }}
-                  />
+                  {(() => {
+                    const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
+                    const allChecked = visible.length > 0 && selCount === visible.length;
+                    return (
+                      <RoundCheckbox
+                        aria-label="Выбрать все"
+                        checked={allChecked}
+                        indeterminate={selCount > 0 && selCount < visible.length}
+                        onChange={(next) => {
+                          setSelected((prev) => {
+                            const n = new Set(prev);
+                            // if any selected, clicking clears; otherwise selects all visible
+                            if (selCount > 0 || !next) {
+                              visible.forEach((v) => v.r.url && n.delete(v.r.url));
+                              if (selCount === 0 && next) visible.forEach((v) => v.r.url && n.add(v.r.url));
+                            } else {
+                              visible.forEach((v) => v.r.url && n.add(v.r.url));
+                            }
+                            return n;
+                          });
+                        }}
+                      />
+                    );
+                  })()}
                 </th>
                 <SortHeader k="priority">Приоритет</SortHeader>
                 <SortHeader k="group">Папка / Группа</SortHeader>
@@ -243,19 +249,17 @@ function TextsPage() {
                 return (
                   <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
                     <td className="p-2 align-top">
-                      <input
-                        type="checkbox"
+                      <RoundCheckbox
                         aria-label="Выбрать строку"
                         disabled={!r.url}
                         checked={isSel}
-                        className="accent-primary cursor-pointer"
-                        onChange={(e) => {
+                        onChange={(next) => {
                           if (!r.url) return;
                           setSelected((prev) => {
-                            const next = new Set(prev);
-                            if (e.target.checked) next.add(r.url);
-                            else next.delete(r.url);
-                            return next;
+                            const n = new Set(prev);
+                            if (next) n.add(r.url);
+                            else n.delete(r.url);
+                            return n;
                           });
                         }}
                       />

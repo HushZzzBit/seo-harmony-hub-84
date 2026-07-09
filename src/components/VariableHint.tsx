@@ -30,16 +30,16 @@ const virtualMasks = [
 function MaskList({ title, items }: { title: string; items: { mask: string; desc: string }[] }) {
   return (
     <div className="mb-2">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-primary-foreground/70 mb-1">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-foreground mb-1">
         {title}
       </div>
       <div className="space-y-0.5">
         {items.map((item) => (
           <div key={item.mask} className="flex gap-2 text-[11px] leading-snug">
-            <code className="shrink-0 font-mono text-primary-foreground/90 bg-primary-foreground/10 px-1 rounded">
+            <code className="shrink-0 font-mono text-primary bg-primary/10 border border-primary/20 px-1 rounded">
               {item.mask}
             </code>
-            <span className="text-primary-foreground/80">{item.desc}</span>
+            <span className="text-foreground/85">{item.desc}</span>
           </div>
         ))}
       </div>
@@ -65,7 +65,7 @@ export function VariableHint() {
           align="start"
           className="max-w-[360px] bg-popover text-popover-foreground border border-border shadow-lg px-3 py-2"
         >
-          <div className="text-xs font-semibold mb-1.5">Маски и их значение</div>
+          <div className="text-xs font-semibold mb-1.5 text-foreground">Маски и их значение</div>
           <MaskList title="Для категории" items={categoryMasks} />
           <MaskList title="Для виртуальной категории" items={virtualMasks} />
         </TooltipContent>
