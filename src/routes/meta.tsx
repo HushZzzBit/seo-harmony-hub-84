@@ -413,10 +413,16 @@ function MetaRow({
         : "bg-muted text-muted-foreground border-border";
 
   return (
-    <Card className={`border-l-4 ${statusRing}`}>
+    <Card className={`border-l-4 ${statusRing} ${selected ? "bg-primary/5" : ""}`}>
       <CardContent className="p-3">
         {/* Compact header */}
         <div className="flex items-center gap-2 mb-2">
+          <RoundCheckbox
+            aria-label="Выбрать"
+            disabled={!row.url}
+            checked={selected}
+            onChange={onToggleSelect}
+          />
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
