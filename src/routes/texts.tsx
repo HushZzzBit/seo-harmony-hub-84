@@ -262,8 +262,6 @@ function TextsPage() {
                           });
                         }}
                       />
-
-                      />
                     </td>
                     <td className="p-2 align-top">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
