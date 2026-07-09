@@ -65,7 +65,7 @@ export function VariableHint() {
           align="start"
           className="max-w-[360px] bg-popover text-popover-foreground border border-border shadow-lg px-3 py-2"
         >
-          <div className="text-xs font-semibold mb-1.5">Маски и их значение</div>
+          <div className="text-xs font-semibold mb-1.5 text-foreground">Маски и их значение</div>
           <MaskList title="Для категории" items={categoryMasks} />
           <MaskList title="Для виртуальной категории" items={virtualMasks} />
         </TooltipContent>
