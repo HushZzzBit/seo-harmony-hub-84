@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,10 @@ const priorityLabel: Record<Priority, string> = { high: "Высокий", medium
 const PAGE_SIZE = 50;
 
 function MetaPage() {
-  const { queries, urls, metaEdits, setMetaEdit } = useStore();
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const setMetaEdit = useStore((s) => s.setMetaEdit);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -49,6 +52,16 @@ function MetaPage() {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
+
+  const handleToggleSelect = useCallback((url: string, v: boolean) => {
+    if (!url) return;
+    setSelected((prev) => {
+      const n = new Set(prev);
+      if (v) n.add(url);
+      else n.delete(url);
+      return n;
+    });
+  }, []);
 
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
@@ -95,13 +108,17 @@ function MetaPage() {
         const rec = recommendedMonth(seasonality);
         const dist = (rec - now + 12) % 12;
         const freq = r.qs.reduce((a, q) => a + (q.frequency || 0), 0);
-        const m = metaFor(r.url, urls, metaEdits);
-        const words = extractWords(r.qs.map((q) => q.phrase));
-        const wordSet = new Set(words.map((w) => w.word));
-        const used = new Set<string>();
-        for (const t of [m.title, m.description, m.h1])
-          for (const w of tokenize(t)) if (wordSet.has(w)) used.add(w);
-        const coverage = wordSet.size ? Math.round((used.size / wordSet.size) * 100) : 0;
+        // Coverage is expensive; only compute when needed for sort. Otherwise MetaRow computes locally.
+        let coverage = 0;
+        if (sortKey === "coverage") {
+          const m = metaFor(r.url, urls, metaEdits);
+          const words = extractWords(r.qs.map((q) => q.phrase));
+          const wordSet = new Set(words.map((w) => w.word));
+          const used = new Set<string>();
+          for (const t of [m.title, m.description, m.h1])
+            for (const w of tokenize(t)) if (wordSet.has(w)) used.add(w);
+          coverage = wordSet.size ? Math.round((used.size / wordSet.size) * 100) : 0;
+        }
         const status: Status = metaEdits[r.url]?.status ?? "not_started";
         return { r, seasonality, prio, rec, dist, freq, coverage, status };
       })
@@ -300,15 +317,7 @@ function MetaPage() {
             rec={e.rec}
             freq={e.freq}
             selected={!!e.r.url && selected.has(e.r.url)}
-            onToggleSelect={(v) => {
-              if (!e.r.url) return;
-              setSelected((prev) => {
-                const n = new Set(prev);
-                if (v) n.add(e.r.url);
-                else n.delete(e.r.url);
-                return n;
-              });
-            }}
+            onToggleSelect={handleToggleSelect}
           />
         ))}
         {rows.length === 0 && (
@@ -339,7 +348,7 @@ function MetaPage() {
   );
 }
 
-function MetaRow({
+const MetaRow = memo(function MetaRow({
   row,
   prio,
   rec,
@@ -352,10 +361,17 @@ function MetaRow({
   rec: number;
   freq: number;
   selected: boolean;
-  onToggleSelect: (v: boolean) => void;
+  onToggleSelect: (url: string, v: boolean) => void;
 }) {
-  const { urls, metaEdits, setMetaEdit } = useStore();
-  const m = metaFor(row.url, urls, metaEdits);
+  // Row-scoped selectors — this row only re-renders when its own data changes.
+  const urlRow = useStore((s) => s.urls[row.url]);
+  const metaEdit = useStore((s) => s.metaEdits[row.url]);
+  const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const m = useMemo(
+    () => metaFor(row.url, urlRow ? { [row.url]: urlRow } : {}, metaEdit ? { [row.url]: metaEdit } : {}),
+    [row.url, urlRow, metaEdit],
+  );
+
 
   const words = useMemo(() => extractWords(row.qs.map((q) => q.phrase)), [row.qs]);
   const wordSet = useMemo(() => new Set(words.map((w) => w.word)), [words]);
@@ -364,7 +380,7 @@ function MetaRow({
   const [desc, setDesc] = useState(m.description);
   const [h1, setH1] = useState(m.h1);
   const [expanded, setExpanded] = useState(false);
-  const status: Status = metaEdits[row.url]?.status ?? "not_started";
+  const status: Status = metaEdit?.status ?? "not_started";
 
   useEffect(() => {
     setTitle(m.title);
@@ -421,7 +437,7 @@ function MetaRow({
             aria-label="Выбрать"
             disabled={!row.url}
             checked={selected}
-            onChange={onToggleSelect}
+            onChange={(v) => onToggleSelect(row.url, v)}
           />
           <button
             type="button"
@@ -492,7 +508,7 @@ function MetaRow({
       </CardContent>
     </Card>
   );
-}
+});
 
 function Field({
   label,

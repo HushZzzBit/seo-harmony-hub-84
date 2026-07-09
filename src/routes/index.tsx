@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -16,7 +16,6 @@ import { useStore } from "@/lib/store";
 import { avg, groupSeasonality, MONTHS, pct, peakMonth, priorityForGroup, recommendedMonth } from "@/lib/seo";
 import type { Status } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ClientOnly } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -163,18 +162,6 @@ function Dashboard() {
             </Card>
           </Section>
 
-          <Section title="Проработка">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />
-              <Kpi label="Meta: в CSV" value={scope.metaCsv} />
-              <Kpi label="Meta: в работе" value={scope.metaProg} />
-              <Kpi label="Без Meta" value={scope.metaNo} tone="destructive" />
-              <Kpi label="Тексты: готово" value={`${scope.textDone} · ${pct(scope.textDone, scope.urls)}%`} tone="good" />
-              <Kpi label="Тексты: в CSV" value={scope.textCsv} />
-              <Kpi label="Тексты: готовы" value={scope.textReady} />
-              <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
-            </div>
-          </Section>
           <Section title="Проработка">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />

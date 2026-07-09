@@ -38,7 +38,10 @@ type SortDir = "asc" | "desc";
 const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 function TextsPage() {
-  const { queries, urls, texts, setText } = useStore();
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const texts = useStore((s) => s.texts);
+  const setText = useStore((s) => s.setText);
   const [folder, setFolder] = useState("all");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
@@ -341,10 +344,12 @@ function formatHtml(s: string): string {
 }
 
 function TextEditor({ url, folder, group }: { url: string; folder: string; group: string }) {
-  const { texts, setText, urls, queries } = useStore();
+  const t = useStore((s) => s.texts[url]) ?? { url, status: "not_assigned" as TextStatus };
+  const urlText = useStore((s) => s.urls[url]?.text);
+  const queries = useStore((s) => s.queries);
+  const setText = useStore((s) => s.setText);
   const [open, setOpen] = useState(false);
-  const t = texts[url] ?? { url, status: "not_assigned" as TextStatus };
-  const initial = t.text ?? urls[url]?.text ?? "";
+  const initial = t.text ?? urlText ?? "";
   const [value, setValue] = useState(initial);
   const [editor, setEditorRef] = useState<import("@tiptap/react").Editor | null>(null);
   const [tab, setTab] = useState("editor");
@@ -423,7 +428,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (o) setValue(t.text ?? urls[url]?.text ?? "");
+        if (o) setValue(t.text ?? urlText ?? "");
       }}
     >
       <DialogTrigger asChild>
