@@ -50,59 +50,48 @@ function ImportPage() {
     }
   }
 
-  // Экспортируются только URL со статусом «В файле CSV».
-  // После выгрузки такие строки автоматически переводятся в «Готово» —
-  // это питает динамику проработки на дашборде.
+  // Единый экспорт CSV: одна строка на URL, у которого мета или текст
+  // помечены статусом «В файле CSV». Незаполненные поля остаются пустыми.
+  // URL нормализуется — убираем протокол и домен ggsel.net.
+  const normalizeUrl = (u: string): string =>
+    u.replace(/^https?:\/\/(?:www\.)?ggsel\.net/i, "") || u;
+
   const exportUrls = Array.from(
-    new Set(
-      queries
+    new Set<string>([
+      ...queries
         .map((q) => q.url)
         .filter((u): u is string => !!u && metaEdits[u]?.status === "in_csv"),
-    ),
+      ...Object.values(texts)
+        .filter((t) => t.status === "in_csv")
+        .map((t) => t.url),
+    ]),
   );
 
   function exportCms() {
     if (!exportUrls.length) {
-      toast.error("Нет URL со статусом «В файле CSV»");
+      toast.error("Нет данных со статусом «В файле CSV»");
       return;
     }
     const out = exportUrls.map((u) => {
       const m = metaFor(u, urls, metaEdits);
+      const metaReady = metaEdits[u]?.status === "in_csv";
+      const textReady = texts[u]?.status === "in_csv";
       return {
-        url: u,
-        title: m.h1,
-        seo_title: m.title,
-        seo_desc: m.description,
-        seo_text: texts[u]?.text ?? urls[u]?.text ?? "",
+        url: normalizeUrl(u),
+        title: metaReady ? (m.h1 ?? "") : "",
+        seo_title: metaReady ? (m.title ?? "") : "",
+        seo_desc: metaReady ? (m.description ?? "") : "",
+        seo_text: textReady ? (texts[u]?.text ?? "") : "",
       };
     });
     downloadCsv(`seo-export-${Date.now()}.csv`, toCsv(out));
     const at = Date.now();
-    for (const u of exportUrls) setMetaEdit(u, { status: "done", updatedAt: at });
+    for (const u of exportUrls) {
+      if (metaEdits[u]?.status === "in_csv") setMetaEdit(u, { status: "done", updatedAt: at });
+      if (texts[u]?.status === "in_csv") setText(u, { status: "done", updatedAt: at });
+    }
     add(`Экспорт: ${out.length} URL → статус «Готово»`);
     toast.success(`Экспортировано ${out.length} URL, статусы обновлены`);
-  }
-
-  // Аналог для SEO-текстов: экспорт только текстов со статусом «В файле CSV»,
-  // затем автоматический перевод в «Готово».
-  const exportTextUrls = Object.values(texts)
-    .filter((t) => t.status === "in_csv" && (t.text ?? "").trim().length > 0)
-    .map((t) => t.url);
-
-  function exportTexts() {
-    if (!exportTextUrls.length) {
-      toast.error("Нет текстов со статусом «В файле CSV»");
-      return;
-    }
-    const out = exportTextUrls.map((u) => ({
-      url: u,
-      seo_text: texts[u]?.text ?? "",
-    }));
-    downloadCsv(`seo-texts-${Date.now()}.csv`, toCsv(out));
-    const at = Date.now();
-    for (const u of exportTextUrls) setText(u, { status: "done", updatedAt: at });
-    add(`Экспорт текстов: ${out.length} URL → статус «Готово»`);
-    toast.success(`Экспортировано ${out.length} текстов, статусы обновлены`);
   }
 
   return (
@@ -134,28 +123,14 @@ function ImportPage() {
         <CardHeader><CardTitle>Экспорт CSV для CMS</CardTitle></CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground">
-            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text.
+            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text (HTML).
             <br />
-            В файл попадают только URL со статусом <b>«В файле CSV»</b> (сейчас {exportUrls.length}).
-            После скачивания статус меняется на <b>«Готово»</b>.
+            Единый файл: строка на каждый URL со статусом <b>«В файле CSV»</b> (мета и/или текст).
+            Незаполненные поля остаются пустыми. URL записывается без «https://ggsel.net».
+            Сейчас к выгрузке: <b>{exportUrls.length}</b>. После скачивания статусы «В файле CSV» → «Готово».
           </div>
           <Button onClick={exportCms} disabled={!exportUrls.length}>
             Скачать CSV ({exportUrls.length})
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="mb-6">
-        <CardHeader><CardTitle>Экспорт SEO-текстов</CardTitle></CardHeader>
-        <CardContent className="flex items-center justify-between gap-3">
-          <div className="text-sm text-muted-foreground">
-            Поля: url, seo_text (HTML).
-            <br />
-            В файл попадают только тексты со статусом <b>«В файле CSV»</b> (сейчас {exportTextUrls.length}).
-            После скачивания статус меняется на <b>«Готово»</b>.
-          </div>
-          <Button onClick={exportTexts} disabled={!exportTextUrls.length}>
-            Скачать CSV ({exportTextUrls.length})
           </Button>
         </CardContent>
       </Card>
