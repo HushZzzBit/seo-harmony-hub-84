@@ -441,7 +441,7 @@ function GroupsBreakdown({
   if (groups.length === 0) return null;
 
   return (
-    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden" open={selectedGroup !== null}>
+    <details className="group rounded-md border border-border/60 bg-muted/30 overflow-hidden">
       <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium flex items-center justify-between hover:bg-muted/50">
         <span>
           Группы ({groups.length})
