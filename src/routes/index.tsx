@@ -119,18 +119,7 @@ function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {Array.from(grouped.entries()).map(([folder, qs]) => (
-            <FolderCard
-              key={folder}
-              folder={folder}
-              qs={qs}
-              urls={urls}
-              metaEdits={metaEdits}
-              texts={texts}
-            />
-          ))}
-        </div>
+        <FolderPicker grouped={grouped} urls={urls} metaEdits={metaEdits} texts={texts} />
       )}
     </AppShell>
   );
