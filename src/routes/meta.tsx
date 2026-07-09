@@ -130,6 +130,14 @@ function MetaRow({ row }: { row: Row }) {
   }, [m.title, m.description, m.h1]);
 
   const freq = row.qs.reduce((a, q) => a + (q.frequency || 0), 0);
+  const avgPos = (key: "googlePosition" | "yandexPosition") => {
+    const vals = row.qs.map((q) => q[key]).filter((v): v is number => typeof v === "number" && v > 0);
+    return vals.length ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : 0;
+  };
+  const gPos = avgPos("googlePosition");
+  const yPos = avgPos("yandexPosition");
+  const posColor = (p: number) =>
+    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
 
   const usedAll = useMemo(() => {
     const s = new Set<string>();
