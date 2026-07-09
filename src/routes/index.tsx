@@ -176,7 +176,7 @@ function FolderCard({
   const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
   const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
   const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
-  const donePctFolder = urlSet.size ? Math.round((doneUrls / urlSet.size) * 100) : 0;
+  
   const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "done").length;
   const textInCsv = Array.from(urlSet).filter((u) => texts[u]?.status === "in_csv").length;
   const textReady = Array.from(urlSet).filter((u) => texts[u]?.status === "ready").length;
