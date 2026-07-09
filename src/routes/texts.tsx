@@ -38,7 +38,10 @@ type SortDir = "asc" | "desc";
 const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 function TextsPage() {
-  const { queries, urls, texts, setText } = useStore();
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const texts = useStore((s) => s.texts);
+  const setText = useStore((s) => s.setText);
   const [folder, setFolder] = useState("all");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
