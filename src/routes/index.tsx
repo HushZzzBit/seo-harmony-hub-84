@@ -128,9 +128,6 @@ function Dashboard() {
               urls={urls}
               metaEdits={metaEdits}
               texts={texts}
-              state={folderState[folder]}
-              onChangeStatus={(s) => setFolderState(folder, { status: s })}
-              onChangePlan={(d) => setFolderState(folder, { plannedDate: d })}
             />
           ))}
         </div>
