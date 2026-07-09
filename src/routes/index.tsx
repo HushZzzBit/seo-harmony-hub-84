@@ -139,12 +139,28 @@ function Dashboard() {
             </div>
           </Section>
 
-          <Section title="Аналитика">
-            <PriorityMonths
-              qs={folderQs}
-              selectedGroup={selectedGroup}
-              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
-            />
+          <Section title="Аналитика" noCard>
+            {activeFolder && (
+              <FolderCard
+                key={activeFolder}
+                folder={activeFolder}
+                qs={folderQs}
+                urls={urls}
+                metaEdits={metaEdits}
+                texts={texts}
+                selectedGroup={selectedGroup}
+                onSelectGroup={setSelectedGroup}
+              />
+            )}
+            <Card>
+              <CardContent className="p-4">
+                <PriorityMonths
+                  qs={folderQs}
+                  selectedGroup={selectedGroup}
+                  onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+                />
+              </CardContent>
+            </Card>
           </Section>
 
           <Section title="Проработка">
