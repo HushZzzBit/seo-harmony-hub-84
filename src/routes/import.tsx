@@ -14,7 +14,7 @@ export const Route = createFileRoute("/import")({
 });
 
 function ImportPage() {
-  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, clearAll } = useStore();
+  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, setText, clearAll } = useStore();
   const [log, setLog] = useState<string[]>([]);
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
@@ -77,6 +77,28 @@ function ImportPage() {
     toast.success(`Экспортировано ${out.length} URL, статусы обновлены`);
   }
 
+  // Аналог для SEO-текстов: экспорт только текстов со статусом «В файле CSV»,
+  // затем автоматический перевод в «Готово».
+  const exportTextUrls = Object.values(texts)
+    .filter((t) => t.status === "in_csv" && (t.text ?? "").trim().length > 0)
+    .map((t) => t.url);
+
+  function exportTexts() {
+    if (!exportTextUrls.length) {
+      toast.error("Нет текстов со статусом «В файле CSV»");
+      return;
+    }
+    const out = exportTextUrls.map((u) => ({
+      url: u,
+      seo_text: texts[u]?.text ?? "",
+    }));
+    downloadCsv(`seo-texts-${Date.now()}.csv`, toCsv(out));
+    const at = Date.now();
+    for (const u of exportTextUrls) setText(u, { status: "done", updatedAt: at });
+    add(`Экспорт текстов: ${out.length} URL → статус «Готово»`);
+    toast.success(`Экспортировано ${out.length} текстов, статусы обновлены`);
+  }
+
   return (
     <AppShell>
       <div className="mb-6">
@@ -113,6 +135,21 @@ function ImportPage() {
           </div>
           <Button onClick={exportCms} disabled={!exportUrls.length}>
             Скачать CSV ({exportUrls.length})
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader><CardTitle>Экспорт SEO-текстов</CardTitle></CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground">
+            Поля: url, seo_text (HTML).
+            <br />
+            В файл попадают только тексты со статусом <b>«В файле CSV»</b> (сейчас {exportTextUrls.length}).
+            После скачивания статус меняется на <b>«Готово»</b>.
+          </div>
+          <Button onClick={exportTexts} disabled={!exportTextUrls.length}>
+            Скачать CSV ({exportTextUrls.length})
           </Button>
         </CardContent>
       </Card>

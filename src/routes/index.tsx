@@ -68,6 +68,8 @@ function Dashboard() {
     }).length;
     const doneMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "done").length;
     const inCsvMeta = Array.from(urlSet).filter((u) => metaEdits[u!]?.status === "in_csv").length;
+    const doneText = Array.from(urlSet).filter((u) => texts[u!]?.status === "done").length;
+    const inCsvText = Array.from(urlSet).filter((u) => texts[u!]?.status === "in_csv").length;
     const ready = Array.from(urlSet).filter((u) => {
       const r = urls[u!]; const e = metaEdits[u!];
       return (e?.title || r?.title) && r?.hasText;
@@ -81,9 +83,11 @@ function Dashboard() {
       top10: pct(top10G, queries.length),
       noText, noMeta, ready,
       doneMeta, inCsvMeta,
+      doneText, inCsvText,
       donePct: pct(doneMeta, urlSet.size),
+      donePctText: pct(doneText, urlSet.size),
     };
-  }, [queries, urls, metaEdits]);
+  }, [queries, urls, metaEdits, texts]);
 
   return (
     <AppShell>
@@ -99,8 +103,10 @@ function Dashboard() {
         <Kpi label="Ср. позиция" value={kpi.avgPos} />
         <Kpi label="% TOP3" value={`${kpi.top3}%`} />
         <Kpi label="% TOP10" value={`${kpi.top10}%`} />
-        <Kpi label="В файле CSV" value={kpi.inCsvMeta} />
-        <Kpi label="Готово" value={`${kpi.doneMeta} · ${kpi.donePct}%`} tone="good" />
+        <Kpi label="Meta: в CSV" value={kpi.inCsvMeta} />
+        <Kpi label="Meta: готово" value={`${kpi.doneMeta} · ${kpi.donePct}%`} tone="good" />
+        <Kpi label="Тексты: в CSV" value={kpi.inCsvText} />
+        <Kpi label="Тексты: готово" value={`${kpi.doneText} · ${kpi.donePctText}%`} tone="good" />
         <Kpi label="Без Meta" value={kpi.noMeta} tone="destructive" />
         <Kpi label="Без текста" value={kpi.noText} tone="destructive" />
         <Kpi label="Запросов" value={queries.length} />
@@ -170,8 +176,10 @@ function FolderCard({
   const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
   const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
   const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
-  const donePctFolder = urlSet.size ? Math.round((doneUrls / urlSet.size) * 100) : 0;
-  const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "ready" || texts[u]?.status === "published").length;
+  
+  const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "done").length;
+  const textInCsv = Array.from(urlSet).filter((u) => texts[u]?.status === "in_csv").length;
+  const textReady = Array.from(urlSet).filter((u) => texts[u]?.status === "ready").length;
   const seasonality = groupSeasonality(qs);
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
   const peak = peakMonth(seasonality);
@@ -192,26 +200,21 @@ function FolderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div>
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-muted-foreground">Проработка URL</span>
-            <span className="tabular-nums font-medium">{doneUrls}/{urlSet.size} · {donePctFolder}%</span>
-          </div>
-          <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden flex">
-            {urlSet.size > 0 && (
-              <>
-                <div className="h-full bg-chart-2" style={{ width: `${(doneUrls / urlSet.size) * 100}%` }} title={`Готово: ${doneUrls}`} />
-                <div className="h-full bg-chart-1" style={{ width: `${(inCsvUrls / urlSet.size) * 100}%` }} title={`В файле CSV: ${inCsvUrls}`} />
-                <div className="h-full bg-chart-4" style={{ width: `${(inProgUrls / urlSet.size) * 100}%` }} title={`В работе: ${inProgUrls}`} />
-              </>
-            )}
-          </div>
-          <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
-            <span><span className="inline-block size-2 rounded-full bg-chart-2 mr-1 align-middle" />Готово {doneUrls}</span>
-            <span><span className="inline-block size-2 rounded-full bg-chart-1 mr-1 align-middle" />В CSV {inCsvUrls}</span>
-            <span><span className="inline-block size-2 rounded-full bg-chart-4 mr-1 align-middle" />В работе {inProgUrls}</span>
-          </div>
-        </div>
+        <ProgressStrip
+          label="Meta"
+          total={urlSet.size}
+          done={doneUrls}
+          inCsv={inCsvUrls}
+          inProgress={inProgUrls}
+        />
+        <ProgressStrip
+          label="Тексты"
+          total={urlSet.size}
+          done={textDone}
+          inCsv={textInCsv}
+          inProgress={textReady}
+          inProgressLabel="Готов к выгрузке"
+        />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
@@ -270,6 +273,42 @@ function Metric({ label, value }: { label: string; value: string | number }) {
     <div className="rounded-md bg-muted px-2 py-1">
       <div className="text-[10px] text-muted-foreground uppercase">{label}</div>
       <div className="text-sm font-medium">{value}</div>
+    </div>
+  );
+}
+
+function ProgressStrip({
+  label, total, done, inCsv, inProgress, inProgressLabel = "В работе",
+}: {
+  label: string;
+  total: number;
+  done: number;
+  inCsv: number;
+  inProgress: number;
+  inProgressLabel?: string;
+}) {
+  const pctDone = total ? Math.round((done / total) * 100) : 0;
+  const w = (n: number) => (total ? `${(n / total) * 100}%` : "0%");
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="tabular-nums font-medium">{done}/{total} · {pctDone}%</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden flex">
+        {total > 0 && (
+          <>
+            <div className="h-full bg-chart-2" style={{ width: w(done) }} title={`Готово: ${done}`} />
+            <div className="h-full bg-chart-1" style={{ width: w(inCsv) }} title={`В файле CSV: ${inCsv}`} />
+            <div className="h-full bg-chart-4" style={{ width: w(inProgress) }} title={`${inProgressLabel}: ${inProgress}`} />
+          </>
+        )}
+      </div>
+      <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+        <span><span className="inline-block size-2 rounded-full bg-chart-2 mr-1 align-middle" />Готово {done}</span>
+        <span><span className="inline-block size-2 rounded-full bg-chart-1 mr-1 align-middle" />В CSV {inCsv}</span>
+        <span><span className="inline-block size-2 rounded-full bg-chart-4 mr-1 align-middle" />{inProgressLabel} {inProgress}</span>
+      </div>
     </div>
   );
 }

@@ -21,8 +21,9 @@ const statusLabel: Record<TextStatus, string> = {
   not_assigned: "Не назначено",
   in_progress: "В работе",
   review: "На проверке",
-  ready: "Готов",
-  published: "Опубликовано",
+  ready: "Готов к выгрузке",
+  in_csv: "В файле CSV",
+  done: "Готово",
 };
 
 function TextsPage() {
