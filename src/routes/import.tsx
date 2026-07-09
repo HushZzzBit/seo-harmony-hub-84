@@ -140,6 +140,21 @@ function ImportPage() {
       </Card>
 
       <Card className="mb-6">
+        <CardHeader><CardTitle>Экспорт SEO-текстов</CardTitle></CardHeader>
+        <CardContent className="flex items-center justify-between gap-3">
+          <div className="text-sm text-muted-foreground">
+            Поля: url, seo_text (HTML).
+            <br />
+            В файл попадают только тексты со статусом <b>«В файле CSV»</b> (сейчас {exportTextUrls.length}).
+            После скачивания статус меняется на <b>«Готово»</b>.
+          </div>
+          <Button onClick={exportTexts} disabled={!exportTextUrls.length}>
+            Скачать CSV ({exportTextUrls.length})
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
         <CardHeader><CardTitle>Состояние хранилища</CardTitle></CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div>Запросов: <b>{queries.length}</b></div>
