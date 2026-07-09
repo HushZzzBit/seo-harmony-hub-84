@@ -26,11 +26,14 @@ const statusLabel: Record<TextStatus, string> = {
   done: "Готово",
 };
 
+const PAGE_SIZE = 50;
+
 function TextsPage() {
   const { queries, urls, texts, setText } = useStore();
   const [folder, setFolder] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   const folders = useMemo(() => Array.from(new Set(queries.map((q) => q.folder))).sort(), [queries]);
 
@@ -49,6 +52,10 @@ function TextsPage() {
       return true;
     });
   }, [queries, folder, search, statusFilter, texts]);
+
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, search, statusFilter]);
+  const visible = rows.slice(0, limit);
+  const hasMore = rows.length > visible.length;
 
   return (
     <AppShell>
