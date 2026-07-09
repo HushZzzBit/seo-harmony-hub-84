@@ -255,96 +255,303 @@ function formatHtml(s: string): string {
 }
 
 function TextEditor({ url, folder, group }: { url: string; folder: string; group: string }) {
-  const { texts, setText, urls } = useStore();
+  const { texts, setText, urls, queries } = useStore();
   const [open, setOpen] = useState(false);
   const t = texts[url] ?? { url, status: "not_assigned" as TextStatus };
   const initial = t.text ?? urls[url]?.text ?? "";
   const [value, setValue] = useState(initial);
-  const [tab, setTab] = useState("html");
+  const [editor, setEditorRef] = useState<import("@tiptap/react").Editor | null>(null);
+  const [tab, setTab] = useState("editor");
+  const [kwFilter, setKwFilter] = useState("");
+  const [highlight, setHighlight] = useState(true);
+
+  const groupQueries = useMemo(
+    () => queries.filter((q) => q.folder === folder && q.group === group),
+    [queries, folder, group],
+  );
 
   const plain = stripHtml(value);
-  const words = plain ? plain.split(/\s+/).length : 0;
+  const plainLower = plain.toLowerCase().replace(/ё/g, "е");
+  const wordsCnt = plain ? plain.split(/\s+/).filter(Boolean).length : 0;
 
-  const wrap = (tag: string) => {
-    const ta = document.getElementById(`html-editor-${url}`) as HTMLTextAreaElement | null;
-    if (!ta) return;
-    const s = ta.selectionStart, e = ta.selectionEnd;
-    const sel = value.slice(s, e);
-    const next = value.slice(0, s) + `<${tag}>${sel}</${tag}>` + value.slice(e);
-    setValue(next);
-    setTimeout(() => {
-      ta.focus();
-      ta.setSelectionRange(s + tag.length + 2, s + tag.length + 2 + sel.length);
-    }, 0);
+  const phrases = useMemo(() => {
+    const arr = groupQueries.map((q) => {
+      const p = q.phrase.trim();
+      const norm = p.toLowerCase().replace(/ё/g, "е");
+      const re = new RegExp(escapeRe(norm), "g");
+      const count = (plainLower.match(re) ?? []).length;
+      return { phrase: p, freq: q.frequency || 0, count };
+    });
+    // dedupe by phrase
+    const seen = new Map<string, typeof arr[number]>();
+    for (const x of arr) {
+      const prev = seen.get(x.phrase.toLowerCase());
+      if (!prev) seen.set(x.phrase.toLowerCase(), x);
+      else prev.freq += x.freq;
+    }
+    return Array.from(seen.values()).sort((a, b) => b.freq - a.freq);
+  }, [groupQueries, plainLower]);
+
+  const usedPhrases = phrases.filter((p) => p.count > 0).length;
+  const coverage = phrases.length ? Math.round((usedPhrases / phrases.length) * 100) : 0;
+
+  const words = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const q of groupQueries) {
+      for (const w of new Set(
+        q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w && w.length > 2),
+      )) {
+        map.set(w, (map.get(w) ?? 0) + (q.frequency || 1));
+      }
+    }
+    return Array.from(map, ([word, weight]) => {
+      const re = new RegExp(`\\b${escapeRe(word)}\\b`, "gi");
+      const count = (plainLower.match(re) ?? []).length;
+      return { word, weight, count };
+    }).sort((a, b) => b.weight - a.weight);
+  }, [groupQueries, plainLower]);
+
+  const visiblePhrases = kwFilter
+    ? phrases.filter((p) => p.phrase.toLowerCase().includes(kwFilter.toLowerCase()))
+    : phrases;
+  const visibleWords = kwFilter
+    ? words.filter((w) => w.word.includes(kwFilter.toLowerCase()))
+    : words;
+
+  const insertAtCursor = (text: string) => {
+    if (!editor) return;
+    editor.chain().focus().insertContent(text + " ").run();
   };
 
+  const highlightedHtml = useMemo(() => {
+    if (!highlight) return value;
+    if (!phrases.length) return value;
+    return highlightKeywords(
+      value,
+      phrases.map((p) => p.phrase),
+    );
+  }, [value, phrases, highlight]);
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (o) setValue(t.text ?? urls[url]?.text ?? ""); }}>
-      <DialogTrigger asChild><Button size="sm" variant="outline">Текст</Button></DialogTrigger>
-      <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>{folder} / {group}</DialogTitle>
-          <div className="text-xs font-mono text-muted-foreground truncate">{url}</div>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) setValue(t.text ?? urls[url]?.text ?? "");
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">Текст</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-[1200px] w-[95vw] max-h-[92vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-5 pt-4 pb-2 border-b">
+          <DialogTitle className="text-base">
+            {folder} <span className="text-muted-foreground">/</span> {group}
+          </DialogTitle>
+          <div className="text-xs font-mono text-muted-foreground truncate">{url || "—"}</div>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <TabsList>
-              <TabsTrigger value="html">HTML</TabsTrigger>
-              <TabsTrigger value="preview">Превью</TabsTrigger>
-            </TabsList>
-            <div className="flex gap-1 flex-wrap">
-              {["h1","h2","h3","p","ul","ol","li","strong","em","a"].map((tag) => (
-                <Button key={tag} size="sm" variant="outline" className="h-7 px-2 text-xs font-mono" onClick={() => wrap(tag)}>
-                  {tag}
-                </Button>
-              ))}
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => setValue(formatHtml(value))}>
-                Форматировать
-              </Button>
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => { if (!isHtml(value)) setValue(wrapPlainInHtml(value)); }}>
-                Обернуть в HTML
-              </Button>
-            </div>
+        <div className="flex flex-1 min-h-0">
+          {/* Editor */}
+          <div className="flex-1 min-w-0 flex flex-col p-4 gap-2">
+            <Tabs value={tab} onValueChange={setTab} className="flex flex-col flex-1 min-h-0">
+              <TabsList className="w-fit">
+                <TabsTrigger value="editor">Редактор</TabsTrigger>
+                <TabsTrigger value="preview">Превью {highlight ? "(с ключами)" : ""}</TabsTrigger>
+                <TabsTrigger value="html">HTML-код</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="editor" className="flex-1 min-h-0 mt-2">
+                <RichTextEditor value={value} onChange={setValue} onEditor={setEditorRef} />
+              </TabsContent>
+
+              <TabsContent value="preview" className="flex-1 min-h-0 mt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={highlight}
+                      onChange={(e) => setHighlight(e.target.checked)}
+                      className="accent-primary"
+                    />
+                    Подсвечивать ключи
+                  </label>
+                </div>
+                <div
+                  className="prose prose-sm dark:prose-invert max-w-none border rounded-md p-6 h-[60vh] overflow-auto bg-background kw-preview"
+                  dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+                />
+              </TabsContent>
+
+              <TabsContent value="html" className="flex-1 min-h-0 mt-2">
+                <Textarea
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  className="font-mono text-xs h-[60vh] resize-none"
+                  spellCheck={false}
+                />
+                <div className="flex gap-2 mt-2">
+                  <Button size="sm" variant="outline" onClick={() => setValue(formatHtml(value))}>Форматировать</Button>
+                  <Button size="sm" variant="outline" onClick={() => { if (!isHtml(value)) setValue(wrapPlainInHtml(value)); }}>Обернуть в HTML</Button>
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          <TabsContent value="html" className="flex-1 min-h-0 mt-2">
-            <Textarea
-              id={`html-editor-${url}`}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="font-mono text-sm h-[55vh] resize-none"
-              placeholder="<h1>Заголовок</h1>\n<p>Абзац...</p>"
-              spellCheck={false}
-            />
-          </TabsContent>
-          <TabsContent value="preview" className="flex-1 min-h-0 mt-2">
-            <div
-              className="prose prose-sm max-w-none border rounded-md p-4 h-[55vh] overflow-auto bg-background"
-              dangerouslySetInnerHTML={{ __html: value }}
-            />
-          </TabsContent>
-        </Tabs>
+          {/* Keywords sidebar */}
+          <aside className="w-[340px] shrink-0 border-l flex flex-col bg-muted/20">
+            <div className="p-3 border-b space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold">Ключи</div>
+                <div className="text-xs text-muted-foreground">{usedPhrases}/{phrases.length} использовано</div>
+              </div>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${coverage}%` }}
+                />
+              </div>
+              <Input
+                value={kwFilter}
+                onChange={(e) => setKwFilter(e.target.value)}
+                placeholder="Фильтр ключей..."
+                className="h-8 text-xs"
+              />
+            </div>
 
-        <div className="flex justify-between items-center gap-4 pt-2 border-t">
-          <div className="text-xs text-muted-foreground flex gap-3">
-            <span>{value.length} симв. HTML</span>
-            <span>{plain.length} симв. текст</span>
-            <span>{words} слов</span>
-            <span className={isHtml(value) ? "text-emerald-500" : "text-amber-500"}>
-              {isHtml(value) ? "HTML ✓" : "нужен HTML"}
-            </span>
+            <div className="flex-1 overflow-auto p-2 space-y-3">
+              <section>
+                <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
+                  Фразы ({visiblePhrases.length})
+                </div>
+                <div className="space-y-1">
+                  {visiblePhrases.map((p) => (
+                    <button
+                      key={p.phrase}
+                      type="button"
+                      onClick={() => insertAtCursor(p.phrase)}
+                      title="Вставить в текст"
+                      className={`w-full text-left px-2 py-1.5 rounded-md text-xs flex items-center justify-between gap-2 border transition ${
+                        p.count > 0
+                          ? "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20"
+                          : "bg-background border-border hover:bg-accent"
+                      }`}
+                    >
+                      <span className="truncate">{p.phrase}</span>
+                      <span className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
+                        <span title="Частотность">{p.freq}</span>
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full font-semibold ${
+                            p.count > 0
+                              ? "bg-emerald-500 text-white"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                          title="Вхождений в текст"
+                        >
+                          {p.count}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                  {visiblePhrases.length === 0 && (
+                    <div className="text-xs text-muted-foreground px-1 py-2">Нет ключей.</div>
+                  )}
+                </div>
+              </section>
+
+              <section>
+                <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
+                  Слова ({visibleWords.length})
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {visibleWords.slice(0, 60).map((w) => (
+                    <button
+                      key={w.word}
+                      type="button"
+                      onClick={() => insertAtCursor(w.word)}
+                      className={`px-2 py-0.5 rounded-full text-[11px] border transition ${
+                        w.count > 0
+                          ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                          : "bg-background border-border hover:bg-accent"
+                      }`}
+                      title={`вес ${w.weight}, вхождений ${w.count}`}
+                    >
+                      {w.word}
+                      {w.count > 0 && <span className="ml-1 opacity-70">×{w.count}</span>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
+
+        <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background">
+          <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
+            <span>{plain.length} симв.</span>
+            <span>{wordsCnt} слов</span>
+            <span>Покрытие ключей: <b className={coverage >= 70 ? "text-emerald-500" : coverage >= 40 ? "text-amber-500" : "text-rose-500"}>{coverage}%</b></span>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
-            <Button onClick={() => {
-              const finalHtml = isHtml(value) ? value : wrapPlainInHtml(value);
-              setText(url, { text: finalHtml });
-              setOpen(false);
-            }}>Сохранить</Button>
+            <Button
+              onClick={() => {
+                const finalHtml = isHtml(value) ? value : wrapPlainInHtml(value);
+                setText(url, { text: finalHtml });
+                setOpen(false);
+              }}
+            >
+              Сохранить
+            </Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Highlight keyword phrases in an HTML string by wrapping matches with <mark>.
+ * Only touches text nodes so tag attributes stay intact.
+ */
+function highlightKeywords(html: string, phrases: string[]): string {
+  if (typeof window === "undefined" || !phrases.length) return html;
+  const uniq = Array.from(new Set(phrases.map((p) => p.trim()).filter(Boolean)))
+    .sort((a, b) => b.length - a.length);
+  if (!uniq.length) return html;
+  const re = new RegExp(`(${uniq.map(escapeRe).join("|")})`, "gi");
+
+  const tpl = document.createElement("template");
+  tpl.innerHTML = html;
+  const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  let n: Node | null;
+  while ((n = walker.nextNode())) textNodes.push(n as Text);
+  for (const node of textNodes) {
+    const parent = node.parentElement;
+    if (!parent) continue;
+    if (["MARK", "SCRIPT", "STYLE", "CODE"].includes(parent.tagName)) continue;
+    const text = node.nodeValue ?? "";
+    if (!re.test(text)) continue;
+    re.lastIndex = 0;
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(text))) {
+      if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const mark = document.createElement("mark");
+      mark.className = "kw-mark";
+      mark.textContent = m[0];
+      frag.appendChild(mark);
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    parent.replaceChild(frag, node);
+  }
+  return tpl.innerHTML;
+}
+
