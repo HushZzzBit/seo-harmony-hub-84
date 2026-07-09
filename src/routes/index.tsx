@@ -323,7 +323,6 @@ function FolderCard({
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
   const peak = peakMonth(seasonality);
   const rec = recommendedMonth(seasonality);
-  const status: Status = state?.status ?? "not_started";
 
   return (
     <Card className="overflow-hidden">
@@ -340,7 +339,6 @@ function FolderCard({
               {selectedGroup ? "1" : groups.size} {selectedGroup ? "группа" : "групп"} · {urlSet.size} URL · {filteredQs.length} запросов
             </div>
           </div>
-          <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
