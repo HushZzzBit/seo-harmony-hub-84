@@ -283,23 +283,28 @@ function FolderCard({
   onChangeStatus: (s: Status) => void;
   onChangePlan: (d: string) => void;
 }) {
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const filteredQs = useMemo(
+    () => (selectedGroup ? qs.filter((q) => q.group === selectedGroup) : qs),
+    [qs, selectedGroup],
+  );
   const groups = new Set(qs.map((q) => q.group));
-  const urlSet = new Set(qs.map((q) => q.url).filter(Boolean)) as Set<string>;
-  const gPos = qs.map((q) => q.googlePosition ?? 0);
-  const yPos = qs.map((q) => q.yandexPosition ?? 0);
-  const top3G = qs.filter((q) => (q.googlePosition ?? 999) <= 3).length;
-  const top10G = qs.filter((q) => (q.googlePosition ?? 999) <= 10).length;
-  const top3Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
-  const top10Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
+  const urlSet = new Set(filteredQs.map((q) => q.url).filter(Boolean)) as Set<string>;
+  const gPos = filteredQs.map((q) => q.googlePosition ?? 0);
+  const yPos = filteredQs.map((q) => q.yandexPosition ?? 0);
+  const top3G = filteredQs.filter((q) => (q.googlePosition ?? 999) <= 3).length;
+  const top10G = filteredQs.filter((q) => (q.googlePosition ?? 999) <= 10).length;
+  const top3Y = filteredQs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
+  const top10Y = filteredQs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
   const metaDone = Array.from(urlSet).filter((u) => metaEdits[u]?.title).length;
   const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
   const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
   const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
-  
+
   const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "done").length;
   const textInCsv = Array.from(urlSet).filter((u) => texts[u]?.status === "in_csv").length;
   const textReady = Array.from(urlSet).filter((u) => texts[u]?.status === "ready").length;
-  const seasonality = groupSeasonality(qs);
+  const seasonality = groupSeasonality(filteredQs);
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
   const peak = peakMonth(seasonality);
   const rec = recommendedMonth(seasonality);
@@ -310,9 +315,14 @@ function FolderCard({
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <CardTitle className="text-base">{folder}</CardTitle>
+            <CardTitle className="text-base">
+              {folder}
+              {selectedGroup && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">/ {selectedGroup}</span>
+              )}
+            </CardTitle>
             <div className="text-xs text-muted-foreground mt-1">
-              {groups.size} групп · {urlSet.size} URL · {qs.length} запросов
+              {selectedGroup ? "1" : groups.size} {selectedGroup ? "группа" : "групп"} · {urlSet.size} URL · {filteredQs.length} запросов
             </div>
           </div>
           <Badge className={statusColor[status]}>{statusLabel[status]}</Badge>
@@ -334,14 +344,20 @@ function FolderCard({
           inProgress={textReady}
           inProgressLabel="Готов к выгрузке"
         />
-        <GroupsBreakdown qs={qs} metaEdits={metaEdits} texts={texts} />
+        <GroupsBreakdown
+          qs={qs}
+          metaEdits={metaEdits}
+          texts={texts}
+          selectedGroup={selectedGroup}
+          onSelectGroup={setSelectedGroup}
+        />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
-          <Metric label="TOP3 G" value={`${pct(top3G, qs.length)}%`} />
-          <Metric label="TOP10 G" value={`${pct(top10G, qs.length)}%`} />
-          <Metric label="TOP3 Y" value={`${pct(top3Y, qs.length)}%`} />
-          <Metric label="TOP10 Y" value={`${pct(top10Y, qs.length)}%`} />
+          <Metric label="TOP3 G" value={`${pct(top3G, filteredQs.length)}%`} />
+          <Metric label="TOP10 G" value={`${pct(top10G, filteredQs.length)}%`} />
+          <Metric label="TOP3 Y" value={`${pct(top3Y, filteredQs.length)}%`} />
+          <Metric label="TOP10 Y" value={`${pct(top10Y, filteredQs.length)}%`} />
           <Metric label="Meta" value={`${metaDone}/${urlSet.size}`} />
           <Metric label="Text" value={`${textDone}/${urlSet.size}`} />
         </div>
