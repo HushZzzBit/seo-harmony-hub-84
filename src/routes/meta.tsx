@@ -236,6 +236,60 @@ function MetaPage() {
         </div>
       </div>
 
+      {(() => {
+        const visibleUrls = visible.map((e) => e.r.url).filter(Boolean);
+        const selCount = visibleUrls.filter((u) => selected.has(u)).length;
+        return (
+          <div className="mb-3 flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-muted/30">
+            <RoundCheckbox
+              aria-label="Выбрать все"
+              checked={visibleUrls.length > 0 && selCount === visibleUrls.length}
+              indeterminate={selCount > 0 && selCount < visibleUrls.length}
+              onChange={() => {
+                setSelected((prev) => {
+                  const n = new Set(prev);
+                  if (selCount > 0) visibleUrls.forEach((u) => n.delete(u));
+                  else visibleUrls.forEach((u) => n.add(u));
+                  return n;
+                });
+              }}
+            />
+            <span className="text-sm text-muted-foreground">
+              {selected.size > 0 ? <>Выбрано: <span className="font-medium text-foreground">{selected.size}</span></> : "Выбрать все на странице"}
+            </span>
+            {selected.size > 0 && (
+              <div className="flex items-center gap-2 ml-auto">
+                <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Status)}>
+                  <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_started">Не начато</SelectItem>
+                    <SelectItem value="in_progress">В работе</SelectItem>
+                    <SelectItem value="in_csv">В файле CSV</SelectItem>
+                    <SelectItem value="done">Готово</SelectItem>
+                  </SelectContent>
+                </Select>
+                <button
+                  type="button"
+                  disabled={!bulkStatus}
+                  onClick={() => {
+                    if (!bulkStatus) return;
+                    for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
+                    setSelected(new Set());
+                    setBulkStatus("");
+                  }}
+                  className="h-8 px-3 text-xs rounded-md bg-primary text-primary-foreground disabled:opacity-40 hover:opacity-90 transition"
+                >Применить</button>
+                <button
+                  type="button"
+                  onClick={() => setSelected(new Set())}
+                  className="h-8 px-2 text-xs rounded-md hover:bg-accent transition"
+                >Снять выбор</button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       <div className="space-y-2">
         {visible.map((e) => (
           <MetaRow
@@ -244,6 +298,16 @@ function MetaPage() {
             prio={e.prio}
             rec={e.rec}
             freq={e.freq}
+            selected={!!e.r.url && selected.has(e.r.url)}
+            onToggleSelect={(v) => {
+              if (!e.r.url) return;
+              setSelected((prev) => {
+                const n = new Set(prev);
+                if (v) n.add(e.r.url);
+                else n.delete(e.r.url);
+                return n;
+              });
+            }}
           />
         ))}
         {rows.length === 0 && (
