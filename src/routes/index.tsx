@@ -161,6 +161,9 @@ function GroupsBreakdown({
   selectedGroup: string | null;
   onSelectGroup: (g: string | null) => void;
 }) {
+  const [search, setSearch] = useState("");
+  const lowerSearch = search.trim().toLowerCase();
+
   const groups = useMemo(() => {
     const byGroup = new Map<string, typeof qs>();
     for (const q of qs) {
@@ -190,6 +193,11 @@ function GroupsBreakdown({
       .sort((a, b) => a.group.localeCompare(b.group));
   }, [qs, metaEdits, texts]);
 
+  const filteredGroups = useMemo(
+    () => (lowerSearch ? groups.filter((g) => g.group.toLowerCase().includes(lowerSearch)) : groups),
+    [groups, lowerSearch]
+  );
+
   if (groups.length === 0) return null;
 
   return (
@@ -216,8 +224,17 @@ function GroupsBreakdown({
           <span className="text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
         </span>
       </summary>
+      <div className="px-3 pt-2 pb-1">
+        <input
+          type="text"
+          placeholder="Поиск группы..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full h-7 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        />
+      </div>
       <div className="divide-y divide-border/60">
-        {groups.map((g) => {
+        {filteredGroups.map((g) => {
           const active = selectedGroup === g.group;
           return (
             <button
@@ -241,6 +258,9 @@ function GroupsBreakdown({
             </button>
           );
         })}
+        {filteredGroups.length === 0 && (
+          <div className="px-3 py-3 text-xs text-muted-foreground text-center">Нет совпадений</div>
+        )}
       </div>
     </details>
   );
