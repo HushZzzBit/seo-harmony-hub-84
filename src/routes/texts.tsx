@@ -42,9 +42,12 @@ function TextsPage() {
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [sortKey, setSortKey] = useState<SortKey>("priority");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<TextStatus | "">("");
 
   const folders = useMemo(() => Array.from(new Set(queries.map((q) => q.folder))).sort(), [queries]);
   const categories = useMemo(() => {
@@ -79,7 +82,7 @@ function TextsPage() {
       const prio = priorityForGroup(seasonality);
       const dist = (recommendedMonth(seasonality) - now + 12) % 12;
       return { r, t, uRow, seasonality, planMonth, has, len, prio, dist };
-    });
+    }).filter((e) => priorityFilter === "all" || e.prio === priorityFilter);
 
     const dir = sortDir === "asc" ? 1 : -1;
     const cmp = (a: typeof enriched[number], b: typeof enriched[number]): number => {
@@ -98,9 +101,9 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, search, statusFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, folder, category, search, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
-  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, sortKey, sortDir]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
 
@@ -147,6 +150,15 @@ function TextsPage() {
               {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Все приоритеты</SelectItem>
+              <SelectItem value="high">Высокий</SelectItem>
+              <SelectItem value="medium">Средний</SelectItem>
+              <SelectItem value="low">Низкий</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -157,11 +169,57 @@ function TextsPage() {
         </div>
       </div>
 
+      {selected.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 px-3 py-2 rounded-lg border border-border bg-muted/40">
+          <span className="text-sm">Выбрано: <span className="font-medium">{selected.size}</span></span>
+          <div className="flex items-center gap-2 ml-auto">
+            <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as TextStatus)}>
+              <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              disabled={!bulkStatus}
+              onClick={() => {
+                if (!bulkStatus) return;
+                for (const u of selected) setText(u, { status: bulkStatus as TextStatus });
+                setSelected(new Set());
+                setBulkStatus("");
+              }}
+            >Применить</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Снять выбор</Button>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardContent className="p-0 overflow-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
+                <th className="p-2 w-8">
+                  <input
+                    type="checkbox"
+                    aria-label="Выбрать все"
+                    className="accent-primary cursor-pointer"
+                    checked={visible.length > 0 && visible.every((e) => e.r.url && selected.has(e.r.url))}
+                    ref={(el) => {
+                      if (!el) return;
+                      const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
+                      el.indeterminate = selCount > 0 && selCount < visible.length;
+                    }}
+                    onChange={(e) => {
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (e.target.checked) visible.forEach((v) => v.r.url && next.add(v.r.url));
+                        else visible.forEach((v) => v.r.url && next.delete(v.r.url));
+                        return next;
+                      });
+                    }}
+                  />
+                </th>
                 <SortHeader k="priority">Приоритет</SortHeader>
                 <SortHeader k="group">Папка / Группа</SortHeader>
                 <SortHeader k="url">URL</SortHeader>
@@ -181,8 +239,27 @@ function TextsPage() {
                   ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
                   : "bg-muted text-muted-foreground border-border";
                 const prioLabel = prio === "high" ? "Высокий" : prio === "medium" ? "Средний" : "Низкий";
+                const isSel = !!r.url && selected.has(r.url);
                 return (
-                  <tr key={r.url || r.folder + r.group} className="border-t border-border hover:bg-muted/30">
+                  <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
+                    <td className="p-2 align-top">
+                      <input
+                        type="checkbox"
+                        aria-label="Выбрать строку"
+                        disabled={!r.url}
+                        checked={isSel}
+                        className="accent-primary cursor-pointer"
+                        onChange={(e) => {
+                          if (!r.url) return;
+                          setSelected((prev) => {
+                            const next = new Set(prev);
+                            if (e.target.checked) next.add(r.url);
+                            else next.delete(r.url);
+                            return next;
+                          });
+                        }}
+                      />
+                    </td>
                     <td className="p-2 align-top">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
                     </td>
@@ -215,7 +292,7 @@ function TextsPage() {
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
+                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
               )}
             </tbody>
           </table>
