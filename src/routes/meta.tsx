@@ -19,12 +19,15 @@ export const Route = createFileRoute("/meta")({
 
 type Row = { folder: string; group: string; url: string; qs: Query[] };
 
+const PAGE_SIZE = 50;
+
 function MetaPage() {
   const { queries, metaEdits } = useStore();
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [limit, setLimit] = useState(PAGE_SIZE);
 
   const folders = useMemo(
     () => Array.from(new Set(queries.map((q) => q.folder))).sort(),
