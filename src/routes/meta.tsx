@@ -88,6 +88,7 @@ function MetaPage() {
               <SelectItem value="all">Все статусы</SelectItem>
               <SelectItem value="not_started">Не начато</SelectItem>
               <SelectItem value="in_progress">В работе</SelectItem>
+              <SelectItem value="in_csv">В файле CSV</SelectItem>
               <SelectItem value="done">Готово</SelectItem>
             </SelectContent>
           </Select>
