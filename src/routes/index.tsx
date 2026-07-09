@@ -125,6 +125,7 @@ function Dashboard() {
                 onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
                 counts={(f) => (grouped.get(f) ?? []).length}
                 countLabel="запр."
+                hideSearch
               />
               <PickerRow
                 label="Группа"
@@ -170,6 +171,14 @@ function Dashboard() {
             </div>
           </Section>
 
+          <Section title="Приоритет по сезону">
+            <PriorityMonths
+              qs={folderQs}
+              selectedGroup={selectedGroup}
+              onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+            />
+          </Section>
+
           {activeFolder && (
             <FolderCard
               key={activeFolder}
@@ -200,7 +209,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function PickerRow({
-  label, count, items, selected, onSelect, counts, countLabel, allowClear, emptyText,
+  label, count, items, selected, onSelect, counts, countLabel, allowClear, emptyText, hideSearch,
 }: {
   label: string;
   count: number;
@@ -211,22 +220,25 @@ function PickerRow({
   countLabel: string;
   allowClear?: boolean;
   emptyText?: string;
+  hideSearch?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const lower = search.trim().toLowerCase();
-  const filtered = lower ? items.filter((i) => i.toLowerCase().includes(lower)) : items;
+  const filtered = !hideSearch && lower ? items.filter((i) => i.toLowerCase().includes(lower)) : items;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium shrink-0 w-16">{label}</span>
-        <input
-          type="text"
-          placeholder={`Поиск (${count})...`}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-        />
+        {!hideSearch && (
+          <input
+            type="text"
+            placeholder={`Поиск (${count})...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 h-8 text-xs px-2 rounded-md border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        )}
         {allowClear && selected && (
           <button
             type="button"
@@ -236,8 +248,8 @@ function PickerRow({
             Сбросить
           </button>
         )}
-        <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-          {filtered.length}/{count}
+        <span className={`text-xs text-muted-foreground shrink-0 tabular-nums ${hideSearch ? "ml-auto" : ""}`}>
+          {hideSearch ? count : `${filtered.length}/${count}`}
         </span>
       </div>
       <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
@@ -284,6 +296,108 @@ function Kpi({ label, value, tone }: { label: string; value: string | number; to
     </Card>
   );
 }
+
+function PriorityMonths({
+  qs, selectedGroup, onSelectGroup,
+}: {
+  qs: ReturnType<typeof useStore.getState>["queries"];
+  selectedGroup: string | null;
+  onSelectGroup: (g: string) => void;
+}) {
+  const now = new Date().getMonth();
+
+  const items = useMemo(() => {
+    const byGroup = new Map<string, typeof qs>();
+    for (const q of qs) {
+      if (!byGroup.has(q.group)) byGroup.set(q.group, []);
+      byGroup.get(q.group)!.push(q);
+    }
+    return Array.from(byGroup.entries())
+      .map(([group, arr]) => {
+        const season = groupSeasonality(arr);
+        const rec = recommendedMonth(season);
+        const peak = peakMonth(season);
+        const dist = (rec - now + 12) % 12;
+        const priority = priorityForGroup(season);
+        return { group, rec, peak, dist, priority, hasSeason: season.some((v) => v > 0) };
+      })
+      .sort((a, b) => {
+        // no season data → bottom
+        if (a.hasSeason !== b.hasSeason) return a.hasSeason ? -1 : 1;
+        return a.dist - b.dist;
+      });
+  }, [qs, now]);
+
+  if (items.length === 0) {
+    return <div className="text-xs text-muted-foreground">Нет групп в выбранной папке</div>;
+  }
+
+  const tone = (p: "high" | "medium" | "low", hasSeason: boolean) => {
+    if (!hasSeason) return {
+      wrap: "bg-muted/40 border-border/40",
+      badge: "bg-muted text-muted-foreground",
+      label: "нет данных",
+    };
+    if (p === "high") return {
+      wrap: "bg-destructive/15 border-destructive/50 ring-1 ring-destructive/40 shadow-sm",
+      badge: "bg-destructive text-destructive-foreground",
+      label: "СЕЙЧАС",
+    };
+    if (p === "medium") return {
+      wrap: "bg-chart-4/15 border-chart-4/40",
+      badge: "bg-chart-4/70 text-foreground",
+      label: "СКОРО",
+    };
+    return {
+      wrap: "bg-muted/50 border-border/60",
+      badge: "bg-muted text-muted-foreground",
+      label: "позже",
+    };
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="text-[11px] text-muted-foreground px-1">
+        Рекомендуется начинать проработку за 2 месяца до пика сезонности. Текущий месяц: <b>{MONTHS[now]}</b>.
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        {items.map((it) => {
+          const t = tone(it.priority, it.hasSeason);
+          const active = it.group === selectedGroup;
+          return (
+            <button
+              key={it.group}
+              type="button"
+              onClick={() => onSelectGroup(it.group)}
+              className={`text-left rounded-lg border p-3 transition-all hover:scale-[1.01] ${t.wrap} ${
+                active ? "ring-2 ring-primary" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-sm font-medium truncate" title={it.group}>{it.group}</span>
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded shrink-0 ${t.badge}`}>
+                  {t.label}
+                </span>
+              </div>
+              <div className="text-[11px] text-muted-foreground flex items-center justify-between gap-2">
+                <span>
+                  Старт: <b className="text-foreground">{MONTHS[it.rec]}</b>
+                  {it.hasSeason && <> · пик: <b className="text-foreground">{MONTHS[it.peak]}</b></>}
+                </span>
+                {it.hasSeason && (
+                  <span className="tabular-nums">
+                    {it.dist === 0 ? "сейчас" : `через ${it.dist} мес.`}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 
 
