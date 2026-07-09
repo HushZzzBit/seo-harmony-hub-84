@@ -22,7 +22,13 @@ function ImportPage() {
     try {
       const rows = await readMatrix(file);
       if (kind === "topvisor") {
-        const parsed = parseTopvisorQueries(rows);
+        const lname = file.name.toLowerCase();
+        const engineHint = /google/.test(lname)
+          ? "google"
+          : /yandex|яндекс/.test(lname)
+          ? "yandex"
+          : undefined;
+        const parsed = parseTopvisorQueries(rows, { engineHint });
         upsertQueries(parsed);
         add(`Topvisor: загружено ${parsed.length} запросов из ${file.name}`);
         toast.success(`Загружено ${parsed.length} запросов`);
