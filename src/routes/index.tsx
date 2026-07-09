@@ -363,6 +363,8 @@ function FolderCard({
           texts={texts}
           selectedGroup={selectedGroup}
           onSelectGroup={setSelectedGroup}
+          folder={folder}
+          groupState={groupState}
         />
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
