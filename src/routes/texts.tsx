@@ -101,9 +101,9 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, search, statusFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, folder, category, search, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
-  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, sortKey, sortDir]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
 
