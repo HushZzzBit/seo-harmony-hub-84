@@ -167,6 +167,10 @@ function FolderCard({
   const top3Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 3).length;
   const top10Y = qs.filter((q) => (q.yandexPosition ?? 999) <= 10).length;
   const metaDone = Array.from(urlSet).filter((u) => metaEdits[u]?.title).length;
+  const doneUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "done").length;
+  const inCsvUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_csv").length;
+  const inProgUrls = Array.from(urlSet).filter((u) => metaEdits[u]?.status === "in_progress").length;
+  const donePctFolder = urlSet.size ? Math.round((doneUrls / urlSet.size) * 100) : 0;
   const textDone = Array.from(urlSet).filter((u) => texts[u]?.status === "ready" || texts[u]?.status === "published").length;
   const seasonality = groupSeasonality(qs);
   const chartData = seasonality.map((v, i) => ({ month: MONTHS[i], value: Math.round(v) }));
@@ -188,6 +192,26 @@ function FolderCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <div>
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-muted-foreground">Проработка URL</span>
+            <span className="tabular-nums font-medium">{doneUrls}/{urlSet.size} · {donePctFolder}%</span>
+          </div>
+          <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden flex">
+            {urlSet.size > 0 && (
+              <>
+                <div className="h-full bg-chart-2" style={{ width: `${(doneUrls / urlSet.size) * 100}%` }} title={`Готово: ${doneUrls}`} />
+                <div className="h-full bg-chart-1" style={{ width: `${(inCsvUrls / urlSet.size) * 100}%` }} title={`В файле CSV: ${inCsvUrls}`} />
+                <div className="h-full bg-chart-4" style={{ width: `${(inProgUrls / urlSet.size) * 100}%` }} title={`В работе: ${inProgUrls}`} />
+              </>
+            )}
+          </div>
+          <div className="flex gap-3 text-[10px] text-muted-foreground mt-1">
+            <span><span className="inline-block size-2 rounded-full bg-chart-2 mr-1 align-middle" />Готово {doneUrls}</span>
+            <span><span className="inline-block size-2 rounded-full bg-chart-1 mr-1 align-middle" />В CSV {inCsvUrls}</span>
+            <span><span className="inline-block size-2 rounded-full bg-chart-4 mr-1 align-middle" />В работе {inProgUrls}</span>
+          </div>
+        </div>
         <div className="grid grid-cols-4 gap-2 text-xs">
           <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
           <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
