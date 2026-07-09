@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
-import { extractWords, metaFor, pct, tokenize } from "@/lib/seo";
+import { extractWords, metaFor, tokenize } from "@/lib/seo";
 import type { Query, Status } from "@/lib/types";
 
 export const Route = createFileRoute("/meta")({
@@ -20,7 +20,7 @@ export const Route = createFileRoute("/meta")({
 type Row = { folder: string; group: string; url: string; qs: Query[] };
 
 function MetaPage() {
-  const { queries, urls, metaEdits } = useStore();
+  const { queries, metaEdits } = useStore();
   const [folder, setFolder] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -57,18 +57,18 @@ function MetaPage() {
         <div>
           <h1 className="text-2xl font-semibold">Meta Tags</h1>
           <p className="text-sm text-muted-foreground">
-            Инлайн-редактирование Title / Description / H1 с подсветкой Words
+            Инлайн-редактирование с подсветкой ключевых слов
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Input
-            placeholder="Поиск по URL / группе"
+            placeholder="Поиск"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-64 h-9"
+            className="w-56 h-9"
           />
           <Select value={folder} onValueChange={setFolder}>
-            <SelectTrigger className="w-52 h-9">
+            <SelectTrigger className="w-48 h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -81,55 +81,30 @@ function MetaPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40 h-9">
+            <SelectTrigger className="w-36 h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
               <SelectItem value="not_started">Не начато</SelectItem>
               <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="done">Завершено</SelectItem>
+              <SelectItem value="done">Готово</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-0 overflow-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground sticky top-0 z-10">
-              <tr>
-                <th className="text-left p-2 w-[180px]">Папка / Группа</th>
-                <th className="text-left p-2 w-[200px]">URL</th>
-                <th className="text-left p-2 min-w-[220px]">H1</th>
-                <th className="text-left p-2 min-w-[280px]">Title</th>
-                <th className="text-left p-2 min-w-[320px]">Description</th>
-                <th className="text-right p-2 w-[80px]">Частота</th>
-                <th className="text-right p-2 w-[70px]">Ср. поз</th>
-                <th className="text-right p-2 w-[70px]">TOP10</th>
-                <th className="text-right p-2 w-[70px]">Words</th>
-                <th className="text-left p-2 w-[140px]">Статус</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <MetaRow key={r.url || r.folder + r.group} row={r} />
-              ))}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="p-8 text-center text-muted-foreground">
-                    Нет строк. Загрузите данные во вкладке Import.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
-
-      <div className="mt-3 text-xs text-muted-foreground flex gap-4">
-        <span><span className="inline-block w-3 h-3 align-middle rounded-sm bg-chart-2/40 mr-1" />ключевое слово</span>
-        <span><span className="inline-block w-3 h-3 align-middle rounded-sm bg-chart-4/50 mr-1" />повтор</span>
+      <div className="space-y-2">
+        {rows.map((r) => (
+          <MetaRow key={r.url || r.folder + r.group} row={r} />
+        ))}
+        {rows.length === 0 && (
+          <Card>
+            <CardContent className="p-8 text-center text-muted-foreground text-sm">
+              Нет строк. Загрузите данные во вкладке Import.
+            </CardContent>
+          </Card>
+        )}
       </div>
     </AppShell>
   );
@@ -147,7 +122,6 @@ function MetaRow({ row }: { row: Row }) {
   const [h1, setH1] = useState(m.h1);
   const status: Status = metaEdits[row.url]?.status ?? "not_started";
 
-  // Sync when store changes externally (e.g. import)
   useEffect(() => {
     setTitle(m.title);
     setDesc(m.description);
@@ -156,11 +130,6 @@ function MetaRow({ row }: { row: Row }) {
   }, [m.title, m.description, m.h1]);
 
   const freq = row.qs.reduce((a, q) => a + (q.frequency || 0), 0);
-  const positions = row.qs.map((q) => q.googlePosition ?? 0).filter((n) => n > 0);
-  const avgPos = positions.length
-    ? (positions.reduce((a, b) => a + b, 0) / positions.length).toFixed(1)
-    : "—";
-  const top10 = row.qs.filter((q) => (q.googlePosition ?? 999) <= 10).length;
 
   const usedAll = useMemo(() => {
     const s = new Set<string>();
@@ -168,100 +137,169 @@ function MetaRow({ row }: { row: Row }) {
       for (const w of tokenize(t)) if (wordSet.has(w)) s.add(w);
     return s;
   }, [title, desc, h1, wordSet]);
-  const coverage = pct(usedAll.size, wordSet.size);
+
+  const coverage = wordSet.size ? Math.round((usedAll.size / wordSet.size) * 100) : 0;
 
   function save(patch: { title?: string; description?: string; h1?: string; status?: Status }) {
     if (!row.url) return;
     setMetaEdit(row.url, patch);
   }
 
+  const statusRing =
+    status === "done"
+      ? "border-l-chart-2"
+      : status === "in_progress"
+        ? "border-l-chart-4"
+        : "border-l-border";
+
   return (
-    <tr className="border-t border-border align-top hover:bg-muted/20">
-      <td className="p-2">
-        <div className="text-[11px] text-muted-foreground">{row.folder}</div>
-        <div className="font-medium text-xs leading-tight">{row.group}</div>
-      </td>
-      <td className="p-2">
-        <div className="text-[11px] font-mono text-muted-foreground break-all" title={row.url}>
-          {row.url || "—"}
+    <Card className={`border-l-4 ${statusRing}`}>
+      <CardContent className="p-3">
+        {/* Header row: URL + status + meta */}
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {row.folder} · {row.group}
+            </div>
+            <div className="text-xs font-mono text-foreground/80 truncate" title={row.url}>
+              {row.url || "—"}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-xs shrink-0">
+            <span className="text-muted-foreground">
+              Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span>
+            </span>
+            <span
+              className={
+                "tabular-nums " +
+                (coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground")
+              }
+              title={`${usedAll.size} из ${wordSet.size} ключевых слов`}
+            >
+              {coverage}%
+            </span>
+            <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
+              <SelectTrigger className="h-7 text-xs w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Не начато</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="done">Готово</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      </td>
-      <td className="p-1">
-        <EditableCell
-          value={h1}
-          onChange={setH1}
-          onCommit={(v) => save({ h1: v })}
-          words={wordSet}
-        />
-      </td>
-      <td className="p-1">
-        <EditableCell
-          value={title}
-          onChange={setTitle}
-          onCommit={(v) => save({ title: v })}
-          words={wordSet}
-          maxLen={60}
-        />
-      </td>
-      <td className="p-1">
-        <EditableCell
-          value={desc}
-          onChange={setDesc}
-          onCommit={(v) => save({ description: v })}
-          words={wordSet}
-          maxLen={160}
-          rows={2}
-        />
-      </td>
-      <td className="p-2 text-right tabular-nums">{freq || "—"}</td>
-      <td className="p-2 text-right tabular-nums">{avgPos}</td>
-      <td className="p-2 text-right tabular-nums">{pct(top10, row.qs.length)}%</td>
-      <td className="p-2 text-right tabular-nums">
-        <span
-          className={
-            coverage >= 70
-              ? "text-chart-2 font-medium"
-              : coverage >= 40
-                ? "text-chart-4"
-                : "text-muted-foreground"
-          }
-          title={`${usedAll.size} из ${wordSet.size}`}
-        >
-          {coverage}%
-        </span>
-      </td>
-      <td className="p-1">
-        <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
-          <SelectTrigger
-            className={
-              "h-8 text-xs " +
-              (status === "done"
-                ? "bg-chart-2/15 border-chart-2/40"
-                : status === "in_progress"
-                  ? "bg-chart-4/15 border-chart-4/40"
-                  : "")
-            }
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="not_started">Не начато</SelectItem>
-            <SelectItem value="in_progress">В работе</SelectItem>
-            <SelectItem value="done">Готово</SelectItem>
-          </SelectContent>
-        </Select>
-      </td>
-    </tr>
+
+        {/* Two-column: edits | keywords */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
+          <div className="space-y-1.5">
+            <Field label="H1">
+              <EditableCell value={h1} onChange={setH1} onCommit={(v) => save({ h1: v })} words={wordSet} />
+            </Field>
+            <Field label="Title" hint={`${title.length}/60`} over={title.length > 60}>
+              <EditableCell value={title} onChange={setTitle} onCommit={(v) => save({ title: v })} words={wordSet} maxLen={60} />
+            </Field>
+            <Field label="Description" hint={`${desc.length}/160`} over={desc.length > 160}>
+              <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
+            </Field>
+          </div>
+          <KeywordsPanel words={words} used={usedAll} />
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-/** Google-Sheets-style cell: textarea + highlighted preview underneath. Autosize + autosave on blur. */
+function Field({
+  label,
+  hint,
+  over,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  over?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-2 items-start">
+      <div className="w-20 shrink-0 pt-1.5">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
+        {hint && (
+          <div className={"text-[10px] tabular-nums " + (over ? "text-destructive" : "text-muted-foreground/70")}>
+            {hint}
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function KeywordsPanel({
+  words,
+  used,
+}: {
+  words: { word: string; count: number }[];
+  used: Set<string>;
+}) {
+  const missing = words.filter((w) => !used.has(w.word));
+  const hits = words.filter((w) => used.has(w.word));
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-2 text-xs max-h-[180px] overflow-auto">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Ключевые слова
+        </span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">
+          {hits.length}/{words.length}
+        </span>
+      </div>
+      {missing.length > 0 && (
+        <div className="mb-1.5">
+          <div className="text-[10px] text-muted-foreground mb-1">Не хватает</div>
+          <div className="flex flex-wrap gap-1">
+            {missing.map((w) => (
+              <span
+                key={w.word}
+                className="px-1.5 py-0.5 rounded bg-destructive/10 text-destructive text-[11px]"
+                title={`встречается в ${w.count} запросах`}
+              >
+                {w.word}
+                {w.count > 1 && <span className="ml-1 opacity-60">·{w.count}</span>}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {hits.length > 0 && (
+        <div>
+          <div className="text-[10px] text-muted-foreground mb-1">Есть</div>
+          <div className="flex flex-wrap gap-1">
+            {hits.map((w) => (
+              <span
+                key={w.word}
+                className="px-1.5 py-0.5 rounded bg-chart-2/15 text-chart-2 text-[11px]"
+              >
+                {w.word}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      {words.length === 0 && (
+        <div className="text-muted-foreground text-[11px]">Нет запросов</div>
+      )}
+    </div>
+  );
+}
+
 function EditableCell({
   value,
   onChange,
   onCommit,
   words,
-  maxLen,
   rows = 1,
 }: {
   value: string;
@@ -282,18 +320,13 @@ function EditableCell({
     autosize();
   }, [value]);
 
-  const len = value.length;
-  const over = maxLen != null && len > maxLen;
-
   return (
-    <div className="group">
+    <div>
       <textarea
         ref={ref}
         rows={rows}
         value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-        }}
+        onChange={(e) => onChange(e.target.value)}
         onBlur={(e) => onCommit(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
@@ -301,20 +334,14 @@ function EditableCell({
             (e.target as HTMLTextAreaElement).blur();
           }
         }}
-        className="w-full resize-none bg-transparent text-xs leading-snug rounded px-1.5 py-1 border border-transparent hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        className="w-full resize-none bg-transparent text-xs leading-snug rounded px-1.5 py-1 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        spellCheck={false}
       />
-      <div className="px-1.5 pb-1 pt-0.5 flex items-start justify-between gap-2">
-        <Highlighted text={value} words={words} />
-        <span
-          className={
-            "text-[10px] tabular-nums shrink-0 " +
-            (over ? "text-destructive font-medium" : "text-muted-foreground")
-          }
-        >
-          {len}
-          {maxLen ? `/${maxLen}` : ""}
-        </span>
-      </div>
+      {value && (
+        <div className="px-1.5 pt-0.5 text-[11px] leading-snug break-words">
+          <Highlighted text={value} words={words} />
+        </div>
+      )}
     </div>
   );
 }
@@ -323,25 +350,27 @@ function Highlighted({ text, words }: { text: string; words: Set<string> }) {
   const seen = new Map<string, number>();
   const parts = text.split(/(\s+)/);
   return (
-    <div className="text-[11px] leading-tight break-words min-w-0">
+    <span className="text-muted-foreground/70">
       {parts.map((p, i) => {
-        const norm = p
-          .toLowerCase()
-          .replace(/ё/g, "е")
-          .replace(/[^a-zа-я0-9]/gi, "");
+        const norm = p.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/gi, "");
         if (!norm) return <span key={i}>{p}</span>;
-        const isKw = words.has(norm);
-        if (!isKw) return <span key={i} className="text-muted-foreground/60">{p}</span>;
+        if (!words.has(norm)) return <span key={i}>{p}</span>;
         const count = (seen.get(norm) ?? 0) + 1;
         seen.set(norm, count);
-        const cls =
-          count > 1 ? "bg-chart-4/50 rounded px-0.5" : "bg-chart-2/40 rounded px-0.5";
         return (
-          <span key={i} className={cls}>
+          <span
+            key={i}
+            className={
+              count > 1
+                ? "bg-chart-4/50 rounded px-0.5 text-foreground"
+                : "bg-chart-2/40 rounded px-0.5 text-foreground"
+            }
+          >
             {p}
           </span>
         );
       })}
-    </div>
+    </span>
   );
 }
+
