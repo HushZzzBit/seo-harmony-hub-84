@@ -15,11 +15,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen text-foreground flex gap-4 p-4">
       <aside className="glass rounded-3xl w-60 p-3 flex flex-col gap-1 sticky top-4 h-[calc(100vh-2rem)] shrink-0">
         <div className="px-3 py-4 mb-2 flex items-center gap-2.5">
-          <div className="size-9 rounded-xl grid place-items-center bg-gradient-to-br from-primary to-chart-5 text-primary-foreground shadow-md">
-            <Sparkles className="size-4" />
+          <div className="size-9 rounded-xl overflow-hidden bg-white shadow-md grid place-items-center">
+            <img src={logoAsset.url} alt="SEO GGSEL" className="size-full object-contain" />
           </div>
           <div>
-            <div className="text-sm font-semibold tracking-tight">SEO Analytics</div>
+            <div className="text-sm font-semibold tracking-tight">SEO GGSEL</div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Studio
             </div>
