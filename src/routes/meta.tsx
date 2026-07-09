@@ -157,9 +157,11 @@ function MetaRow({ row }: { row: Row }) {
   const statusRing =
     status === "done"
       ? "border-l-chart-2"
-      : status === "in_progress"
-        ? "border-l-chart-4"
-        : "border-l-border";
+      : status === "in_csv"
+        ? "border-l-chart-1"
+        : status === "in_progress"
+          ? "border-l-chart-4"
+          : "border-l-border";
 
   return (
     <Card className={`border-l-4 ${statusRing}`}>
@@ -194,12 +196,13 @@ function MetaRow({ row }: { row: Row }) {
               {coverage}%
             </span>
             <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
-              <SelectTrigger className="h-7 text-xs w-32">
+              <SelectTrigger className="h-7 text-xs w-36">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="not_started">Не начато</SelectItem>
                 <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="in_csv">В файле CSV</SelectItem>
                 <SelectItem value="done">Готово</SelectItem>
               </SelectContent>
             </Select>
