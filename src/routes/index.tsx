@@ -396,22 +396,31 @@ function FolderCard({
           <span>Старт работ: <b className="text-foreground">{MONTHS[rec]}</b></span>
           <span>Приоритет: <b className="text-foreground">{priorityForGroup(seasonality)}</b></span>
         </div>
-        <div className="flex items-center gap-2 pt-1">
-          <Select value={status} onValueChange={(v) => onChangeStatus(v as Status)}>
-            <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="done">Завершено</SelectItem>
-            </SelectContent>
-          </Select>
-          <input
-            type="date"
-            className="h-8 text-xs px-2 rounded-md border border-input bg-background"
-            value={state?.plannedDate ?? ""}
-            onChange={(e) => onChangePlan(e.target.value)}
-          />
-        </div>
+        {selectedGroup && (
+          <div className="flex items-center gap-2 pt-2 border-t border-border/60">
+            <Badge className={statusColor[groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"]}>
+              {statusLabel[groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"]}
+            </Badge>
+            <Select
+              value={groupState[`${folder}::${selectedGroup}`]?.status ?? "not_started"}
+              onValueChange={(v) => setGroupState(folder, selectedGroup, { status: v as Status })}
+            >
+              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_started">Не начато</SelectItem>
+                <SelectItem value="in_progress">В работе</SelectItem>
+                <SelectItem value="in_csv">В файле CSV</SelectItem>
+                <SelectItem value="done">Завершено</SelectItem>
+              </SelectContent>
+            </Select>
+            <input
+              type="date"
+              className="h-8 text-xs px-2 rounded-md border border-input bg-background"
+              value={groupState[`${folder}::${selectedGroup}`]?.plannedDate ?? ""}
+              onChange={(e) => setGroupState(folder, selectedGroup, { plannedDate: e.target.value })}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
