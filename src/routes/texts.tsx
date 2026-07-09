@@ -82,7 +82,7 @@ function TextsPage() {
       const prio = priorityForGroup(seasonality);
       const dist = (recommendedMonth(seasonality) - now + 12) % 12;
       return { r, t, uRow, seasonality, planMonth, has, len, prio, dist };
-    });
+    }).filter((e) => priorityFilter === "all" || e.prio === priorityFilter);
 
     const dir = sortDir === "asc" ? 1 : -1;
     const cmp = (a: typeof enriched[number], b: typeof enriched[number]): number => {
