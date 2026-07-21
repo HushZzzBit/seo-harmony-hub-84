@@ -442,6 +442,45 @@ const MetaRow = memo(function MetaRow({
   const [h1, setH1] = useState(m.h1);
   const [expanded, setExpanded] = useState(false);
   const status: Status = metaEdit?.status ?? "not_started";
+  const [generating, setGenerating] = useState(false);
+  const generateMetaFn = useServerFn(generateMeta);
+
+  async function runAi() {
+    if (!row.url) return;
+    setGenerating(true);
+    try {
+      const result = await generateMetaFn({
+        data: {
+          url: row.url,
+          folder: row.folder,
+          group: row.group,
+          phrases: row.qs.map((q) => ({
+            phrase: q.phrase,
+            frequency: q.frequency,
+            googlePosition: q.googlePosition,
+            yandexPosition: q.yandexPosition,
+          })),
+          currentTitle: title || undefined,
+          currentDescription: desc || undefined,
+          currentH1: h1 || undefined,
+        },
+      });
+      setTitle(result.title);
+      setDesc(result.description);
+      setH1(result.h1);
+      setMetaEdit(row.url, {
+        title: result.title,
+        description: result.description,
+        h1: result.h1,
+      });
+      toast.success("Мета-теги сгенерированы");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Ошибка генерации";
+      toast.error(msg);
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   useEffect(() => {
     setTitle(m.title);
