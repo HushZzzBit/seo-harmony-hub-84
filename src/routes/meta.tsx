@@ -15,9 +15,12 @@ import {
   tokenize,
 } from "@/lib/seo";
 import type { Priority, Query, Status } from "@/lib/types";
-import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
+import { generateMeta } from "@/lib/openai.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
