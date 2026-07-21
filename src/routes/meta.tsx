@@ -312,13 +312,13 @@ function MetaPage() {
                 type="button"
                 disabled={selected.size === 0 || bulkGenerating}
                 onClick={async () => {
-                  const urls = Array.from(selected).filter(Boolean);
-                  if (urls.length === 0) return;
+                  const targetUrls = Array.from(selected).filter(Boolean);
+                  if (targetUrls.length === 0) return;
                   setBulkGenerating(true);
                   const byUrl = new Map(rows.map((e) => [e.r.url, e.r] as const));
                   let ok = 0;
                   let fail = 0;
-                  for (const u of urls) {
+                  for (const u of targetUrls) {
                     const r = byUrl.get(u);
                     if (!r) { fail++; continue; }
                     try {
