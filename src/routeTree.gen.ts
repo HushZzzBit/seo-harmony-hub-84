@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TextsRouteImport } from './routes/texts'
+import { Route as PromptsRouteImport } from './routes/prompts'
 import { Route as MetaRouteImport } from './routes/meta'
 import { Route as ImportRouteImport } from './routes/import'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TextsRoute = TextsRouteImport.update({
   id: '/texts',
   path: '/texts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PromptsRoute = PromptsRouteImport.update({
+  id: '/prompts',
+  path: '/prompts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetaRoute = MetaRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/import': typeof ImportRoute
   '/meta': typeof MetaRoute
+  '/prompts': typeof PromptsRoute
   '/texts': typeof TextsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/import': typeof ImportRoute
   '/meta': typeof MetaRoute
+  '/prompts': typeof PromptsRoute
   '/texts': typeof TextsRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/import': typeof ImportRoute
   '/meta': typeof MetaRoute
+  '/prompts': typeof PromptsRoute
   '/texts': typeof TextsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/import' | '/meta' | '/texts'
+  fullPaths: '/' | '/import' | '/meta' | '/prompts' | '/texts'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/import' | '/meta' | '/texts'
-  id: '__root__' | '/' | '/import' | '/meta' | '/texts'
+  to: '/' | '/import' | '/meta' | '/prompts' | '/texts'
+  id: '__root__' | '/' | '/import' | '/meta' | '/prompts' | '/texts'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ImportRoute: typeof ImportRoute
   MetaRoute: typeof MetaRoute
+  PromptsRoute: typeof PromptsRoute
   TextsRoute: typeof TextsRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/texts'
       fullPath: '/texts'
       preLoaderRoute: typeof TextsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prompts': {
+      id: '/prompts'
+      path: '/prompts'
+      fullPath: '/prompts'
+      preLoaderRoute: typeof PromptsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/meta': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ImportRoute: ImportRoute,
   MetaRoute: MetaRoute,
+  PromptsRoute: PromptsRoute,
   TextsRoute: TextsRoute,
 }
 export const routeTree = rootRouteImport
