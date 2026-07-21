@@ -62,6 +62,9 @@ function MetaPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
 
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const generateMetaFn = useServerFn(generateMeta);
+
   const handleToggleSelect = useCallback((url: string, v: boolean) => {
     if (!url) return;
     setSelected((prev) => {
