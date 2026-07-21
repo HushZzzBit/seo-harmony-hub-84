@@ -333,7 +333,7 @@ function MetaPage() {
                             googlePosition: q.googlePosition,
                             yandexPosition: q.yandexPosition,
                           })),
-                          currentTitle: metaFor(u, urls as unknown as Record<string, never>, metaEdits).title || undefined,
+                          currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
                         },
                       });
                       setMetaEdit(u, {
