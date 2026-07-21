@@ -568,6 +568,16 @@ const MetaRow = memo(function MetaRow({
           >
             {coverage}%
           </span>
+          <button
+            type="button"
+            onClick={runAi}
+            disabled={generating || !row.url}
+            title="Сгенерировать мета-теги через AI"
+            className="h-7 px-2 shrink-0 rounded-md border border-primary/40 text-primary text-xs inline-flex items-center gap-1 hover:bg-primary/10 disabled:opacity-40 transition"
+          >
+            {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            AI
+          </button>
           <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
             <SelectTrigger className="h-7 text-xs w-36 shrink-0">
               <SelectValue />
