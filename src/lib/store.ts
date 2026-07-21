@@ -55,6 +55,7 @@ import type {
   GroupState,
   MetaEdit,
   MetaHistoryEntry,
+  PromptTemplate,
   Query,
   TextRow,
   UrlRow,
@@ -68,6 +69,8 @@ interface State {
   texts: Record<string, TextRow>;
   folderState: Record<string, FolderState>;
   groupState: Record<string, GroupState>;
+  /** Prompt templates. Key: folder name, or "__default" for the global template. */
+  prompts: Record<string, PromptTemplate>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -76,8 +79,11 @@ interface State {
   setText: (url: string, patch: Partial<TextRow>) => void;
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
   setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
+  setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
+  resetPrompt: (folder: string) => void;
   clearAll: () => void;
 }
+
 
 export const useStore = create<State>()(
   persist(
