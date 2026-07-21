@@ -310,6 +310,56 @@ function MetaPage() {
               >Применить</button>
               <button
                 type="button"
+                disabled={selected.size === 0 || bulkGenerating}
+                onClick={async () => {
+                  const urls = Array.from(selected).filter(Boolean);
+                  if (urls.length === 0) return;
+                  setBulkGenerating(true);
+                  const byUrl = new Map(rows.map((e) => [e.r.url, e.r] as const));
+                  let ok = 0;
+                  let fail = 0;
+                  for (const u of urls) {
+                    const r = byUrl.get(u);
+                    if (!r) { fail++; continue; }
+                    try {
+                      const result = await generateMetaFn({
+                        data: {
+                          url: r.url,
+                          folder: r.folder,
+                          group: r.group,
+                          phrases: r.qs.map((q) => ({
+                            phrase: q.phrase,
+                            frequency: q.frequency,
+                            googlePosition: q.googlePosition,
+                            yandexPosition: q.yandexPosition,
+                          })),
+                          currentTitle: metaFor(u, urls as unknown as Record<string, never>, metaEdits).title || undefined,
+                        },
+                      });
+                      setMetaEdit(u, {
+                        title: result.title,
+                        description: result.description,
+                        h1: result.h1,
+                      });
+                      ok++;
+                    } catch (e) {
+                      console.error(e);
+                      fail++;
+                    }
+                  }
+                  setBulkGenerating(false);
+                  toast[fail === 0 ? "success" : "warning"](
+                    `AI: сгенерировано ${ok}${fail ? `, ошибок: ${fail}` : ""}`,
+                  );
+                }}
+                className="h-8 px-3 text-xs rounded-md border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-40 transition inline-flex items-center gap-1"
+                title="Сгенерировать мета-теги через AI для выбранных"
+              >
+                {bulkGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                AI генерация
+              </button>
+              <button
+                type="button"
                 disabled={selected.size === 0}
                 onClick={() => setSelected(new Set())}
                 className="h-8 px-2 text-xs rounded-md hover:bg-accent transition disabled:opacity-40"
