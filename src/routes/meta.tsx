@@ -450,11 +450,13 @@ const MetaRow = memo(function MetaRow({
   const status: Status = metaEdit?.status ?? "not_started";
   const [generating, setGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
+  const folderPrompts = useStore((s) => s.prompts);
 
   async function runAi() {
     if (!row.url) return;
     setGenerating(true);
     try {
+      const p = resolvePrompt(folderPrompts, row.folder);
       const result = await generateMetaFn({
         data: {
           url: row.url,
@@ -469,6 +471,9 @@ const MetaRow = memo(function MetaRow({
           currentTitle: title || undefined,
           currentDescription: desc || undefined,
           currentH1: h1 || undefined,
+          systemPrompt: p.systemPrompt,
+          promptTemplate: p.userPrompt,
+          model: p.model,
         },
       });
       setTitle(result.title);
