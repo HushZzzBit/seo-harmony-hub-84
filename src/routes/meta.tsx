@@ -323,21 +323,25 @@ function MetaPage() {
                   for (const u of targetUrls) {
                     const r = byUrl.get(u);
                     if (!r) { fail++; continue; }
-                    try {
-                      const result = await generateMetaFn({
-                        data: {
-                          url: r.url,
-                          folder: r.folder,
-                          group: r.group,
-                          phrases: r.qs.map((q) => ({
-                            phrase: q.phrase,
-                            frequency: q.frequency,
-                            googlePosition: q.googlePosition,
-                            yandexPosition: q.yandexPosition,
-                          })),
-                          currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
-                        },
-                      });
+                     try {
+                       const p = resolvePrompt(prompts, r.folder);
+                       const result = await generateMetaFn({
+                         data: {
+                           url: r.url,
+                           folder: r.folder,
+                           group: r.group,
+                           phrases: r.qs.map((q) => ({
+                             phrase: q.phrase,
+                             frequency: q.frequency,
+                             googlePosition: q.googlePosition,
+                             yandexPosition: q.yandexPosition,
+                           })),
+                           currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
+                           systemPrompt: p.systemPrompt,
+                           promptTemplate: p.userPrompt,
+                           model: p.model,
+                         },
+                       });
                       setMetaEdit(u, {
                         title: result.title,
                         description: result.description,
