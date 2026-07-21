@@ -153,6 +153,20 @@ export const useStore = create<State>()(
         const prev = get().groupState[key] ?? { status: "not_started" as const };
         set({ groupState: { ...get().groupState, [key]: { ...prev, ...patch } } });
       },
+      setPrompt: (folder, patch) => {
+        const prev = get().prompts[folder] ?? {};
+        set({
+          prompts: {
+            ...get().prompts,
+            [folder]: { ...prev, ...patch, updatedAt: Date.now() },
+          },
+        });
+      },
+      resetPrompt: (folder) => {
+        const next = { ...get().prompts };
+        delete next[folder];
+        set({ prompts: next });
+      },
       clearAll: () =>
         set({
           queries: [],
@@ -162,7 +176,9 @@ export const useStore = create<State>()(
           texts: {},
           folderState: {},
           groupState: {},
+          prompts: {},
         }),
+
     }),
     {
       name: "seo-analytics-v1",
