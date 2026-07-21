@@ -19,6 +19,7 @@ import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import { generateMeta } from "@/lib/openai.functions";
+import { resolvePrompt } from "@/routes/prompts";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
