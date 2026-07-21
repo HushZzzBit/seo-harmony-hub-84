@@ -15,9 +15,12 @@ import {
   tokenize,
 } from "@/lib/seo";
 import type { Priority, Query, Status } from "@/lib/types";
-import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
+import { generateMeta } from "@/lib/openai.functions";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
@@ -58,6 +61,9 @@ function MetaPage() {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
+
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const generateMetaFn = useServerFn(generateMeta);
 
   const handleToggleSelect = useCallback((url: string, v: boolean) => {
     if (!url) return;
@@ -304,6 +310,56 @@ function MetaPage() {
               >Применить</button>
               <button
                 type="button"
+                disabled={selected.size === 0 || bulkGenerating}
+                onClick={async () => {
+                  const targetUrls = Array.from(selected).filter(Boolean);
+                  if (targetUrls.length === 0) return;
+                  setBulkGenerating(true);
+                  const byUrl = new Map(rows.map((e) => [e.r.url, e.r] as const));
+                  let ok = 0;
+                  let fail = 0;
+                  for (const u of targetUrls) {
+                    const r = byUrl.get(u);
+                    if (!r) { fail++; continue; }
+                    try {
+                      const result = await generateMetaFn({
+                        data: {
+                          url: r.url,
+                          folder: r.folder,
+                          group: r.group,
+                          phrases: r.qs.map((q) => ({
+                            phrase: q.phrase,
+                            frequency: q.frequency,
+                            googlePosition: q.googlePosition,
+                            yandexPosition: q.yandexPosition,
+                          })),
+                          currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
+                        },
+                      });
+                      setMetaEdit(u, {
+                        title: result.title,
+                        description: result.description,
+                        h1: result.h1,
+                      });
+                      ok++;
+                    } catch (e) {
+                      console.error(e);
+                      fail++;
+                    }
+                  }
+                  setBulkGenerating(false);
+                  toast[fail === 0 ? "success" : "warning"](
+                    `AI: сгенерировано ${ok}${fail ? `, ошибок: ${fail}` : ""}`,
+                  );
+                }}
+                className="h-8 px-3 text-xs rounded-md border border-primary/40 text-primary hover:bg-primary/10 disabled:opacity-40 transition inline-flex items-center gap-1"
+                title="Сгенерировать мета-теги через AI для выбранных"
+              >
+                {bulkGenerating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                AI генерация
+              </button>
+              <button
+                type="button"
                 disabled={selected.size === 0}
                 onClick={() => setSelected(new Set())}
                 className="h-8 px-2 text-xs rounded-md hover:bg-accent transition disabled:opacity-40"
@@ -386,6 +442,45 @@ const MetaRow = memo(function MetaRow({
   const [h1, setH1] = useState(m.h1);
   const [expanded, setExpanded] = useState(false);
   const status: Status = metaEdit?.status ?? "not_started";
+  const [generating, setGenerating] = useState(false);
+  const generateMetaFn = useServerFn(generateMeta);
+
+  async function runAi() {
+    if (!row.url) return;
+    setGenerating(true);
+    try {
+      const result = await generateMetaFn({
+        data: {
+          url: row.url,
+          folder: row.folder,
+          group: row.group,
+          phrases: row.qs.map((q) => ({
+            phrase: q.phrase,
+            frequency: q.frequency,
+            googlePosition: q.googlePosition,
+            yandexPosition: q.yandexPosition,
+          })),
+          currentTitle: title || undefined,
+          currentDescription: desc || undefined,
+          currentH1: h1 || undefined,
+        },
+      });
+      setTitle(result.title);
+      setDesc(result.description);
+      setH1(result.h1);
+      setMetaEdit(row.url, {
+        title: result.title,
+        description: result.description,
+        h1: result.h1,
+      });
+      toast.success("Мета-теги сгенерированы");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Ошибка генерации";
+      toast.error(msg);
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   useEffect(() => {
     setTitle(m.title);
@@ -473,6 +568,16 @@ const MetaRow = memo(function MetaRow({
           >
             {coverage}%
           </span>
+          <button
+            type="button"
+            onClick={runAi}
+            disabled={generating || !row.url}
+            title="Сгенерировать мета-теги через AI"
+            className="h-7 px-2 shrink-0 rounded-md border border-primary/40 text-primary text-xs inline-flex items-center gap-1 hover:bg-primary/10 disabled:opacity-40 transition"
+          >
+            {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+            AI
+          </button>
           <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
             <SelectTrigger className="h-7 text-xs w-36 shrink-0">
               <SelectValue />
