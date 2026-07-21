@@ -65,3 +65,11 @@ export interface GroupState {
   status: Status;
   plannedDate?: string;
 }
+
+export interface PromptTemplate {
+  systemPrompt?: string;
+  userPrompt?: string;
+  model?: string;
+  updatedAt?: number;
+}
+

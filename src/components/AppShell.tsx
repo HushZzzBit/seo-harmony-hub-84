@@ -1,14 +1,16 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { BarChart3, FileText, Tags, Upload } from "lucide-react";
+import { BarChart3, FileText, Tags, Upload, Wand2 } from "lucide-react";
 import logoAsset from "@/assets/seo-ggsel-logo.png.asset.json";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
   { to: "/meta", label: "Meta Tags", icon: Tags },
   { to: "/texts", label: "SEO Texts", icon: FileText },
+  { to: "/prompts", label: "AI Промты", icon: Wand2 },
   { to: "/import", label: "Import / Export", icon: Upload },
 ];
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (

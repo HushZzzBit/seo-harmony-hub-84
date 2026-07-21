@@ -19,6 +19,7 @@ import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import { generateMeta } from "@/lib/openai.functions";
+import { resolvePrompt } from "@/routes/prompts";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
@@ -51,6 +52,7 @@ function MetaPage() {
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
   const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const prompts = useStore((s) => s.prompts);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -321,21 +323,25 @@ function MetaPage() {
                   for (const u of targetUrls) {
                     const r = byUrl.get(u);
                     if (!r) { fail++; continue; }
-                    try {
-                      const result = await generateMetaFn({
-                        data: {
-                          url: r.url,
-                          folder: r.folder,
-                          group: r.group,
-                          phrases: r.qs.map((q) => ({
-                            phrase: q.phrase,
-                            frequency: q.frequency,
-                            googlePosition: q.googlePosition,
-                            yandexPosition: q.yandexPosition,
-                          })),
-                          currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
-                        },
-                      });
+                     try {
+                       const p = resolvePrompt(prompts, r.folder);
+                       const result = await generateMetaFn({
+                         data: {
+                           url: r.url,
+                           folder: r.folder,
+                           group: r.group,
+                           phrases: r.qs.map((q) => ({
+                             phrase: q.phrase,
+                             frequency: q.frequency,
+                             googlePosition: q.googlePosition,
+                             yandexPosition: q.yandexPosition,
+                           })),
+                           currentTitle: (metaEdits[u]?.title ?? urls[u]?.title) || undefined,
+                           systemPrompt: p.systemPrompt,
+                           promptTemplate: p.userPrompt,
+                           model: p.model,
+                         },
+                       });
                       setMetaEdit(u, {
                         title: result.title,
                         description: result.description,
@@ -444,11 +450,13 @@ const MetaRow = memo(function MetaRow({
   const status: Status = metaEdit?.status ?? "not_started";
   const [generating, setGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
+  const folderPrompts = useStore((s) => s.prompts);
 
   async function runAi() {
     if (!row.url) return;
     setGenerating(true);
     try {
+      const p = resolvePrompt(folderPrompts, row.folder);
       const result = await generateMetaFn({
         data: {
           url: row.url,
@@ -463,6 +471,9 @@ const MetaRow = memo(function MetaRow({
           currentTitle: title || undefined,
           currentDescription: desc || undefined,
           currentH1: h1 || undefined,
+          systemPrompt: p.systemPrompt,
+          promptTemplate: p.userPrompt,
+          model: p.model,
         },
       });
       setTitle(result.title);

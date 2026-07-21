@@ -55,6 +55,7 @@ import type {
   GroupState,
   MetaEdit,
   MetaHistoryEntry,
+  PromptTemplate,
   Query,
   TextRow,
   UrlRow,
@@ -68,6 +69,8 @@ interface State {
   texts: Record<string, TextRow>;
   folderState: Record<string, FolderState>;
   groupState: Record<string, GroupState>;
+  /** Prompt templates. Key: folder name, or "__default" for the global template. */
+  prompts: Record<string, PromptTemplate>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -76,8 +79,11 @@ interface State {
   setText: (url: string, patch: Partial<TextRow>) => void;
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
   setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
+  setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
+  resetPrompt: (folder: string) => void;
   clearAll: () => void;
 }
+
 
 export const useStore = create<State>()(
   persist(
@@ -89,6 +95,8 @@ export const useStore = create<State>()(
       texts: {},
       folderState: {},
       groupState: {},
+      prompts: {},
+
 
       upsertQueries: (rows) => {
         const map = new Map(get().queries.map((q) => [q.id, q]));
@@ -145,6 +153,20 @@ export const useStore = create<State>()(
         const prev = get().groupState[key] ?? { status: "not_started" as const };
         set({ groupState: { ...get().groupState, [key]: { ...prev, ...patch } } });
       },
+      setPrompt: (folder, patch) => {
+        const prev = get().prompts[folder] ?? {};
+        set({
+          prompts: {
+            ...get().prompts,
+            [folder]: { ...prev, ...patch, updatedAt: Date.now() },
+          },
+        });
+      },
+      resetPrompt: (folder) => {
+        const next = { ...get().prompts };
+        delete next[folder];
+        set({ prompts: next });
+      },
       clearAll: () =>
         set({
           queries: [],
@@ -154,7 +176,9 @@ export const useStore = create<State>()(
           texts: {},
           folderState: {},
           groupState: {},
+          prompts: {},
         }),
+
     }),
     {
       name: "seo-analytics-v1",
