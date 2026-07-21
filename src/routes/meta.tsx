@@ -52,6 +52,7 @@ function MetaPage() {
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
   const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const prompts = useStore((s) => s.prompts);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
