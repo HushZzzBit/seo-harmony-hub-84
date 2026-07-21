@@ -95,6 +95,8 @@ export const useStore = create<State>()(
       texts: {},
       folderState: {},
       groupState: {},
+      prompts: {},
+
 
       upsertQueries: (rows) => {
         const map = new Map(get().queries.map((q) => [q.id, q]));
