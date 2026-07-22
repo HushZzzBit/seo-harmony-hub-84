@@ -525,6 +525,18 @@ const MetaRow = memo(function MetaRow({
     setMetaEdit(row.url, patch);
   }
 
+  const source: MetaSource = metaEdit?.source ?? "manual";
+  const sourceLabel: Record<MetaSource, string> = {
+    ai: "АИ",
+    manual: "Руч",
+    "ai+manual": "АИ + Руч",
+  };
+  const sourceStyle: Record<MetaSource, string> = {
+    ai: "bg-primary/15 text-primary border-primary/30",
+    manual: "bg-muted text-muted-foreground border-border",
+    "ai+manual": "bg-chart-1/15 text-chart-1 border-chart-1/30",
+  };
+
   const statusRing =
     status === "done"
       ? "border-l-chart-2"
