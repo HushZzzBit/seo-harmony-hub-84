@@ -632,9 +632,13 @@ const MetaRow = memo(function MetaRow({
           </div>
         )}
 
-        {/* Two-column: edits | keywords */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
-          <div className="space-y-1.5">
+        {/* Two-column: editor (work area) | preview (result) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Left: working area */}
+          <div className="rounded-md border border-border bg-background/40 p-2 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 pb-0.5">
+              Редактирование
+            </div>
             <Field label="H1">
               <EditableCell value={h1} onChange={setH1} onCommit={(v) => save({ h1: v })} words={wordSet} />
             </Field>
@@ -645,10 +649,16 @@ const MetaRow = memo(function MetaRow({
               <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
             </Field>
           </div>
-          <div className="space-y-2 min-w-0">
-            <KeywordsPanel words={words} used={usedAll} />
-            <PhrasesPanel qs={row.qs} texts={[title, desc, h1]} />
-          </div>
+          {/* Right: preview / result */}
+          <MetaPreview
+            title={title}
+            desc={desc}
+            h1={h1}
+            words={words}
+            used={usedAll}
+            coverage={coverage}
+            qs={row.qs}
+          />
         </div>
       </CardContent>
     </Card>
@@ -772,6 +782,83 @@ function PhrasesPanel({ qs, texts }: { qs: Query[]; texts: string[] }) {
     </div>
   );
 }
+
+function highlightHtml(text: string, words: Set<string>) {
+  if (!text) return "";
+  const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+  return escape(text).replace(/([a-zа-я0-9]+)/gi, (m) => {
+    const norm = m.toLowerCase().replace(/ё/g, "е");
+    return words.has(norm) ? `<mark>${m}</mark>` : m;
+  });
+}
+
+function MetaPreview({
+  title,
+  desc,
+  h1,
+  words,
+  used,
+  coverage,
+  qs,
+}: {
+  title: string;
+  desc: string;
+  h1: string;
+  words: { word: string; count: number }[];
+  used: Set<string>;
+  coverage: number;
+  qs: Query[];
+}) {
+  const [tab, setTab] = useState<"preview" | "keys" | "phrases">("preview");
+  const wordSet = useMemo(() => new Set(words.map((w) => w.word)), [words]);
+  const covColor =
+    coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground";
+  const tabBtn = (k: typeof tab, label: string) => (
+    <button
+      type="button"
+      onClick={() => setTab(k)}
+      className={
+        "px-2 py-0.5 rounded text-[10px] uppercase tracking-wide transition " +
+        (tab === k ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
+      }
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-2 flex flex-col min-w-0">
+      <div className="flex items-center justify-between mb-1.5 gap-2">
+        <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
+          {tabBtn("preview", "Итог")}
+          {tabBtn("keys", `Слова ${used.size}/${wordSet.size}`)}
+          {tabBtn("phrases", `Фразы ${qs.length}`)}
+        </div>
+        <span className={"text-[11px] tabular-nums shrink-0 " + covColor} title="Покрытие ключевых слов">
+          {coverage}%
+        </span>
+      </div>
+      {tab === "preview" && (
+        <div className="kw-preview space-y-2 text-sm px-1 py-1">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">H1</div>
+            <div className="font-semibold leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(h1, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Title</div>
+            <div className="text-primary leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(title, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Description</div>
+            <div className="text-xs text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: highlightHtml(desc, wordSet) || '<span class="text-muted-foreground italic">пусто</span>' }} />
+          </div>
+        </div>
+      )}
+      {tab === "keys" && <KeywordsPanel words={words} used={used} />}
+      {tab === "phrases" && <PhrasesPanel qs={qs} texts={[title, desc, h1]} />}
+    </div>
+  );
+}
+
 
 
 function Field({
