@@ -778,15 +778,15 @@ function QualityPanel({ url }: { url: string }) {
   const run = useQualityRunner();
   if (!url) return null;
   return (
-    <div className="border-t bg-muted/30 px-5 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${overallDot[check?.overall ?? "checking"]}`} />
-          <span className="text-sm font-medium">
+    <div className="border-t bg-muted/20 px-5 py-3">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[check?.overall ?? "checking"]}`} />
+          <span className="text-sm font-medium truncate">
             {check ? overallLabel[check.overall] : "Проверка качества не запускалась"}
           </span>
           {check?.completedAt && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
               {new Date(check.completedAt).toLocaleString()}
             </span>
           )}
@@ -801,7 +801,7 @@ function QualityPanel({ url }: { url: string }) {
           Проверить заново
         </Button>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {(["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((prov) => {
           const p = check?.providers.find((x) => x.provider === prov);
           return <ProviderTile key={prov} provider={prov} p={p} />;
