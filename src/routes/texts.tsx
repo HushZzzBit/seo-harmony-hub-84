@@ -201,10 +201,10 @@ function TextsPage() {
 
       <Card>
         <CardContent className="p-0 overflow-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="p-2 w-8">
+                <th className="p-2 w-10">
                   {(() => {
                     const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
                     const allChecked = visible.length > 0 && selCount === visible.length;
@@ -230,16 +230,16 @@ function TextsPage() {
                     );
                   })()}
                 </th>
-                <SortHeader k="priority">Приоритет</SortHeader>
-                <SortHeader k="group">Папка / Группа</SortHeader>
-                <SortHeader k="url">URL</SortHeader>
-                <SortHeader k="planMonth">Плановый месяц</SortHeader>
-                <SortHeader k="hasText" className="text-center">Текст</SortHeader>
-                <SortHeader k="length" className="text-right">Длина</SortHeader>
-                <SortHeader k="assignee">Исполнитель</SortHeader>
-                <SortHeader k="status">Статус</SortHeader>
-                <th className="p-2 text-center">Качество</th>
-                <th className="p-2"></th>
+                <SortHeader k="priority" className="w-24">Приоритет</SortHeader>
+                <SortHeader k="group" className="w-52">Папка / Группа</SortHeader>
+                <SortHeader k="url" className="w-auto">URL</SortHeader>
+                <SortHeader k="planMonth" className="w-28">Плановый месяц</SortHeader>
+                <SortHeader k="hasText" className="text-center w-16">Текст</SortHeader>
+                <SortHeader k="length" className="text-right w-16">Длина</SortHeader>
+                <SortHeader k="assignee" className="w-36">Исполнитель</SortHeader>
+                <SortHeader k="status" className="w-40">Статус</SortHeader>
+                <th className="p-2 text-center w-20">Качество</th>
+                <th className="p-2 w-16"></th>
               </tr>
             </thead>
             <tbody>
