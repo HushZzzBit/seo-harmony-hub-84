@@ -63,6 +63,16 @@ function MetaPage() {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
+  const [viewMode, setViewMode] = useState<"compact" | "expanded">("compact");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = useCallback((url: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(url)) n.delete(url);
+      else n.add(url);
+      return n;
+    });
+  }, []);
 
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
@@ -265,6 +275,26 @@ function MetaPage() {
               {sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
             </button>
           </div>
+          <div className="flex items-center gap-0.5 rounded-md border border-border h-9 px-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("compact")}
+              className={
+                "h-7 px-2 text-xs rounded transition " +
+                (viewMode === "compact" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent")
+              }
+              title="Компактный список"
+            >Список</button>
+            <button
+              type="button"
+              onClick={() => setViewMode("expanded")}
+              className={
+                "h-7 px-2 text-xs rounded transition " +
+                (viewMode === "expanded" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent")
+              }
+              title="Все карточки развёрнуты"
+            >Карточки</button>
+          </div>
         </div>
       </div>
 
@@ -384,8 +414,11 @@ function MetaPage() {
             prio={e.prio}
             rec={e.rec}
             freq={e.freq}
+            seasonality={e.seasonality}
             selected={!!e.r.url && selected.has(e.r.url)}
             onToggleSelect={handleToggleSelect}
+            open={viewMode === "expanded" || (!!e.r.url && expanded.has(e.r.url))}
+            onToggleOpen={() => e.r.url && toggleExpanded(e.r.url)}
           />
         ))}
         {rows.length === 0 && (
@@ -421,15 +454,21 @@ const MetaRow = memo(function MetaRow({
   prio,
   rec,
   freq,
+  seasonality,
   selected,
   onToggleSelect,
+  open,
+  onToggleOpen,
 }: {
   row: Row;
   prio: Priority;
   rec: number;
   freq: number;
+  seasonality: number[];
   selected: boolean;
   onToggleSelect: (url: string, v: boolean) => void;
+  open: boolean;
+  onToggleOpen: () => void;
 }) {
   // Row-scoped selectors — this row only re-renders when its own data changes.
   const urlRow = useStore((s) => s.urls[row.url]);
@@ -556,35 +595,63 @@ const MetaRow = memo(function MetaRow({
   return (
     <Card className={`border-l-4 ${statusRing} ${selected ? "bg-primary/5" : ""}`}>
       <CardContent className="p-3">
-        {/* Compact header */}
-        <div className="flex items-center gap-2 mb-2">
+        {/* Compact header — always visible */}
+        <div className="flex items-center gap-2">
           <RoundCheckbox
             aria-label="Выбрать"
             disabled={!row.url}
             checked={selected}
             onChange={(v) => onToggleSelect(row.url, v)}
           />
+          <button
+            type="button"
+            onClick={onToggleOpen}
+            className="h-6 w-6 shrink-0 inline-flex items-center justify-center rounded hover:bg-accent text-muted-foreground"
+            title={open ? "Свернуть" : "Развернуть"}
+            aria-label={open ? "Свернуть" : "Развернуть"}
+          >
+            <ArrowDown className={"h-3.5 w-3.5 transition-transform " + (open ? "" : "-rotate-90")} />
+          </button>
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
             {priorityLabel[prio]}
           </span>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggleOpen}>
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
-              {row.folder} · {row.group}
+              <span className="truncate">{row.folder} · {row.group}</span>
               <KeywordsTooltip qs={row.qs} />
             </div>
             <div className="text-xs font-mono text-foreground/80 truncate" title={row.url}>
               {row.url || "—"}
             </div>
           </div>
-          <span
-            className={
-              "tabular-nums text-xs shrink-0 " +
-              (coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground")
-            }
-            title={`${usedAll.size} из ${wordSet.size} ключевых слов`}
-          >
-            {coverage}%
-          </span>
+
+          {/* Inline metrics — always visible for daily SEO scan */}
+          <div className="hidden md:flex items-center gap-3 text-[11px] text-muted-foreground shrink-0">
+            <MiniSpark values={seasonality} peakMonth={rec} />
+            <span title="Суммарная частота" className="tabular-nums">
+              <span className="opacity-60 mr-0.5">f</span>
+              <span className="text-foreground">{freq || "—"}</span>
+            </span>
+            <span title="Средняя позиция Google" className="tabular-nums">
+              <span className="opacity-60 mr-0.5">G</span>
+              <span className={posColor(gPos)}>{gPos || "—"}</span>
+            </span>
+            <span title="Средняя позиция Яндекс" className="tabular-nums">
+              <span className="opacity-60 mr-0.5">Я</span>
+              <span className={posColor(yPos)}>{yPos || "—"}</span>
+            </span>
+            <span title="Рекомендованный месяц" className="text-foreground">{MONTHS[rec]}</span>
+            <span
+              className={
+                "tabular-nums " +
+                (coverage >= 70 ? "text-chart-2" : coverage >= 40 ? "text-chart-4" : "text-muted-foreground")
+              }
+              title={`Покрытие ключей ${usedAll.size}/${wordSet.size}`}
+            >
+              {coverage}%
+            </span>
+          </div>
+
           <button
             type="button"
             onClick={runAi}
@@ -614,46 +681,83 @@ const MetaRow = memo(function MetaRow({
           </Select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 text-muted-foreground">
-          <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
-          <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
-          <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
-          <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
-          <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
-        </div>
-
-        {/* Two-column: editor (work area) | preview (result) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          {/* Left: working area */}
-          <div className="rounded-md border border-border bg-background/40 p-2 space-y-1.5">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 pb-0.5">
-              Редактирование
+        {open && (
+          <>
+            {/* Mobile metrics row (hidden on md+ because shown inline above) */}
+            <div className="md:hidden flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-2 text-muted-foreground">
+              <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
+              <span>G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
+              <span>Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
+              <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
+              <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
             </div>
-            <Field label="H1">
-              <EditableCell value={h1} onChange={setH1} onCommit={(v) => save({ h1: v })} words={wordSet} />
-            </Field>
-            <Field label="Title" hint={`${title.length}/60`} over={title.length > 60}>
-              <EditableCell value={title} onChange={setTitle} onCommit={(v) => save({ title: v })} words={wordSet} maxLen={60} />
-            </Field>
-            <Field label="Description" hint={`${desc.length}/160`} over={desc.length > 160}>
-              <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
-            </Field>
-          </div>
-          {/* Right: preview / result */}
-          <MetaPreview
-            title={title}
-            desc={desc}
-            h1={h1}
-            words={words}
-            used={usedAll}
-            coverage={coverage}
-            qs={row.qs}
-          />
-        </div>
+
+            {/* Two-column: editor (work area) | preview (result) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+              <div className="rounded-md border border-border bg-background/40 p-2 space-y-1.5">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 pb-0.5">
+                  Редактирование
+                </div>
+                <Field label="H1">
+                  <EditableCell value={h1} onChange={setH1} onCommit={(v) => save({ h1: v })} words={wordSet} />
+                </Field>
+                <Field label="Title" hint={`${title.length}/60`} over={title.length > 60}>
+                  <EditableCell value={title} onChange={setTitle} onCommit={(v) => save({ title: v })} words={wordSet} maxLen={60} />
+                </Field>
+                <Field label="Description" hint={`${desc.length}/160`} over={desc.length > 160}>
+                  <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
+                </Field>
+              </div>
+              <MetaPreview
+                title={title}
+                desc={desc}
+                h1={h1}
+                words={words}
+                used={usedAll}
+                coverage={coverage}
+                qs={row.qs}
+              />
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
 });
+
+function MiniSpark({ values, peakMonth: peak }: { values: number[]; peakMonth: number }) {
+  const max = Math.max(1, ...values);
+  const now = new Date().getMonth();
+  const W = 84;
+  const H = 22;
+  const bw = W / 12;
+  return (
+    <svg width={W} height={H} className="shrink-0" aria-label="Сезонность">
+      {values.map((v, i) => {
+        const h = Math.max(2, Math.round((v / max) * (H - 2)));
+        const fill =
+          i === peak
+            ? "var(--chart-1)"
+            : i === now
+              ? "var(--chart-4)"
+              : "var(--muted-foreground)";
+        const opacity = i === peak || i === now ? 0.95 : 0.35;
+        return (
+          <rect
+            key={i}
+            x={i * bw + 0.5}
+            y={H - h}
+            width={bw - 1}
+            height={h}
+            fill={fill}
+            opacity={opacity}
+            rx={1}
+          />
+        );
+      })}
+    </svg>
+  );
+}
 
 function KeywordsTooltip({ qs }: { qs: Query[] }) {
   return (
