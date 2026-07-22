@@ -14,7 +14,7 @@ import {
   recommendedMonth,
   tokenize,
 } from "@/lib/seo";
-import type { Priority, Query, Status } from "@/lib/types";
+import type { MetaSource, Priority, Query, Status } from "@/lib/types";
 import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
