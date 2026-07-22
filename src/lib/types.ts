@@ -97,9 +97,14 @@ export interface QualityProviderResult {
 export interface TextQualityCheck {
   url: string;
   textHash: string;
+  /** Символьная длина проверенного plain-text — для сравнения на «мало изменилось». */
+  textLength?: number;
   requestedAt: number;
   completedAt?: number;
   overall: QualityOverall;
   providers: QualityProviderResult[];
+  /** Сколько раз запускалась проверка для этого URL (лимит — 5). */
+  runCount?: number;
 }
+
 
