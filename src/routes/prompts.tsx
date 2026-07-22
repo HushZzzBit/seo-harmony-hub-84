@@ -300,6 +300,18 @@ function PromptsPage() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="requirements">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <div className="text-sm text-muted-foreground">
+                Раздел «Требования и примеры текстов» пока пуст. Здесь будет настройка шаблонов и примеров для копирайтеров.
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </AppShell>
   );
 }
