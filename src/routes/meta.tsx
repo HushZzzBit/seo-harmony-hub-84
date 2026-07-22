@@ -603,6 +603,12 @@ const MetaRow = memo(function MetaRow({
             {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             AI
           </button>
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0 ${sourceStyle[source]}`}
+            title={source === "ai" ? "Сгенерировано AI" : source === "ai+manual" ? "AI + ручная правка" : "Написано вручную"}
+          >
+            {sourceLabel[source]}
+          </span>
           <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
             <SelectTrigger className="h-7 text-xs w-36 shrink-0">
               <SelectValue />
