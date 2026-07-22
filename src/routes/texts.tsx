@@ -119,13 +119,13 @@ function TextsPage() {
     else { setSortKey(k); setSortDir("asc"); }
   };
 
-  const SortHeader = ({ k, children, className = "text-left" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
+  const SortHeader = ({ k, children, className = "" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
     const Icon = sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
     return (
-      <th className={`p-2 ${className}`}>
+      <th className={`p-2 text-left ${className}`}>
         <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition uppercase text-xs">
           {children}
-          <Icon className={`h-3 w-3 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
+          <Icon className={`h-3 w-3 shrink-0 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
         </button>
       </th>
     );
