@@ -94,11 +94,12 @@ function TextsPage() {
       if (folder !== "all" && r.folder !== folder) return false;
       if (category !== "all" && r.group !== category) return false;
       if (search && !(r.url + r.group).toLowerCase().includes(search.toLowerCase())) return false;
-      const st = texts[r.url]?.status ?? "not_assigned";
+      const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
     }).map((r) => {
-      const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
+      const raw = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
+      const t = { ...raw, status: normStatus(raw.status) };
       const uRow = urls[r.url];
       const seasonality = groupSeasonality(r.qs);
       const planMonth = t.plannedMonth ?? recommendedMonth(seasonality);
