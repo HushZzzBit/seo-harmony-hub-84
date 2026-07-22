@@ -58,6 +58,7 @@ import type {
   MetaSource,
   PromptTemplate,
   Query,
+  TextQualityCheck,
   TextRow,
   UrlRow,
 } from "./types";
@@ -72,6 +73,8 @@ interface State {
   groupState: Record<string, GroupState>;
   /** Prompt templates. Key: folder name, or "__default" for the global template. */
   prompts: Record<string, PromptTemplate>;
+  /** Latest quality check per URL. */
+  qualityChecks: Record<string, TextQualityCheck>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -82,6 +85,7 @@ interface State {
   setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
   resetPrompt: (folder: string) => void;
+  setQualityCheck: (url: string, check: TextQualityCheck) => void;
   clearAll: () => void;
 }
 
