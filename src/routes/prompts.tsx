@@ -147,47 +147,62 @@ function PromptsPage() {
       <div className="flex items-end justify-between mb-4 gap-2 flex-wrap">
         <div>
           <div className="flex items-center gap-2">
-            <Wand2 className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-semibold">AI Промты</h1>
+            <Settings className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-semibold">Настройки</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Отдельный шаблон промта для каждой папки. Переменные подставляются автоматически.
+            Управление шаблонами AI-промтов и требованиями к текстам.
           </p>
-        </div>
-        <div className="flex gap-2 items-center">
-          <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger className="w-64 h-9"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={GLOBAL_KEY}>
-                Глобальный (по умолчанию)
-              </SelectItem>
-              {folders.map((f) => (
-                <SelectItem key={f} value={f}>
-                  {f} {prompts[f] ? "•" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <button
-            type="button"
-            onClick={resetToDefault}
-            disabled={!isOverridden && target !== GLOBAL_KEY}
-            className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent disabled:opacity-40 inline-flex items-center gap-1"
-            title="Сбросить до значения по умолчанию"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Сброс
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            className="h-9 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1"
-          >
-            <Save className="h-3.5 w-3.5" /> Сохранить
-          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+      <Tabs defaultValue="prompts" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="prompts" className="gap-1.5">
+            <Wand2 className="h-3.5 w-3.5" /> AI Промты
+          </TabsTrigger>
+          <TabsTrigger value="requirements">Требования и примеры текстов</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="prompts" className="space-y-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="text-sm text-muted-foreground">
+              Отдельный шаблон промта для каждой папки. Переменные подставляются автоматически.
+            </div>
+            <div className="flex gap-2 items-center">
+              <Select value={target} onValueChange={setTarget}>
+                <SelectTrigger className="w-64 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={GLOBAL_KEY}>
+                    Глобальный (по умолчанию)
+                  </SelectItem>
+                  {folders.map((f) => (
+                    <SelectItem key={f} value={f}>
+                      {f} {prompts[f] ? "•" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={resetToDefault}
+                disabled={!isOverridden && target !== GLOBAL_KEY}
+                className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent disabled:opacity-40 inline-flex items-center gap-1"
+                title="Сбросить до значения по умолчанию"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Сброс
+              </button>
+              <button
+                type="button"
+                onClick={save}
+                className="h-9 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1"
+              >
+                <Save className="h-3.5 w-3.5" /> Сохранить
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
         <div className="space-y-4">
           <Card>
             <CardContent className="p-4 space-y-3">
