@@ -161,23 +161,23 @@ function TextsPage() {
           <p className="text-sm text-muted-foreground">Планирование и написание текстов</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Input placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56 h-9" />
+          <Input placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} className="w-40 md:w-48 h-9" />
           <Select value={folder} onValueChange={setFolder}>
-            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все папки</SelectItem>
               {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Категория" /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue placeholder="Категория" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все категории</SelectItem>
               {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-32 md:w-36 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все приоритеты</SelectItem>
               <SelectItem value="high">Высокий</SelectItem>
@@ -186,7 +186,7 @@ function TextsPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
               {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
