@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
 import type { PromptTemplate, Query } from "@/lib/types";
 import {
@@ -13,7 +14,7 @@ import {
   previewPrompt,
 } from "@/lib/openai.functions";
 import { toast } from "sonner";
-import { RotateCcw, Save, Wand2 } from "lucide-react";
+import { RotateCcw, Save, Settings, Wand2 } from "lucide-react";
 
 export const Route = createFileRoute("/prompts")({
   ssr: false,
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/prompts")({
     </ClientOnly>
   ),
 });
+
 
 const GLOBAL_KEY = "__default";
 

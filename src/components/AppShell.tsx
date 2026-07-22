@@ -7,7 +7,7 @@ const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
   { to: "/meta", label: "Meta Tags", icon: Tags },
   { to: "/texts", label: "SEO Texts", icon: FileText },
-  { to: "/prompts", label: "AI Промты", icon: Wand2 },
+  { to: "/prompts", label: "Настройки", icon: Wand2 },
   { to: "/import", label: "Import / Export", icon: Upload },
 ];
 
