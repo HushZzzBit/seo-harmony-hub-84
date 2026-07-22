@@ -781,8 +781,18 @@ function QualityCell({ url }: { url: string }) {
     <div className="flex justify-center">
       <div className="group relative inline-flex items-center gap-1 cursor-help">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
-        <span className="text-[10px] uppercase font-medium text-muted-foreground hidden xl:inline">
-          {check.overall === "checking" ? "…" : check.overall === "ok" ? "OK" : check.overall === "warning" ? "!" : check.overall === "fail" ? "×" : "err"}
+        <span className="text-muted-foreground hidden xl:inline-flex items-center">
+          {check.overall === "checking" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : check.overall === "ok" ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+          ) : check.overall === "warning" ? (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          ) : check.overall === "fail" ? (
+            <X className="h-3.5 w-3.5 text-rose-500" />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
         </span>
         <div className="absolute z-50 top-full right-0 mt-1 w-72 hidden group-hover:block">
           <QualityTooltip check={check} label={label} />
