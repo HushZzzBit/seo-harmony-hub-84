@@ -238,6 +238,7 @@ function TextsPage() {
                 <SortHeader k="length" className="text-right">Длина</SortHeader>
                 <SortHeader k="assignee">Исполнитель</SortHeader>
                 <SortHeader k="status">Статус</SortHeader>
+                <th className="p-2 text-center">Качество</th>
                 <th className="p-2"></th>
               </tr>
             </thead>
@@ -295,12 +296,13 @@ function TextsPage() {
                         </SelectContent>
                       </Select>
                     </td>
+                    <td className="p-2 align-top"><QualityCell url={r.url} /></td>
                     <td className="p-2 align-top"><TextEditor url={r.url} folder={r.folder} group={r.group} /></td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
-                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
+                <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
               )}
             </tbody>
           </table>
