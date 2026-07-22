@@ -343,10 +343,6 @@ function TextsPage() {
 }
 
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-}
-
 function isHtml(s: string): boolean {
   return /<\/?[a-z][\s\S]*?>/i.test(s);
 }
