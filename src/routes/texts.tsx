@@ -17,7 +17,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
-import { overallDot, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
+import { overallDot, overallFromCheck, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 
@@ -790,21 +790,24 @@ function useQualityRunner() {
 
 function QualityCell({ url }: { url: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
+  const thresholds = useStore((s) => s.qualityThresholds);
   if (!check) return <span className="text-xs text-muted-foreground">—</span>;
-  const label = overallLabel[check.overall];
-  const dot = overallDot[check.overall];
+  void thresholds; // re-render on threshold change
+  const overall = overallFromCheck(check);
+  const label = overallLabel[overall];
+  const dot = overallDot[overall];
   return (
     <div className="flex justify-center">
       <div className="group relative inline-flex items-center gap-1 cursor-help">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
         <span className="text-muted-foreground hidden xl:inline-flex items-center">
-          {check.overall === "checking" ? (
+          {overall === "checking" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
-          ) : check.overall === "ok" ? (
+          ) : overall === "ok" ? (
             <Check className="h-3.5 w-3.5 text-emerald-500" />
-          ) : check.overall === "warning" ? (
+          ) : overall === "warning" ? (
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-          ) : check.overall === "fail" ? (
+          ) : overall === "fail" ? (
             <X className="h-3.5 w-3.5 text-rose-500" />
           ) : (
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
@@ -851,14 +854,17 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
   const savedText = useStore((s) => s.texts[url]?.text);
   const text = currentValue ?? savedText;
   const run = useQualityRunner();
+  const thresholds = useStore((s) => s.qualityThresholds);
   if (!url) return null;
+  void thresholds;
+  const overall = check ? overallFromCheck(check) : undefined;
   return (
     <div className="border-t bg-background px-5 py-3">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[check?.overall ?? "checking"]}`} />
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[overall ?? "checking"]}`} />
           <span className="text-sm font-medium truncate">
-            {check ? overallLabel[check.overall] : "Проверка качества не запускалась"}
+            {overall ? overallLabel[overall] : "Проверка качества не запускалась"}
           </span>
           {check?.completedAt && (
             <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
@@ -869,10 +875,10 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
         <Button
           size="sm"
           variant="outline"
-          disabled={!text || check?.overall === "checking"}
+          disabled={!text || overall === "checking"}
           onClick={() => text && run(url, text)}
         >
-          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${check?.overall === "checking" ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${overall === "checking" ? "animate-spin" : ""}`} />
           Проверить
         </Button>
       </div>
