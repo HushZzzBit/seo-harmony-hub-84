@@ -614,15 +614,13 @@ const MetaRow = memo(function MetaRow({
           </Select>
         </div>
 
-        {expanded && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 pl-6 text-muted-foreground">
-            <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
-            <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
-            <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
-            <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
-            <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 text-muted-foreground">
+          <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
+          <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
+          <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
+          <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
+          <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
+        </div>
 
         {/* Two-column: editor (work area) | preview (result) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
