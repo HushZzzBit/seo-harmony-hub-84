@@ -545,8 +545,6 @@ const MetaRow = memo(function MetaRow({
   };
   const gPos = avgPos("googlePosition");
   const yPos = avgPos("yandexPosition");
-  const posColor = (p: number) =>
-    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
 
   const usedAll = useMemo(() => {
     const s = new Set<string>();
