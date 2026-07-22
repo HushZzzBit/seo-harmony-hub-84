@@ -201,10 +201,10 @@ function TextsPage() {
 
       <Card>
         <CardContent className="p-0 overflow-auto">
-          <table className="w-full text-sm table-fixed">
-            <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
+          <table className="w-full text-xs table-fixed">
+            <thead className="bg-muted/50 text-[10px] uppercase text-muted-foreground">
               <tr>
-                <th className="p-2 w-10">
+                <th className="px-1.5 py-1.5 w-8">
                   {(() => {
                     const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
                     const allChecked = visible.length > 0 && selCount === visible.length;
@@ -216,7 +216,6 @@ function TextsPage() {
                         onChange={(next) => {
                           setSelected((prev) => {
                             const n = new Set(prev);
-                            // if any selected, clicking clears; otherwise selects all visible
                             if (selCount > 0 || !next) {
                               visible.forEach((v) => v.r.url && n.delete(v.r.url));
                               if (selCount === 0 && next) visible.forEach((v) => v.r.url && n.add(v.r.url));
@@ -230,16 +229,16 @@ function TextsPage() {
                     );
                   })()}
                 </th>
-                <SortHeader k="priority" className="w-24">Приоритет</SortHeader>
-                <SortHeader k="group" className="w-52">Папка / Группа</SortHeader>
+                <SortHeader k="priority" className="w-20">Приор.</SortHeader>
+                <SortHeader k="group" className="w-44">Папка / Группа</SortHeader>
                 <SortHeader k="url">URL</SortHeader>
-                <SortHeader k="planMonth" className="w-28">Плановый месяц</SortHeader>
-                <SortHeader k="hasText" className="text-center w-16">Текст</SortHeader>
-                <SortHeader k="length" className="text-right w-16">Длина</SortHeader>
-                <SortHeader k="assignee" className="w-36">Исполнитель</SortHeader>
-                <SortHeader k="status" className="w-40">Статус</SortHeader>
-                <th className="p-2 text-center w-20">Качество</th>
-                <th className="p-2 w-16"></th>
+                <SortHeader k="planMonth" className="w-20">Мес.</SortHeader>
+                <SortHeader k="hasText" className="text-center w-12">Текст</SortHeader>
+                <SortHeader k="length" className="text-right w-14">Длина</SortHeader>
+                <SortHeader k="assignee" className="w-28">Исполн.</SortHeader>
+                <SortHeader k="status" className="w-32">Статус</SortHeader>
+                <th className="px-1.5 py-1.5 text-center w-16">Кач-во</th>
+                <th className="px-1.5 py-1.5 w-12"></th>
               </tr>
             </thead>
             <tbody>
@@ -253,7 +252,7 @@ function TextsPage() {
                 const isSel = !!r.url && selected.has(r.url);
                 return (
                   <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
-                    <td className="p-2 align-top">
+                    <td className="px-1.5 py-1 align-middle">
                       <RoundCheckbox
                         aria-label="Выбрать строку"
                         disabled={!r.url}
@@ -269,16 +268,16 @@ function TextsPage() {
                         }}
                       />
                     </td>
-                    <td className="p-2 align-top">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
+                    <td className="px-1.5 py-1 align-middle">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
                     </td>
-                    <td className="p-2 align-top overflow-hidden">
-                      <div className="text-xs text-muted-foreground truncate">{r.folder}</div>
-                      <div className="font-medium truncate">{r.group}</div>
+                    <td className="px-1.5 py-1 align-middle overflow-hidden">
+                      <div className="text-[10px] text-muted-foreground truncate leading-tight">{r.folder}</div>
+                      <div className="font-medium truncate leading-tight">{r.group}</div>
                     </td>
-                    <td className="p-2 align-top overflow-hidden">
-                      <div className="flex items-center gap-1.5">
-                        <div className="truncate text-xs flex-1">{r.url || "—"}</div>
+                    <td className="px-1.5 py-1 align-middle overflow-hidden">
+                      <div className="flex items-center gap-1">
+                        <div className="truncate text-[11px] flex-1">{r.url || "—"}</div>
                         {r.url && (
                           <a
                             href={r.url}
@@ -288,35 +287,36 @@ function TextsPage() {
                             title="Открыть URL"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
+                            <ExternalLink className="h-3 w-3" />
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="p-2 align-top">
-                      <span className="text-xs">{MONTHS[planMonth]}</span>
+                    <td className="px-1.5 py-1 align-middle">
+                      <span className="text-[11px]">{MONTHS[planMonth]}</span>
                     </td>
-                    <td className="p-2 align-top text-center text-lg">{has ? "🟢" : "🔴"}</td>
-                    <td className="p-2 align-top text-right">{len}</td>
-                    <td className="p-2 align-top">
-                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-7 text-xs w-full" />
+                    <td className="px-1.5 py-1 align-middle text-center text-sm">{has ? "🟢" : "🔴"}</td>
+                    <td className="px-1.5 py-1 align-middle text-right text-[11px]">{len}</td>
+                    <td className="px-1.5 py-1 align-middle">
+                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-6 text-[11px] w-full px-2" />
                     </td>
-                    <td className="p-2 align-top">
+                    <td className="px-1.5 py-1 align-middle">
                       <Select value={t.status} onValueChange={(v) => setText(r.url, { status: v as TextStatus })}>
-                        <SelectTrigger className="h-7 text-xs w-full"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-6 text-[11px] w-full px-2"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="p-2 align-top"><QualityCell url={r.url} /></td>
-                    <td className="p-2 align-top"><TextEditor url={r.url} folder={r.folder} group={r.group} /></td>
+                    <td className="px-1.5 py-1 align-middle"><QualityCell url={r.url} /></td>
+                    <td className="px-1.5 py-1 align-middle"><TextEditor url={r.url} folder={r.folder} group={r.group} /></td>
                   </tr>
                 );
               })}
               {rows.length === 0 && (
                 <tr><td colSpan={11} className="p-8 text-center text-muted-foreground">Нет строк.</td></tr>
               )}
+
             </tbody>
           </table>
           {hasMore && (
