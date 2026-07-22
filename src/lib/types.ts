@@ -76,3 +76,30 @@ export interface PromptTemplate {
   updatedAt?: number;
 }
 
+export type QualityProvider = "text_ru" | "zerogpt" | "turgenev";
+export type QualityProviderStatus = "pending" | "success" | "failed" | "skipped";
+export type QualityOverall = "checking" | "ok" | "warning" | "fail" | "error";
+
+export interface QualityProviderResult {
+  provider: QualityProvider;
+  status: QualityProviderStatus;
+  requestedAt: number;
+  completedAt?: number;
+  error?: string;
+  reportUrl?: string;
+  waterPercent?: number;
+  spamPercent?: number;
+  aiPercent?: number;
+  turgenevScore?: number;
+  turgenevRiskLevel?: "ok" | "medium" | "high" | "critical";
+}
+
+export interface TextQualityCheck {
+  url: string;
+  textHash: string;
+  requestedAt: number;
+  completedAt?: number;
+  overall: QualityOverall;
+  providers: QualityProviderResult[];
+}
+
