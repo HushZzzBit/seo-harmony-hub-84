@@ -35,10 +35,17 @@ export const Route = createFileRoute("/texts")({
   component: () => <ClientOnly fallback={null}><TextsPage /></ClientOnly>,
 });
 
+function normStatus(s: string | undefined): TextStatus {
+  if (s === "in_progress") return "copywriting";
+  if (s === "review") return "revision";
+  return (s as TextStatus) ?? "not_assigned";
+}
+
 const statusLabel: Record<TextStatus, string> = {
   not_assigned: "Не назначено",
-  in_progress: "В работе",
-  review: "На проверке",
+  copywriting: "Копирайтинг",
+  expansion: "Расширение",
+  revision: "Доработка",
   ready: "Готов к выгрузке",
   in_csv: "В файле CSV",
   done: "Готово",
@@ -87,11 +94,12 @@ function TextsPage() {
       if (folder !== "all" && r.folder !== folder) return false;
       if (category !== "all" && r.group !== category) return false;
       if (search && !(r.url + r.group).toLowerCase().includes(search.toLowerCase())) return false;
-      const st = texts[r.url]?.status ?? "not_assigned";
+      const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
     }).map((r) => {
-      const t = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
+      const raw = texts[r.url] ?? { url: r.url, status: "not_assigned" as TextStatus };
+      const t = { ...raw, status: normStatus(raw.status) };
       const uRow = urls[r.url];
       const seasonality = groupSeasonality(r.qs);
       const planMonth = t.plannedMonth ?? recommendedMonth(seasonality);
@@ -371,7 +379,8 @@ function formatHtml(s: string): string {
 }
 
 function TextEditor({ url, folder, group }: { url: string; folder: string; group: string }) {
-  const t = useStore((s) => s.texts[url]) ?? { url, status: "not_assigned" as TextStatus };
+  const raw = useStore((s) => s.texts[url]) ?? { url, status: "not_assigned" as TextStatus };
+  const t = { ...raw, status: normStatus(raw.status) };
   const urlText = useStore((s) => s.urls[url]?.text);
   const queries = useStore((s) => s.queries);
   const setText = useStore((s) => s.setText);
