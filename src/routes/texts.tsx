@@ -438,12 +438,8 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
     }).sort((a, b) => b.weight - a.weight);
   }, [groupQueries, plainLower]);
 
-  const visiblePhrases = kwFilter
-    ? phrases.filter((p) => p.phrase.toLowerCase().includes(kwFilter.toLowerCase()))
-    : phrases;
-  const visibleWords = kwFilter
-    ? words.filter((w) => w.word.includes(kwFilter.toLowerCase()))
-    : words;
+  const visiblePhrases = phrases;
+  const visibleWords = words;
 
   const insertAtCursor = (text: string) => {
     if (!editor) return;
