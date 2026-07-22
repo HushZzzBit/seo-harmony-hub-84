@@ -272,25 +272,38 @@ function TextsPage() {
                     <td className="p-2 align-top">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
                     </td>
-                    <td className="p-2 align-top">
-                      <div className="text-xs text-muted-foreground">{r.folder}</div>
-                      <div className="font-medium">{r.group}</div>
+                    <td className="p-2 align-top overflow-hidden">
+                      <div className="text-xs text-muted-foreground truncate">{r.folder}</div>
+                      <div className="font-medium truncate">{r.group}</div>
                     </td>
-                    <td className="p-2 align-top max-w-[220px]"><div className="truncate text-xs">{r.url || "—"}</div></td>
-                    <td className="p-2 align-top">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs">{MONTHS[planMonth]}</span>
-                        <span className="text-[10px] text-muted-foreground">(реком.: {MONTHS[recommendedMonth(seasonality)]})</span>
+                    <td className="p-2 align-top overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        <div className="truncate text-xs flex-1">{r.url || "—"}</div>
+                        {r.url && (
+                          <a
+                            href={r.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 inline-flex items-center justify-center text-muted-foreground hover:text-primary transition"
+                            title="Открыть URL"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
                       </div>
+                    </td>
+                    <td className="p-2 align-top">
+                      <span className="text-xs">{MONTHS[planMonth]}</span>
                     </td>
                     <td className="p-2 align-top text-center text-lg">{has ? "🟢" : "🔴"}</td>
                     <td className="p-2 align-top text-right">{len}</td>
                     <td className="p-2 align-top">
-                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-7 text-xs w-28" />
+                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-7 text-xs w-full" />
                     </td>
                     <td className="p-2 align-top">
                       <Select value={t.status} onValueChange={(v) => setText(r.url, { status: v as TextStatus })}>
-                        <SelectTrigger className="h-7 text-xs w-32"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs w-full"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                         </SelectContent>
