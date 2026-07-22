@@ -101,6 +101,7 @@ export const useStore = create<State>()(
       folderState: {},
       groupState: {},
       prompts: {},
+      qualityChecks: {},
 
 
       upsertQueries: (rows) => {
@@ -181,6 +182,8 @@ export const useStore = create<State>()(
         delete next[folder];
         set({ prompts: next });
       },
+      setQualityCheck: (url, check) =>
+        set({ qualityChecks: { ...get().qualityChecks, [url]: check } }),
       clearAll: () =>
         set({
           queries: [],
@@ -191,6 +194,7 @@ export const useStore = create<State>()(
           folderState: {},
           groupState: {},
           prompts: {},
+          qualityChecks: {},
         }),
 
     }),
