@@ -311,6 +311,49 @@ function PromptsPage() {
   );
 }
 
+function WriterRequirementsPanel() {
+  const value = useStore((s) => s.writerRequirements);
+  const setValue = useStore((s) => s.setWriterRequirements);
+  const [draft, setDraft] = useState(value);
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-medium">Требования к тексту (плейсхолдер в редакторе)</div>
+            <div className="text-xs text-muted-foreground">
+              Отображается в попапе копирайтера вместо стандартного «Начните писать текст…».
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { setDraft(""); setValue(""); toast.success("Требования очищены"); }}
+              className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Очистить
+            </button>
+            <button
+              type="button"
+              onClick={() => { setValue(draft); toast.success("Требования сохранены"); }}
+              className="h-9 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1"
+            >
+              <Save className="h-3.5 w-3.5" /> Сохранить
+            </button>
+          </div>
+        </div>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={8}
+          placeholder="Например: объём 2500–3500 знаков; структура H2/H3; вхождения ключей в первых 500 знаках; списки, таблицы; тон — экспертный."
+          className="w-full min-h-[160px] rounded-md border border-border bg-background p-3 text-sm font-mono resize-y focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 function QualityThresholdsPanel() {
   const thresholds = useStore((s) => s.qualityThresholds);
   const setQualityThresholds = useStore((s) => s.setQualityThresholds);
