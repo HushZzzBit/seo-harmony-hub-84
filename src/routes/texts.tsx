@@ -372,6 +372,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const urlText = useStore((s) => s.urls[url]?.text);
   const queries = useStore((s) => s.queries);
   const setText = useStore((s) => s.setText);
+  const writerRequirements = useStore((s) => s.writerRequirements);
   const runQualityCheck = useQualityRunner();
   const [open, setOpen] = useState(false);
   const initial = t.text ?? urlText ?? "";
@@ -476,7 +477,13 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
               </TabsList>
 
               <TabsContent value="editor" className="flex-1 min-h-0 mt-2">
-                <RichTextEditor value={value} onChange={setValue} onEditor={setEditorRef} />
+                <RichTextEditor
+                  value={value}
+                  onChange={setValue}
+                  onEditor={setEditorRef}
+                  placeholder={writerRequirements?.trim() || undefined}
+                />
+
               </TabsContent>
 
               <TabsContent value="preview" className="flex-1 min-h-0 mt-2">

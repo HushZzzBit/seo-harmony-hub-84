@@ -76,6 +76,7 @@ interface State {
   prompts: Record<string, PromptTemplate>;
   qualityChecks: Record<string, TextQualityCheck>;
   qualityThresholds: QualityThresholds;
+  writerRequirements: string;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -91,6 +92,7 @@ interface State {
   setQualityCheck: (url: string, check: TextQualityCheck) => void;
   setQualityThresholds: (patch: Partial<QualityThresholds>) => void;
   resetQualityThresholds: () => void;
+  setWriterRequirements: (v: string) => void;
   clearAll: () => void;
 }
 
@@ -108,6 +110,7 @@ export const useStore = create<State>()(
       prompts: {},
       qualityChecks: {},
       qualityThresholds: JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)),
+      writerRequirements: "",
 
 
 
@@ -232,6 +235,7 @@ export const useStore = create<State>()(
         applyThresholds(next);
         set({ qualityThresholds: next });
       },
+      setWriterRequirements: (v) => set({ writerRequirements: v }),
       clearAll: () =>
         set({
           queries: [],
