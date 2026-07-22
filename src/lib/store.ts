@@ -55,6 +55,7 @@ import type {
   GroupState,
   MetaEdit,
   MetaHistoryEntry,
+  MetaSource,
   PromptTemplate,
   Query,
   TextRow,
