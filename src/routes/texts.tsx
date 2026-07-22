@@ -854,14 +854,17 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
   const savedText = useStore((s) => s.texts[url]?.text);
   const text = currentValue ?? savedText;
   const run = useQualityRunner();
+  const thresholds = useStore((s) => s.qualityThresholds);
   if (!url) return null;
+  void thresholds;
+  const overall = check ? overallFromCheck(check) : undefined;
   return (
     <div className="border-t bg-background px-5 py-3">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[check?.overall ?? "checking"]}`} />
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[overall ?? "checking"]}`} />
           <span className="text-sm font-medium truncate">
-            {check ? overallLabel[check.overall] : "Проверка качества не запускалась"}
+            {overall ? overallLabel[overall] : "Проверка качества не запускалась"}
           </span>
           {check?.completedAt && (
             <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
@@ -872,10 +875,10 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
         <Button
           size="sm"
           variant="outline"
-          disabled={!text || check?.overall === "checking"}
+          disabled={!text || overall === "checking"}
           onClick={() => text && run(url, text)}
         >
-          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${check?.overall === "checking" ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${overall === "checking" ? "animate-spin" : ""}`} />
           Проверить
         </Button>
       </div>
