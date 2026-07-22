@@ -12,6 +12,7 @@ export type ProviderResult = {
   // normalized fields (optional per provider)
   waterPercent?: number;
   spamPercent?: number;
+  uniquePercent?: number;
   aiPercent?: number;
   turgenevScore?: number;
   turgenevRiskLevel?: "ok" | "medium" | "high" | "critical";
