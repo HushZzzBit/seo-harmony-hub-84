@@ -44,8 +44,6 @@ const PAGE_SIZE = 50;
 type SortKey = "priority" | "group" | "url" | "planMonth" | "hasText" | "length" | "assignee" | "status";
 type SortDir = "asc" | "desc";
 
-const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
-
 function TextsPage() {
   const queries = useStore((s) => s.queries);
   const urls = useStore((s) => s.urls);
