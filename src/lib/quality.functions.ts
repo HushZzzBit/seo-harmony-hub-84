@@ -15,7 +15,8 @@ export type ProviderResult = {
   aiPercent?: number;
   turgenevScore?: number;
   turgenevRiskLevel?: "ok" | "medium" | "high" | "critical";
-  raw?: unknown;
+  /** Raw provider response serialized as JSON string for debugging. */
+  rawJson?: string;
 };
 
 export type QualityCheckResult = {
