@@ -342,11 +342,12 @@ function MetaPage() {
                            model: p.model,
                          },
                        });
-                      setMetaEdit(u, {
-                        title: result.title,
-                        description: result.description,
-                        h1: result.h1,
-                      });
+                       setMetaEdit(u, {
+                         title: result.title,
+                         description: result.description,
+                         h1: result.h1,
+                         source: "ai",
+                       });
                       ok++;
                     } catch (e) {
                       console.error(e);
