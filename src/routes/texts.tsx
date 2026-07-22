@@ -379,7 +379,8 @@ function formatHtml(s: string): string {
 }
 
 function TextEditor({ url, folder, group }: { url: string; folder: string; group: string }) {
-  const t = useStore((s) => s.texts[url]) ?? { url, status: "not_assigned" as TextStatus };
+  const raw = useStore((s) => s.texts[url]) ?? { url, status: "not_assigned" as TextStatus };
+  const t = { ...raw, status: normStatus(raw.status) };
   const urlText = useStore((s) => s.urls[url]?.text);
   const queries = useStore((s) => s.queries);
   const setText = useStore((s) => s.setText);
