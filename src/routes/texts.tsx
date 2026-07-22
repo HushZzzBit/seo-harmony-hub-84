@@ -448,12 +448,13 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
 
   const highlightedHtml = useMemo(() => {
     if (!highlight) return value;
-    if (!phrases.length) return value;
+    if (!phrases.length && !words.length) return value;
     return highlightKeywords(
       value,
       phrases.map((p) => p.phrase),
+      words.map((w) => w.word),
     );
-  }, [value, phrases, highlight]);
+  }, [value, phrases, words, highlight]);
 
   return (
     <Dialog
