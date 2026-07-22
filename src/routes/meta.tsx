@@ -625,7 +625,10 @@ const MetaRow = memo(function MetaRow({
               <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
             </Field>
           </div>
-          <KeywordsPanel words={words} used={usedAll} />
+          <div className="space-y-2 min-w-0">
+            <KeywordsPanel words={words} used={usedAll} />
+            <PhrasesPanel qs={row.qs} texts={[title, desc, h1]} />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -680,6 +683,76 @@ function KeywordsTooltip({ qs }: { qs: Query[] }) {
     </TooltipProvider>
   );
 }
+function PhrasesPanel({ qs, texts }: { qs: Query[]; texts: string[] }) {
+  const sorted = useMemo(
+    () => [...qs].sort((a, b) => (b.frequency || 0) - (a.frequency || 0)),
+    [qs],
+  );
+  const combined = useMemo(() => texts.join(" \n ").toLowerCase().replace(/ё/g, "е"), [texts]);
+  const isUsed = (phrase: string) => {
+    const toks = phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w.length > 2);
+    if (!toks.length) return false;
+    return toks.every((t) => combined.includes(t));
+  };
+  const posColor = (p?: number) =>
+    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
+  return (
+    <div className="rounded-md border border-border bg-muted/20 p-2 text-xs max-h-[240px] overflow-auto">
+      <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-muted/40 backdrop-blur -mx-2 px-2 py-1">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Ключевые фразы
+        </span>
+        <span className="text-[10px] text-muted-foreground tabular-nums">{qs.length}</span>
+      </div>
+      {sorted.length === 0 && (
+        <div className="text-muted-foreground text-[11px]">Нет фраз</div>
+      )}
+      <div className="space-y-0.5">
+        {sorted.map((q) => {
+          const used = isUsed(q.phrase);
+          return (
+            <div
+              key={q.id}
+              className={
+                "flex items-center gap-2 text-[11px] leading-snug rounded px-1 py-0.5 " +
+                (used ? "bg-chart-2/10" : "hover:bg-accent/40")
+              }
+              title={q.phrase}
+            >
+              <button
+                type="button"
+                onClick={() => navigator.clipboard?.writeText(q.phrase)}
+                className={
+                  "flex-1 min-w-0 truncate text-left " +
+                  (used ? "text-foreground" : "text-foreground/80")
+                }
+                title="Скопировать фразу"
+              >
+                {q.phrase}
+              </button>
+              {q.frequency ? (
+                <span className="tabular-nums text-muted-foreground shrink-0" title="Частота">
+                  {q.frequency}
+                </span>
+              ) : null}
+              {typeof q.googlePosition === "number" && q.googlePosition > 0 && (
+                <span className={"tabular-nums shrink-0 " + posColor(q.googlePosition)} title="Google">
+                  G{q.googlePosition}
+                </span>
+              )}
+              {typeof q.yandexPosition === "number" && q.yandexPosition > 0 && (
+                <span className={"tabular-nums shrink-0 " + posColor(q.yandexPosition)} title="Яндекс">
+                  Я{q.yandexPosition}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 
 function Field({
   label,
