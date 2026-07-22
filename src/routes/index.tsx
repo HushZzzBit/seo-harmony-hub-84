@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { avg, groupSeasonality, MONTHS, pct, peakMonth, priorityForGroup, recommendedMonth } from "@/lib/seo";
 import type { Status } from "@/lib/types";
+import { metaStatusColor, metaStatusLabel } from "@/lib/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/")({
@@ -26,21 +27,14 @@ export const Route = createFileRoute("/")({
   ),
 });
 
-const statusLabel: Record<Status, string> = {
-  not_started: "Не начато",
-  in_progress: "В работе",
-  in_csv: "В файле CSV",
-  done: "Завершено",
-};
-const statusColor: Record<Status, string> = {
-  not_started: "bg-muted text-muted-foreground",
-  in_progress: "bg-chart-4/20 text-foreground",
-  in_csv: "bg-chart-1/20 text-foreground",
-  done: "bg-chart-2/30 text-foreground",
-};
+const statusLabel = metaStatusLabel;
+const statusColor = metaStatusColor;
 
 function Dashboard() {
-  const { queries, urls, metaEdits, texts } = useStore();
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const texts = useStore((s) => s.texts);
 
   const grouped = useMemo(() => {
     const byFolder = new Map<string, typeof queries>();
@@ -547,7 +541,8 @@ function FolderCard({
   selectedGroup?: string | null;
   onSelectGroup?: (g: string | null) => void;
 }) {
-  const { groupState, setGroupState } = useStore();
+  const groupState = useStore((s) => s.groupState);
+  const setGroupState = useStore((s) => s.setGroupState);
   const [internalGroup, setInternalGroup] = useState<string | null>(null);
   const selectedGroup = controlledGroup !== undefined ? controlledGroup : internalGroup;
   const setSelectedGroup = onSelectGroup ?? setInternalGroup;
@@ -559,8 +554,6 @@ function FolderCard({
   const urlSet = new Set(filteredQs.map((q) => q.url).filter(Boolean)) as Set<string>;
   const gPosAll = filteredQs.map((q) => q.googlePosition).filter((v): v is number => typeof v === "number" && v > 0);
   const yPosAll = filteredQs.map((q) => q.yandexPosition).filter((v): v is number => typeof v === "number" && v > 0);
-  const gPos = gPosAll;
-  const yPos = yPosAll;
   const top3G = gPosAll.filter((p) => p <= 3).length;
   const top10G = gPosAll.filter((p) => p <= 10).length;
   const top3Y = yPosAll.filter((p) => p <= 3).length;
@@ -621,8 +614,8 @@ function FolderCard({
           groupState={groupState}
         />
         <div className="grid grid-cols-4 gap-2 text-xs">
-          <Metric label="Ср. G" value={avg(gPos).toFixed(1)} />
-          <Metric label="Ср. Y" value={avg(yPos).toFixed(1)} />
+          <Metric label="Ср. G" value={avg(gPosAll).toFixed(1)} />
+          <Metric label="Ср. Y" value={avg(yPosAll).toFixed(1)} />
           <Metric label="TOP3 G" value={`${pct(top3G, gPosAll.length)}%`} />
           <Metric label="TOP10 G" value={`${pct(top10G, gPosAll.length)}%`} />
           <Metric label="TOP3 Y" value={`${pct(top3Y, yPosAll.length)}%`} />

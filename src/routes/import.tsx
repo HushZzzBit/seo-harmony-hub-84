@@ -14,7 +14,16 @@ export const Route = createFileRoute("/import")({
 });
 
 function ImportPage() {
-  const { upsertQueries, upsertUrls, applySeasonality, queries, urls, metaEdits, texts, setMetaEdit, setText, clearAll } = useStore();
+  const upsertQueries = useStore((s) => s.upsertQueries);
+  const upsertUrls = useStore((s) => s.upsertUrls);
+  const applySeasonality = useStore((s) => s.applySeasonality);
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const texts = useStore((s) => s.texts);
+  const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const setText = useStore((s) => s.setText);
+  const clearAll = useStore((s) => s.clearAll);
   const [log, setLog] = useState<string[]>([]);
   const add = (m: string) => setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 20));
 
