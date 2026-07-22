@@ -270,7 +270,7 @@ function TextsPage() {
                       />
                     </td>
                     <td className="px-1.5 py-1 align-middle">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${prioClass}`}>{prioName}</span>
                     </td>
                     <td className="px-1.5 py-1 align-middle overflow-hidden">
                       <div className="text-[10px] text-muted-foreground truncate leading-tight">{r.folder}</div>
