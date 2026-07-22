@@ -55,6 +55,7 @@ import type {
   GroupState,
   MetaEdit,
   MetaHistoryEntry,
+  MetaSource,
   PromptTemplate,
   Query,
   TextRow,
@@ -122,8 +123,11 @@ export const useStore = create<State>()(
         const prev = get().metaEdits[url] ?? { url };
         const history = [...get().metaHistory];
         const now = Date.now();
+        let source: MetaSource | undefined = patch.source;
+        let contentChanged = false;
         (["title", "description", "h1"] as const).forEach((f) => {
           if (patch[f] !== undefined && patch[f] !== prev[f]) {
+            contentChanged = true;
             history.push({
               url,
               field: f,
@@ -133,8 +137,14 @@ export const useStore = create<State>()(
             });
           }
         });
+        // Derive source when content changes and caller didn't specify it.
+        if (contentChanged && source === undefined) {
+          source = prev.source === "ai" || prev.source === "ai+manual" ? "ai+manual" : "manual";
+        }
+        const nextEdit: MetaEdit = { ...prev, ...patch, updatedAt: now };
+        if (source !== undefined) nextEdit.source = source;
         set({
-          metaEdits: { ...get().metaEdits, [url]: { ...prev, ...patch, updatedAt: now } },
+          metaEdits: { ...get().metaEdits, [url]: nextEdit },
           metaHistory: history.slice(-2000),
         });
       },

@@ -26,12 +26,15 @@ export interface UrlRow {
   text?: string;
 }
 
+export type MetaSource = "ai" | "manual" | "ai+manual";
+
 export interface MetaEdit {
   url: string;
   title?: string;
   description?: string;
   h1?: string;
   status?: Status;
+  source?: MetaSource;
   updatedAt?: number;
 }
 

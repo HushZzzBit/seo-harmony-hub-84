@@ -14,7 +14,7 @@ import {
   recommendedMonth,
   tokenize,
 } from "@/lib/seo";
-import type { Priority, Query, Status } from "@/lib/types";
+import type { MetaSource, Priority, Query, Status } from "@/lib/types";
 import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
@@ -342,11 +342,12 @@ function MetaPage() {
                            model: p.model,
                          },
                        });
-                      setMetaEdit(u, {
-                        title: result.title,
-                        description: result.description,
-                        h1: result.h1,
-                      });
+                       setMetaEdit(u, {
+                         title: result.title,
+                         description: result.description,
+                         h1: result.h1,
+                         source: "ai",
+                       });
                       ok++;
                     } catch (e) {
                       console.error(e);
@@ -483,6 +484,7 @@ const MetaRow = memo(function MetaRow({
         title: result.title,
         description: result.description,
         h1: result.h1,
+        source: "ai",
       });
       toast.success("Мета-теги сгенерированы");
     } catch (e) {
@@ -522,6 +524,18 @@ const MetaRow = memo(function MetaRow({
     if (!row.url) return;
     setMetaEdit(row.url, patch);
   }
+
+  const source: MetaSource = metaEdit?.source ?? "manual";
+  const sourceLabel: Record<MetaSource, string> = {
+    ai: "АИ",
+    manual: "Руч",
+    "ai+manual": "АИ + Руч",
+  };
+  const sourceStyle: Record<MetaSource, string> = {
+    ai: "bg-primary/15 text-primary border-primary/30",
+    manual: "bg-muted text-muted-foreground border-border",
+    "ai+manual": "bg-chart-1/15 text-chart-1 border-chart-1/30",
+  };
 
   const statusRing =
     status === "done"
@@ -589,6 +603,12 @@ const MetaRow = memo(function MetaRow({
             {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
             AI
           </button>
+          <span
+            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border shrink-0 ${sourceStyle[source]}`}
+            title={source === "ai" ? "Сгенерировано AI" : source === "ai+manual" ? "AI + ручная правка" : "Написано вручную"}
+          >
+            {sourceLabel[source]}
+          </span>
           <Select value={status} onValueChange={(v) => save({ status: v as Status })}>
             <SelectTrigger className="h-7 text-xs w-36 shrink-0">
               <SelectValue />
