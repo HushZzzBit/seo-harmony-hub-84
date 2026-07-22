@@ -581,12 +581,7 @@ const MetaRow = memo(function MetaRow({
           ? "border-l-chart-4"
           : "border-l-border";
 
-  const prioStyle =
-    prio === "high"
-      ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
-      : prio === "medium"
-        ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
-        : "bg-muted text-muted-foreground border-border";
+  const prioClass = priorityStyle[prio];
 
   return (
     <Card className={`border-l-4 ${statusRing} ${selected ? "bg-primary/5" : ""}`}>
@@ -608,7 +603,7 @@ const MetaRow = memo(function MetaRow({
           >
             <ArrowDown className={"h-3.5 w-3.5 transition-transform " + (open ? "" : "-rotate-90")} />
           </button>
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioClass}`}>
             {priorityLabel[prio]}
           </span>
           <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggleOpen}>
@@ -669,10 +664,9 @@ const MetaRow = memo(function MetaRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="in_csv">В файле CSV</SelectItem>
-              <SelectItem value="done">Готово</SelectItem>
+              {Object.entries(metaStatusLabel).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
