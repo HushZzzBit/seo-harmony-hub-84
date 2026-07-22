@@ -790,21 +790,24 @@ function useQualityRunner() {
 
 function QualityCell({ url }: { url: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
+  const thresholds = useStore((s) => s.qualityThresholds);
   if (!check) return <span className="text-xs text-muted-foreground">—</span>;
-  const label = overallLabel[check.overall];
-  const dot = overallDot[check.overall];
+  void thresholds; // re-render on threshold change
+  const overall = overallFromCheck(check);
+  const label = overallLabel[overall];
+  const dot = overallDot[overall];
   return (
     <div className="flex justify-center">
       <div className="group relative inline-flex items-center gap-1 cursor-help">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
         <span className="text-muted-foreground hidden xl:inline-flex items-center">
-          {check.overall === "checking" ? (
+          {overall === "checking" ? (
             <Loader2 className="h-3 w-3 animate-spin" />
-          ) : check.overall === "ok" ? (
+          ) : overall === "ok" ? (
             <Check className="h-3.5 w-3.5 text-emerald-500" />
-          ) : check.overall === "warning" ? (
+          ) : overall === "warning" ? (
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-          ) : check.overall === "fail" ? (
+          ) : overall === "fail" ? (
             <X className="h-3.5 w-3.5 text-rose-500" />
           ) : (
             <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
