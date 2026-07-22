@@ -604,7 +604,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
         </div>
 
         <div className="shrink-0">
-          <QualityPanel url={url} />
+          <QualityPanel url={url} currentValue={value} />
         </div>
 
         <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background shrink-0">
