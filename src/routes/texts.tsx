@@ -692,11 +692,41 @@ function highlightKeywords(html: string, phrases: string[]): string {
 function useQualityRunner() {
   const setQualityCheck = useStore((s) => s.setQualityCheck);
   const check = useServerFn(checkTextQuality);
-  return async (url: string, html: string) => {
+  return async (url: string, html: string, opts?: { silent?: boolean }) => {
     if (!url) return;
     const plain = stripHtml(html);
     if (plain.length < 50) return; // ниже минимума всех провайдеров
-    const requestedAt = Date.now();
+
+    const prev = useStore.getState().qualityChecks[url];
+    const now = Date.now();
+
+    // 1) Лимит: не более 5 проверок на URL
+    const runCount = prev?.runCount ?? 0;
+    if (runCount >= QUALITY_MAX_RUNS) {
+      if (!opts?.silent) toast.warning(`Лимит проверок для этого URL исчерпан (${QUALITY_MAX_RUNS}/${QUALITY_MAX_RUNS})`);
+      return;
+    }
+    // 2) Не чаще 1 раза в минуту
+    const lastAt = prev?.completedAt ?? prev?.requestedAt ?? 0;
+    if (lastAt && now - lastAt < QUALITY_MIN_INTERVAL_MS) {
+      const wait = Math.ceil((QUALITY_MIN_INTERVAL_MS - (now - lastAt)) / 1000);
+      if (!opts?.silent) toast.info(`Проверка была недавно — повторно можно через ${wait} с`);
+      return;
+    }
+    // 3) Пропустить, если изменилось < 10 символов
+    if (prev?.textLength !== undefined) {
+      // Сравниваем длиной; если длины близки и raw plain почти совпадает — считаем «мало изменилось».
+      // Точный prev-текст не храним, поэтому используем длину как достаточное приближение.
+      const diff = Math.abs(plain.length - (prev.textLength ?? 0));
+      // Дополнительно: если хеши совпадают (текст идентичен нормализованно) — точно скипнуть.
+      const sameHash = prev.textHash && (await hashPlain(plain)) === prev.textHash;
+      if (sameHash || diff < QUALITY_MIN_DIFF_CHARS) {
+        if (!opts?.silent) toast.info(`Изменения слишком малы (< ${QUALITY_MIN_DIFF_CHARS} симв.) — проверка не запускалась`);
+        return;
+      }
+    }
+
+    const requestedAt = now;
     const pendingProviders: QualityProviderResult[] = (["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((p) => ({
       provider: p,
       status: "pending",
@@ -704,10 +734,12 @@ function useQualityRunner() {
     }));
     setQualityCheck(url, {
       url,
-      textHash: "",
+      textHash: prev?.textHash ?? "",
+      textLength: prev?.textLength,
       requestedAt,
       overall: "checking",
       providers: pendingProviders,
+      runCount: runCount + 1,
     });
     try {
       const res = await check({ data: { text: html } });
@@ -715,10 +747,12 @@ function useQualityRunner() {
       const next: TextQualityCheck = {
         url,
         textHash: res.textHash,
+        textLength: plain.length,
         requestedAt: res.requestedAt,
         completedAt: res.completedAt,
         overall: "ok",
         providers,
+        runCount: runCount + 1,
       };
       const { overallFromCheck } = await import("@/lib/quality");
       next.overall = overallFromCheck(next);
@@ -726,7 +760,8 @@ function useQualityRunner() {
     } catch (e) {
       setQualityCheck(url, {
         url,
-        textHash: "",
+        textHash: prev?.textHash ?? "",
+        textLength: plain.length,
         requestedAt,
         completedAt: Date.now(),
         overall: "error",
@@ -736,8 +771,10 @@ function useQualityRunner() {
           completedAt: Date.now(),
           error: (e as Error).message,
         })),
+        runCount: runCount + 1,
       });
     }
+
   };
 }
 
