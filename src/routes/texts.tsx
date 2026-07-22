@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,11 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
 import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
-import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
-import type { TextStatus } from "@/lib/types";
+import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
+import { checkTextQuality } from "@/lib/quality.functions";
+import { overallDot, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
 
 export const Route = createFileRoute("/texts")({
   ssr: false,
