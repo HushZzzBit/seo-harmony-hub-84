@@ -127,11 +127,15 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
       } | null;
       // Not ready yet — text.ru обычно возвращает error_code=181/183
       if (p?.error_code && !p.result_json && !p.seo_check && !p.text_unique) continue;
-      const seoRaw = p?.seo_check ?? (p?.result_json ? tryPickSeo(p.result_json) : undefined);
+      const parsedResult = p?.result_json ? safeJson(p.result_json) : undefined;
+      const seoRaw = p?.seo_check ?? (parsedResult?.seo_check as unknown);
       const seo = typeof seoRaw === "string" ? safeJson(seoRaw) : (seoRaw as Record<string, unknown> | undefined);
       const water = num((seo as { water_percent?: unknown })?.water_percent);
       const spam = num((seo as { spam_percent?: unknown })?.spam_percent);
-      const uniq = num(p?.text_unique);
+      const uniq =
+        num(p?.text_unique) ??
+        num((parsedResult as { unique?: unknown })?.unique) ??
+        num((parsedResult as { text_unique?: unknown })?.text_unique);
       if (water !== undefined || spam !== undefined || uniq !== undefined) {
         return {
           ...base,
