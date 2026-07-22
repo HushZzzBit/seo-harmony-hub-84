@@ -50,10 +50,12 @@ function MetaPage() {
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
   const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const setMetaEditsBulk = useStore((s) => s.setMetaEditsBulk);
   const prompts = useStore((s) => s.prompts);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("priority");
@@ -116,8 +118,8 @@ function MetaPage() {
         if (folder !== "all" && r.folder !== folder) return false;
         if (group !== "all" && r.group !== group) return false;
         if (
-          search &&
-          !(r.url + r.group + r.folder).toLowerCase().includes(search.toLowerCase())
+          deferredSearch &&
+          !(r.url + r.group + r.folder).toLowerCase().includes(deferredSearch.toLowerCase())
         )
           return false;
         const st = metaEdits[r.url]?.status ?? "not_started";
@@ -168,11 +170,11 @@ function MetaPage() {
       }
     });
     return enriched;
-  }, [queries, folder, group, search, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
+  }, [queries, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [folder, group, search, statusFilter, priorityFilter, sortKey, sortDir]);
+  }, [folder, group, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
 
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
@@ -246,10 +248,9 @@ function MetaPage() {
             <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="in_csv">В файле CSV</SelectItem>
-              <SelectItem value="done">Готово</SelectItem>
+              {Object.entries(metaStatusLabel).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-1 rounded-md border border-border h-9 px-1">
@@ -321,10 +322,9 @@ function MetaPage() {
               <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Status)}>
                 <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="not_started">Не начато</SelectItem>
-                  <SelectItem value="in_progress">В работе</SelectItem>
-                  <SelectItem value="in_csv">В файле CSV</SelectItem>
-                  <SelectItem value="done">Готово</SelectItem>
+                  {Object.entries(metaStatusLabel).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <button
@@ -332,7 +332,7 @@ function MetaPage() {
                 disabled={selected.size === 0 || !bulkStatus}
                 onClick={() => {
                   if (!bulkStatus) return;
-                  for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
+                  setMetaEditsBulk(Array.from(selected), { status: bulkStatus as Status });
                   setSelected(new Set());
                   setBulkStatus("");
                 }}
