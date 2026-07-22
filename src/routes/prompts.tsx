@@ -302,7 +302,8 @@ function PromptsPage() {
       </div>
         </TabsContent>
 
-        <TabsContent value="requirements">
+        <TabsContent value="requirements" className="space-y-4">
+          <WriterRequirementsPanel />
           <QualityThresholdsPanel />
         </TabsContent>
       </Tabs>
