@@ -390,7 +390,6 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [value, setValue] = useState(initial);
   const [editor, setEditorRef] = useState<import("@tiptap/react").Editor | null>(null);
   const [tab, setTab] = useState("editor");
-  const [kwFilter, setKwFilter] = useState("");
   const [highlight, setHighlight] = useState(true);
 
   const groupQueries = useMemo(
