@@ -35,6 +35,12 @@ export const Route = createFileRoute("/texts")({
   component: () => <ClientOnly fallback={null}><TextsPage /></ClientOnly>,
 });
 
+function normStatus(s: string | undefined): TextStatus {
+  if (s === "in_progress") return "copywriting";
+  if (s === "review") return "revision";
+  return (s as TextStatus) ?? "not_assigned";
+}
+
 const statusLabel: Record<TextStatus, string> = {
   not_assigned: "Не назначено",
   copywriting: "Копирайтинг",
