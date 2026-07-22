@@ -393,9 +393,13 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const phrases = useMemo(() => {
     const arr = groupQueries.map((q) => {
       const p = q.phrase.trim();
-      const norm = p.toLowerCase().replace(/ё/g, "е");
-      const re = new RegExp(escapeRe(norm), "g");
-      const count = (plainLower.match(re) ?? []).length;
+      let count = 0;
+      try {
+        const re = new RegExp(normalizePattern(escapeRe(p)), "gi");
+        count = (plainLower.match(re) ?? []).length;
+      } catch {
+        count = 0;
+      }
       return { phrase: p, freq: q.frequency || 0, count };
     });
     // dedupe by phrase
@@ -421,8 +425,15 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
       }
     }
     return Array.from(map, ([word, weight]) => {
-      const re = new RegExp(`\\b${escapeRe(word)}\\b`, "gi");
-      const count = (plainLower.match(re) ?? []).length;
+      let count = 0;
+      try {
+        // те же правила, что и в подсветке: ё↔е и суффиксы до 4 симв., не с середины слова
+        const re = new RegExp(`(?<![а-яёa-z0-9])${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+        count = (plainLower.match(re) ?? []).length;
+      } catch {
+        const re = new RegExp(`\\b${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+        count = (plainLower.match(re) ?? []).length;
+      }
       return { word, weight, count };
     }).sort((a, b) => b.weight - a.weight);
   }, [groupQueries, plainLower]);
