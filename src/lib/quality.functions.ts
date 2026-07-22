@@ -41,6 +41,10 @@ function stripHtml(s: string): string {
     .trim();
 }
 
+function safeStringify(v: unknown): string {
+  try { return typeof v === "string" ? v : JSON.stringify(v); } catch { return String(v); }
+}
+
 async function fetchJson(url: string, init: RequestInit, timeoutMs = 25000): Promise<{ ok: boolean; status: number; body: unknown; text: string }> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
