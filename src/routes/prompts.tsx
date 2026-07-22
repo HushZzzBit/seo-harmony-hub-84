@@ -303,15 +303,139 @@ function PromptsPage() {
         </TabsContent>
 
         <TabsContent value="requirements">
-          <Card>
-            <CardContent className="p-8 text-center">
-              <div className="text-sm text-muted-foreground">
-                Раздел «Требования и примеры текстов» пока пуст. Здесь будет настройка шаблонов и примеров для копирайтеров.
-              </div>
-            </CardContent>
-          </Card>
+          <QualityThresholdsPanel />
         </TabsContent>
       </Tabs>
     </AppShell>
+  );
+}
+
+function QualityThresholdsPanel() {
+  const thresholds = useStore((s) => s.qualityThresholds);
+  const setQualityThresholds = useStore((s) => s.setQualityThresholds);
+  const resetQualityThresholds = useStore((s) => s.resetQualityThresholds);
+
+  const num = (v: string) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-sm font-medium">Пороги качества текста</div>
+              <div className="text-xs text-muted-foreground">
+                На основе этих значений автоматически присваивается общий статус качества (OK / Требует внимания / На доработку).
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { resetQualityThresholds(); toast.success("Сброшено до значений по умолчанию"); }}
+              className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Сброс
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ThresholdCard
+          title="Text.ru — Уникальность"
+          hint="Процент уникальности. Чем выше — тем лучше."
+          fields={[
+            { label: "OK, если ≥", value: thresholds.unique.ok, onChange: (v) => setQualityThresholds({ unique: { ...thresholds.unique, ok: num(v) } }), suffix: "%" },
+            { label: "Warning, если ≥", value: thresholds.unique.warn, onChange: (v) => setQualityThresholds({ unique: { ...thresholds.unique, warn: num(v) } }), suffix: "%" },
+          ]}
+          footer="Ниже второго порога — Fail."
+        />
+
+        <ThresholdCard
+          title="Text.ru — Вода"
+          hint="Чем ниже, тем лучше."
+          fields={[
+            { label: "Warning, если ≥", value: thresholds.water.warn, onChange: (v) => setQualityThresholds({ water: { ...thresholds.water, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.water.fail, onChange: (v) => setQualityThresholds({ water: { ...thresholds.water, fail: num(v) } }), suffix: "%" },
+          ]}
+        />
+
+        <ThresholdCard
+          title="Text.ru — Заспамленность"
+          hint="Чем ниже, тем лучше."
+          fields={[
+            { label: "Warning, если ≥", value: thresholds.spam.warn, onChange: (v) => setQualityThresholds({ spam: { ...thresholds.spam, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.spam.fail, onChange: (v) => setQualityThresholds({ spam: { ...thresholds.spam, fail: num(v) } }), suffix: "%" },
+          ]}
+        />
+
+        <ThresholdCard
+          title="ZeroGPT — AI-контент"
+          hint="Процент вероятности AI-генерации. Чем ниже, тем лучше."
+          fields={[
+            { label: "Warning, если ≥", value: thresholds.ai.warn, onChange: (v) => setQualityThresholds({ ai: { ...thresholds.ai, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.ai.fail, onChange: (v) => setQualityThresholds({ ai: { ...thresholds.ai, fail: num(v) } }), suffix: "%" },
+          ]}
+        />
+
+        <ThresholdCard
+          title="Тургенев (Ашманов) — Риск"
+          hint="Баллы риска переспама. Чем ниже, тем лучше."
+          fields={[
+            { label: "Warning, если ≥", value: thresholds.turgenev.warn, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, warn: num(v) } }), suffix: "б" },
+            { label: "Fail, если ≥", value: thresholds.turgenev.fail, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, fail: num(v) } }), suffix: "б" },
+            { label: "Critical, если ≥", value: thresholds.turgenev.critical, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, critical: num(v) } }), suffix: "б" },
+          ]}
+        />
+      </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-1.5 text-[11px] text-muted-foreground">
+          <div className="font-medium text-foreground text-xs">Как считается общий статус</div>
+          <div>• Каждой метрике присваивается зона: OK / Warning / Fail / Critical.</div>
+          <div>• Общий статус текста — худшая зона среди всех проверок.</div>
+          <div>• Значения применяются сразу после сохранения — новые проверки и повторный вход в попап покажут актуальные зоны.</div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+interface ThresholdField {
+  label: string;
+  value: number;
+  onChange: (v: string) => void;
+  suffix?: string;
+}
+
+function ThresholdCard({ title, hint, fields, footer }: { title: string; hint?: string; fields: ThresholdField[]; footer?: string }) {
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div>
+          <div className="text-sm font-medium">{title}</div>
+          {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
+        </div>
+        <div className="grid grid-cols-1 gap-2">
+          {fields.map((f) => (
+            <label key={f.label} className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">{f.label}</span>
+              <span className="inline-flex items-center gap-1">
+                <Input
+                  type="number"
+                  value={f.value}
+                  onChange={(e) => f.onChange(e.target.value)}
+                  className="h-8 w-20 text-xs text-right"
+                />
+                {f.suffix && <span className="text-muted-foreground text-[11px]">{f.suffix}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+        {footer && <div className="text-[11px] text-muted-foreground">{footer}</div>}
+      </CardContent>
+    </Card>
   );
 }
