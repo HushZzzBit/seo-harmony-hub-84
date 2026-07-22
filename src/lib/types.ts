@@ -89,6 +89,7 @@ export interface QualityProviderResult {
   reportUrl?: string;
   waterPercent?: number;
   spamPercent?: number;
+  uniquePercent?: number;
   aiPercent?: number;
   turgenevScore?: number;
   turgenevRiskLevel?: "ok" | "medium" | "high" | "critical";

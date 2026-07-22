@@ -12,6 +12,7 @@ export type ProviderResult = {
   // normalized fields (optional per provider)
   waterPercent?: number;
   spamPercent?: number;
+  uniquePercent?: number;
   aiPercent?: number;
   turgenevScore?: number;
   turgenevRiskLevel?: "ok" | "medium" | "high" | "critical";
@@ -72,10 +73,11 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
   if (plain.length < 100) return { ...base, status: "skipped", completedAt: Date.now(), error: "Текст слишком короткий (< 100 симв.)" };
 
   try {
-    // 1) submit
+    // 1) submit — jsonvisible=detail нужен, иначе text.ru вернёт только уникальность без SEO-метрик
     const submitForm = new URLSearchParams();
     submitForm.set("text", plain);
     submitForm.set("userkey", key);
+    submitForm.set("jsonvisible", "detail");
     const submit = await fetchJson("https://api.text.ru/post", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -91,6 +93,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     const pollBody = new URLSearchParams();
     pollBody.set("uid", uid);
     pollBody.set("userkey", key);
+    pollBody.set("jsonvisible", "detail");
     // up to ~3 минут polling с бэкоффом
     const delays = [6000, 6000, 8000, 8000, 10000, 10000, 15000, 15000, 20000, 20000, 25000, 25000];
     for (const wait of delays) {
@@ -103,12 +106,12 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
       const p = poll.body as {
         text_unique?: string;
         result_json?: string;
-        seo_check?: string;
+        seo_check?: string | Record<string, unknown>;
         error_code?: number;
         error_desc?: string;
       } | null;
       // Not ready yet — text.ru обычно возвращает error_code=181/183
-      if (p?.error_code && !p.result_json && !p.seo_check) continue;
+      if (p?.error_code && !p.result_json && !p.seo_check && !p.text_unique) continue;
       const seoRaw = p?.seo_check ?? (p?.result_json ? tryPickSeo(p.result_json) : undefined);
       const seo = typeof seoRaw === "string" ? safeJson(seoRaw) : (seoRaw as Record<string, unknown> | undefined);
       const water = num((seo as { water_percent?: unknown })?.water_percent);
@@ -121,6 +124,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
           completedAt: Date.now(),
           waterPercent: water,
           spamPercent: spam,
+          uniquePercent: uniq,
           reportUrl: `https://text.ru/antiplagiat/${uid}`,
           rawJson: safeStringify(p),
         };
