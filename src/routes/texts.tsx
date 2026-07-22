@@ -390,7 +390,6 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [value, setValue] = useState(initial);
   const [editor, setEditorRef] = useState<import("@tiptap/react").Editor | null>(null);
   const [tab, setTab] = useState("editor");
-  const [kwFilter, setKwFilter] = useState("");
   const [highlight, setHighlight] = useState(true);
 
   const groupQueries = useMemo(
@@ -439,12 +438,8 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
     }).sort((a, b) => b.weight - a.weight);
   }, [groupQueries, plainLower]);
 
-  const visiblePhrases = kwFilter
-    ? phrases.filter((p) => p.phrase.toLowerCase().includes(kwFilter.toLowerCase()))
-    : phrases;
-  const visibleWords = kwFilter
-    ? words.filter((w) => w.word.includes(kwFilter.toLowerCase()))
-    : words;
+  const visiblePhrases = phrases;
+  const visibleWords = words;
 
   const insertAtCursor = (text: string) => {
     if (!editor) return;
@@ -539,12 +534,6 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                   style={{ width: `${coverage}%` }}
                 />
               </div>
-              <Input
-                value={kwFilter}
-                onChange={(e) => setKwFilter(e.target.value)}
-                placeholder="Фильтр ключей..."
-                className="h-8 text-xs"
-              />
             </div>
 
             <div className="flex-1 overflow-auto p-2 space-y-3">
@@ -615,7 +604,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
         </div>
 
         <div className="shrink-0">
-          <QualityPanel url={url} />
+          <QualityPanel url={url} currentValue={value} />
         </div>
 
         <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background shrink-0">
@@ -831,9 +820,10 @@ function QualityTooltip({ check, label }: { check: TextQualityCheck; label: stri
   );
 }
 
-function QualityPanel({ url }: { url: string }) {
+function QualityPanel({ url, currentValue }: { url: string; currentValue?: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
-  const text = useStore((s) => s.texts[url]?.text);
+  const savedText = useStore((s) => s.texts[url]?.text);
+  const text = currentValue ?? savedText;
   const run = useQualityRunner();
   if (!url) return null;
   return (
@@ -857,7 +847,7 @@ function QualityPanel({ url }: { url: string }) {
           onClick={() => text && run(url, text)}
         >
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${check?.overall === "checking" ? "animate-spin" : ""}`} />
-          Проверить заново
+          Проверить
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
