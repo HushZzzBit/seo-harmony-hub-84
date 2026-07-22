@@ -580,6 +580,8 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
           </aside>
         </div>
 
+        <QualityPanel url={url} />
+
         <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background">
           <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
             <span>{plain.length} симв.</span>
@@ -592,10 +594,12 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
               onClick={() => {
                 const finalHtml = isHtml(value) ? value : wrapPlainInHtml(value);
                 setText(url, { text: finalHtml });
+                // Kick off quality check for the final text (fire-and-forget).
+                if (url) void runQualityCheck(url, finalHtml);
                 setOpen(false);
               }}
             >
-              Сохранить
+              Сохранить и закрыть
             </Button>
           </div>
         </div>
