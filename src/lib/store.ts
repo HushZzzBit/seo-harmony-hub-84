@@ -76,6 +76,7 @@ interface State {
   prompts: Record<string, PromptTemplate>;
   qualityChecks: Record<string, TextQualityCheck>;
   qualityThresholds: QualityThresholds;
+  writerRequirements: string;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
