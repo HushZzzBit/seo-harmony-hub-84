@@ -1,4 +1,4 @@
-import type { QualityOverall, QualityProviderResult, TextQualityCheck } from "./types";
+import type { QualityOverall, QualityProviderResult, QualityThresholds, TextQualityCheck } from "./types";
 
 export type Zone = "ok" | "warning" | "fail" | "critical" | "unknown";
 
@@ -8,13 +8,26 @@ export const providerLabel: Record<string, string> = {
   turgenev: "Тургенев",
 };
 
-/** Thresholds (per TZ). */
-export const THRESHOLDS = {
-  water: { warning: 15, fail: 20 },
-  spam: { warning: 45, fail: 55 },
-  ai: { warning: 30, fail: 60 },
-  turgenev: { warning: 5, fail: 8, critical: 13 },
+/** Значения по умолчанию. Пользователь меняет их в Настройках → Требования и примеры текстов. */
+export const DEFAULT_THRESHOLDS: QualityThresholds = {
+  unique: { ok: 85, warn: 70 },
+  water: { warn: 15, fail: 20 },
+  spam: { warn: 45, fail: 55 },
+  ai: { warn: 30, fail: 60 },
+  turgenev: { warn: 5, fail: 8, critical: 13 },
 };
+
+/** Мутируемая копия — обновляется из стора (см. useStore.qualityThresholds). */
+export const THRESHOLDS: QualityThresholds = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS));
+
+export function applyThresholds(next: Partial<QualityThresholds> | undefined) {
+  if (!next) return;
+  THRESHOLDS.unique = { ...THRESHOLDS.unique, ...(next.unique ?? {}) };
+  THRESHOLDS.water = { ...THRESHOLDS.water, ...(next.water ?? {}) };
+  THRESHOLDS.spam = { ...THRESHOLDS.spam, ...(next.spam ?? {}) };
+  THRESHOLDS.ai = { ...THRESHOLDS.ai, ...(next.ai ?? {}) };
+  THRESHOLDS.turgenev = { ...THRESHOLDS.turgenev, ...(next.turgenev ?? {}) };
+}
 
 function zoneByBands(v: number, warn: number, fail: number): Zone {
   if (v < warn) return "ok";
@@ -22,7 +35,6 @@ function zoneByBands(v: number, warn: number, fail: number): Zone {
   return "fail";
 }
 
-/** Compute zones for a provider result. Returns metric label + zone + display value. */
 export type MetricView = { label: string; value: string; zone: Zone };
 
 export function providerMetrics(p: QualityProviderResult): MetricView[] {
@@ -30,22 +42,21 @@ export function providerMetrics(p: QualityProviderResult): MetricView[] {
   const m: MetricView[] = [];
   if (p.provider === "text_ru") {
     if (p.uniquePercent !== undefined) {
-      // уникальность: чем выше, тем лучше. ok >= 85, warning 70–85, fail < 70
       const u = p.uniquePercent;
-      const zone: Zone = u >= 85 ? "ok" : u >= 70 ? "warning" : "fail";
+      const zone: Zone = u >= THRESHOLDS.unique.ok ? "ok" : u >= THRESHOLDS.unique.warn ? "warning" : "fail";
       m.push({ label: "Уник.", value: `${u.toFixed(1)}%`, zone });
     }
     if (p.waterPercent !== undefined) {
-      m.push({ label: "Вода", value: `${p.waterPercent.toFixed(1)}%`, zone: zoneByBands(p.waterPercent, THRESHOLDS.water.warning, THRESHOLDS.water.fail) });
+      m.push({ label: "Вода", value: `${p.waterPercent.toFixed(1)}%`, zone: zoneByBands(p.waterPercent, THRESHOLDS.water.warn, THRESHOLDS.water.fail) });
     }
     if (p.spamPercent !== undefined) {
-      m.push({ label: "Заспам.", value: `${p.spamPercent.toFixed(1)}%`, zone: zoneByBands(p.spamPercent, THRESHOLDS.spam.warning, THRESHOLDS.spam.fail) });
+      m.push({ label: "Заспам.", value: `${p.spamPercent.toFixed(1)}%`, zone: zoneByBands(p.spamPercent, THRESHOLDS.spam.warn, THRESHOLDS.spam.fail) });
     }
   } else if (p.provider === "zerogpt" && p.aiPercent !== undefined) {
-    m.push({ label: "AI", value: `${p.aiPercent.toFixed(1)}%`, zone: zoneByBands(p.aiPercent, THRESHOLDS.ai.warning, THRESHOLDS.ai.fail) });
+    m.push({ label: "AI", value: `${p.aiPercent.toFixed(1)}%`, zone: zoneByBands(p.aiPercent, THRESHOLDS.ai.warn, THRESHOLDS.ai.fail) });
   } else if (p.provider === "turgenev" && p.turgenevScore !== undefined) {
     const s = p.turgenevScore;
-    const zone: Zone = s >= THRESHOLDS.turgenev.critical ? "critical" : s >= THRESHOLDS.turgenev.fail ? "fail" : s >= THRESHOLDS.turgenev.warning ? "warning" : "ok";
+    const zone: Zone = s >= THRESHOLDS.turgenev.critical ? "critical" : s >= THRESHOLDS.turgenev.fail ? "fail" : s >= THRESHOLDS.turgenev.warn ? "warning" : "ok";
     m.push({ label: "Риск", value: s.toFixed(1), zone });
   }
   return m;
