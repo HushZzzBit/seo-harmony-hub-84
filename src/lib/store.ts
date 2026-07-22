@@ -251,6 +251,9 @@ export const useStore = create<State>()(
       storage: createJSONStorage(() =>
         typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
       ),
+      onRehydrateStorage: () => (state) => {
+        if (state?.qualityThresholds) applyThresholds(state.qualityThresholds);
+      },
     },
   ),
 );
