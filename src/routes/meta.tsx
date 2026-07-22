@@ -454,15 +454,21 @@ const MetaRow = memo(function MetaRow({
   prio,
   rec,
   freq,
+  seasonality,
   selected,
   onToggleSelect,
+  open,
+  onToggleOpen,
 }: {
   row: Row;
   prio: Priority;
   rec: number;
   freq: number;
+  seasonality: number[];
   selected: boolean;
   onToggleSelect: (url: string, v: boolean) => void;
+  open: boolean;
+  onToggleOpen: () => void;
 }) {
   // Row-scoped selectors — this row only re-renders when its own data changes.
   const urlRow = useStore((s) => s.urls[row.url]);
