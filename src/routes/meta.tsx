@@ -483,6 +483,7 @@ const MetaRow = memo(function MetaRow({
         title: result.title,
         description: result.description,
         h1: result.h1,
+        source: "ai",
       });
       toast.success("Мета-теги сгенерированы");
     } catch (e) {
