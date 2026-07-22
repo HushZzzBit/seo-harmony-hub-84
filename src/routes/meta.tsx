@@ -815,32 +815,48 @@ function MetaPreview({
       {label}
     </button>
   );
+  const combined = useMemo(
+    () => [title, desc, h1].join(" \n ").toLowerCase().replace(/ё/g, "е"),
+    [title, desc, h1],
+  );
+  const phrasesUsed = useMemo(() => {
+    let n = 0;
+    for (const q of qs) {
+      const toks = q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w.length > 2);
+      if (toks.length && toks.every((t) => combined.includes(t))) n++;
+    }
+    return n;
+  }, [qs, combined]);
   return (
     <div className="rounded-md border border-border bg-muted/20 p-2 flex flex-col min-w-0">
       <div className="flex items-center justify-between mb-1.5 gap-2">
         <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
           {tabBtn("preview", "Итог")}
           {tabBtn("keys", `Слова ${used.size}/${wordSet.size}`)}
-          {tabBtn("phrases", `Фразы ${qs.length}`)}
+          {tabBtn("phrases", `Фразы ${phrasesUsed}/${qs.length}`)}
         </div>
         <span className={"text-[11px] tabular-nums shrink-0 " + covColor} title="Покрытие ключевых слов">
           {coverage}%
         </span>
       </div>
       {tab === "preview" && (
-        <div className="kw-preview space-y-2 text-sm px-1 py-1">
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">H1</div>
-            <div className="font-semibold leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(h1, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Title</div>
-            <div className="text-primary leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(title, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Description</div>
-            <div className="text-xs text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: highlightHtml(desc, wordSet) || '<span class="text-muted-foreground italic">пусто</span>' }} />
-          </div>
+        <div className="kw-preview space-y-2 px-1 py-1 text-sm text-foreground/90">
+          {(["H1", "Title", "Description"] as const).map((label, i) => {
+            const value = [h1, title, desc][i];
+            return (
+              <div key={label}>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
+                <div
+                  className="text-sm leading-snug"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      highlightHtml(value, wordSet) ||
+                      '<span class="text-muted-foreground italic">пусто</span>',
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
       {tab === "keys" && <KeywordsPanel words={words} used={used} />}
