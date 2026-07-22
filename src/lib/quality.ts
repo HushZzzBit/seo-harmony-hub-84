@@ -29,6 +29,12 @@ export function providerMetrics(p: QualityProviderResult): MetricView[] {
   if (p.status !== "success") return [];
   const m: MetricView[] = [];
   if (p.provider === "text_ru") {
+    if (p.uniquePercent !== undefined) {
+      // уникальность: чем выше, тем лучше. ok >= 85, warning 70–85, fail < 70
+      const u = p.uniquePercent;
+      const zone: Zone = u >= 85 ? "ok" : u >= 70 ? "warning" : "fail";
+      m.push({ label: "Уник.", value: `${u.toFixed(1)}%`, zone });
+    }
     if (p.waterPercent !== undefined) {
       m.push({ label: "Вода", value: `${p.waterPercent.toFixed(1)}%`, zone: zoneByBands(p.waterPercent, THRESHOLDS.water.warning, THRESHOLDS.water.fail) });
     }
