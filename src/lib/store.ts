@@ -110,6 +110,7 @@ export const useStore = create<State>()(
       prompts: {},
       qualityChecks: {},
       qualityThresholds: JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)),
+      writerRequirements: "",
 
 
 
