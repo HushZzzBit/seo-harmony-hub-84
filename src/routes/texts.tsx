@@ -24,10 +24,14 @@ const QUALITY_MAX_RUNS = 5;
 const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
 const QUALITY_MIN_DIFF_CHARS = 10;
 
-/** Символьная дистанция «сколько добавили/убрали» — достаточно для порога 10 симв. */
+/** Грубая оценка «сколько символов изменилось» между двумя строками. */
 function charDiff(a: string, b: string): number {
   if (a === b) return 0;
-  return Math.abs(a.length - b.length) + (a.length === b.length && a !== b ? a.length : 0);
+  const dl = Math.abs(a.length - b.length);
+  const min = Math.min(a.length, b.length);
+  let mismatches = 0;
+  for (let i = 0; i < min; i++) if (a[i] !== b[i]) mismatches++;
+  return dl + mismatches;
 }
 
 export const Route = createFileRoute("/texts")({
