@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
 import { overallDot, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
+import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 
 const QUALITY_MAX_RUNS = 5;
@@ -35,28 +36,13 @@ export const Route = createFileRoute("/texts")({
   component: () => <ClientOnly fallback={null}><TextsPage /></ClientOnly>,
 });
 
-function normStatus(s: string | undefined): TextStatus {
-  if (s === "in_progress") return "copywriting";
-  if (s === "review") return "revision";
-  return (s as TextStatus) ?? "not_assigned";
-}
-
-const statusLabel: Record<TextStatus, string> = {
-  not_assigned: "Не назначено",
-  copywriting: "Копирайтинг",
-  expansion: "Расширение",
-  revision: "Доработка",
-  ready: "Готов к выгрузке",
-  in_csv: "В файле CSV",
-  done: "Готово",
-};
+const normStatus = normTextStatus;
+const statusLabel = textStatusLabel;
 
 const PAGE_SIZE = 50;
 
 type SortKey = "priority" | "group" | "url" | "planMonth" | "hasText" | "length" | "assignee" | "status";
 type SortDir = "asc" | "desc";
-
-const priorityRank: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 function TextsPage() {
   const queries = useStore((s) => s.queries);
@@ -66,6 +52,7 @@ function TextsPage() {
   const [folder, setFolder] = useState("all");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -93,7 +80,7 @@ function TextsPage() {
     const enriched = Array.from(byUrl.values()).filter((r) => {
       if (folder !== "all" && r.folder !== folder) return false;
       if (category !== "all" && r.group !== category) return false;
-      if (search && !(r.url + r.group).toLowerCase().includes(search.toLowerCase())) return false;
+      if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
@@ -127,9 +114,9 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, search, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
-  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, priorityFilter, sortKey, sortDir]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
 
@@ -209,7 +196,7 @@ function TextsPage() {
             disabled={selected.size === 0 || !bulkStatus}
             onClick={() => {
               if (!bulkStatus) return;
-              for (const u of selected) setText(u, { status: bulkStatus as TextStatus });
+              useStore.getState().setTextsBulk(Array.from(selected), { status: bulkStatus as TextStatus });
               setSelected(new Set());
               setBulkStatus("");
             }}
@@ -262,12 +249,8 @@ function TextsPage() {
             </thead>
             <tbody>
               {visible.map(({ r, t, has, len, planMonth, seasonality, prio }) => {
-                const prioStyle = prio === "high"
-                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
-                  : prio === "medium"
-                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
-                  : "bg-muted text-muted-foreground border-border";
-                const prioLabel = prio === "high" ? "Высокий" : prio === "medium" ? "Средний" : "Низкий";
+                const prioClass = priorityStyle[prio];
+                const prioName = priorityLabel[prio];
                 const isSel = !!r.url && selected.has(r.url);
                 return (
                   <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
@@ -288,7 +271,7 @@ function TextsPage() {
                       />
                     </td>
                     <td className="px-1.5 py-1 align-middle">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${prioClass}`}>{prioName}</span>
                     </td>
                     <td className="px-1.5 py-1 align-middle overflow-hidden">
                       <div className="text-[10px] text-muted-foreground truncate leading-tight">{r.folder}</div>
@@ -356,10 +339,6 @@ function TextsPage() {
   );
 }
 
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-}
 
 function isHtml(s: string): boolean {
   return /<\/?[a-z][\s\S]*?>/i.test(s);

@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
@@ -42,9 +43,6 @@ type Row = { folder: string; group: string; url: string; qs: Query[] };
 type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
 type SortDir = "asc" | "desc";
 
-const priorityRank: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
-const priorityLabel: Record<Priority, string> = { high: "Высокий", medium: "Средний", low: "Низкий" };
-
 const PAGE_SIZE = 50;
 
 function MetaPage() {
@@ -52,10 +50,12 @@ function MetaPage() {
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
   const setMetaEdit = useStore((s) => s.setMetaEdit);
+  const setMetaEditsBulk = useStore((s) => s.setMetaEditsBulk);
   const prompts = useStore((s) => s.prompts);
   const [folder, setFolder] = useState<string>("all");
   const [group, setGroup] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("priority");
@@ -118,8 +118,8 @@ function MetaPage() {
         if (folder !== "all" && r.folder !== folder) return false;
         if (group !== "all" && r.group !== group) return false;
         if (
-          search &&
-          !(r.url + r.group + r.folder).toLowerCase().includes(search.toLowerCase())
+          deferredSearch &&
+          !(r.url + r.group + r.folder).toLowerCase().includes(deferredSearch.toLowerCase())
         )
           return false;
         const st = metaEdits[r.url]?.status ?? "not_started";
@@ -170,11 +170,11 @@ function MetaPage() {
       }
     });
     return enriched;
-  }, [queries, folder, group, search, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
+  }, [queries, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [folder, group, search, statusFilter, priorityFilter, sortKey, sortDir]);
+  }, [folder, group, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
 
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
@@ -248,10 +248,9 @@ function MetaPage() {
             <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="in_csv">В файле CSV</SelectItem>
-              <SelectItem value="done">Готово</SelectItem>
+              {Object.entries(metaStatusLabel).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex items-center gap-1 rounded-md border border-border h-9 px-1">
@@ -323,10 +322,9 @@ function MetaPage() {
               <Select value={bulkStatus} onValueChange={(v) => setBulkStatus(v as Status)}>
                 <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Изменить статус на…" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="not_started">Не начато</SelectItem>
-                  <SelectItem value="in_progress">В работе</SelectItem>
-                  <SelectItem value="in_csv">В файле CSV</SelectItem>
-                  <SelectItem value="done">Готово</SelectItem>
+                  {Object.entries(metaStatusLabel).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <button
@@ -334,7 +332,7 @@ function MetaPage() {
                 disabled={selected.size === 0 || !bulkStatus}
                 onClick={() => {
                   if (!bulkStatus) return;
-                  for (const u of selected) setMetaEdit(u, { status: bulkStatus as Status });
+                  setMetaEditsBulk(Array.from(selected), { status: bulkStatus as Status });
                   setSelected(new Set());
                   setBulkStatus("");
                 }}
@@ -547,8 +545,6 @@ const MetaRow = memo(function MetaRow({
   };
   const gPos = avgPos("googlePosition");
   const yPos = avgPos("yandexPosition");
-  const posColor = (p: number) =>
-    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
 
   const usedAll = useMemo(() => {
     const s = new Set<string>();
@@ -585,12 +581,7 @@ const MetaRow = memo(function MetaRow({
           ? "border-l-chart-4"
           : "border-l-border";
 
-  const prioStyle =
-    prio === "high"
-      ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
-      : prio === "medium"
-        ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
-        : "bg-muted text-muted-foreground border-border";
+  const prioClass = priorityStyle[prio];
 
   return (
     <Card className={`border-l-4 ${statusRing} ${selected ? "bg-primary/5" : ""}`}>
@@ -612,7 +603,7 @@ const MetaRow = memo(function MetaRow({
           >
             <ArrowDown className={"h-3.5 w-3.5 transition-transform " + (open ? "" : "-rotate-90")} />
           </button>
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
+          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioClass}`}>
             {priorityLabel[prio]}
           </span>
           <div className="min-w-0 flex-1 cursor-pointer" onClick={onToggleOpen}>
@@ -673,10 +664,9 @@ const MetaRow = memo(function MetaRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="not_started">Не начато</SelectItem>
-              <SelectItem value="in_progress">В работе</SelectItem>
-              <SelectItem value="in_csv">В файле CSV</SelectItem>
-              <SelectItem value="done">Готово</SelectItem>
+              {Object.entries(metaStatusLabel).map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -818,8 +808,6 @@ function PhrasesPanel({ qs, texts }: { qs: Query[]; texts: string[] }) {
     if (!toks.length) return false;
     return toks.every((t) => combined.includes(t));
   };
-  const posColor = (p?: number) =>
-    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
   return (
     <div className="rounded-md border border-border bg-muted/20 p-2 text-xs max-h-[240px] overflow-auto">
       <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-muted/40 backdrop-blur -mx-2 px-2 py-1">
@@ -1098,33 +1086,5 @@ function EditableCell({
         spellCheck={false}
       />
     </div>
-  );
-}
-
-function Highlighted({ text, words }: { text: string; words: Set<string> }) {
-  const seen = new Map<string, number>();
-  const parts = text.split(/(\s+)/);
-  return (
-    <span className="text-muted-foreground/70">
-      {parts.map((p, i) => {
-        const norm = p.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/gi, "");
-        if (!norm) return <span key={i}>{p}</span>;
-        if (!words.has(norm)) return <span key={i}>{p}</span>;
-        const count = (seen.get(norm) ?? 0) + 1;
-        seen.set(norm, count);
-        return (
-          <span
-            key={i}
-            className={
-              count > 1
-                ? "bg-chart-4/50 rounded px-0.5 text-foreground"
-                : "bg-chart-2/40 rounded px-0.5 text-foreground"
-            }
-          >
-            {p}
-          </span>
-        );
-      })}
-    </span>
   );
 }

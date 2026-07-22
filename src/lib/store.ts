@@ -80,7 +80,9 @@ interface State {
   upsertUrls: (rows: UrlRow[]) => void;
   applySeasonality: (map: Record<string, number[]>) => void; // key: phrase
   setMetaEdit: (url: string, patch: Partial<MetaEdit>) => void;
+  setMetaEditsBulk: (urls: string[], patch: Partial<MetaEdit>) => void;
   setText: (url: string, patch: Partial<TextRow>) => void;
+  setTextsBulk: (urls: string[], patch: Partial<TextRow>) => void;
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
   setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
@@ -158,6 +160,30 @@ export const useStore = create<State>()(
         set({
           texts: { ...get().texts, [url]: { ...prev, ...patch, updatedAt: Date.now() } },
         });
+      },
+      setMetaEditsBulk: (urls, patch) => {
+        if (!urls.length) return;
+        const now = Date.now();
+        const cur = get().metaEdits;
+        const next = { ...cur };
+        for (const u of urls) {
+          if (!u) continue;
+          const prev = cur[u] ?? { url: u };
+          next[u] = { ...prev, ...patch, updatedAt: now };
+        }
+        set({ metaEdits: next });
+      },
+      setTextsBulk: (urls, patch) => {
+        if (!urls.length) return;
+        const now = Date.now();
+        const cur = get().texts;
+        const next = { ...cur };
+        for (const u of urls) {
+          if (!u) continue;
+          const prev = cur[u] ?? { url: u, status: "not_assigned" as const };
+          next[u] = { ...prev, ...patch, updatedAt: now };
+        }
+        set({ texts: next });
       },
       setFolderState: (folder, patch) => {
         const prev = get().folderState[folder] ?? { folder, status: "not_started" as const };
