@@ -80,7 +80,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     const submitBody = submit.body as { text_uid?: string; error_code?: number; error_desc?: string } | null;
     const uid = submitBody?.text_uid;
     if (!uid) {
-      return { ...base, status: "failed", completedAt: Date.now(), error: submitBody?.error_desc ?? `submit ${submit.status}`, raw: submit.body };
+      return { ...base, status: "failed", completedAt: Date.now(), error: submitBody?.error_desc ?? `submit ${submit.status}`, rawJson: safeStringify(submit.body) };
     }
 
     // 2) poll status
@@ -117,7 +117,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
           waterPercent: water,
           spamPercent: spam,
           reportUrl: `https://text.ru/antiplagiat/${uid}`,
-          raw: p,
+          rawJson: safeStringify(p),
         };
       }
     }
@@ -164,9 +164,9 @@ async function checkZeroGpt(plain: string): Promise<ProviderResult> {
     } | null;
     const pct = num(body?.data?.fakePercentage);
     if (!res.ok || pct === undefined) {
-      return { ...base, status: "failed", completedAt: Date.now(), error: body?.message ?? `HTTP ${res.status}`, raw: res.body };
+      return { ...base, status: "failed", completedAt: Date.now(), error: body?.message ?? `HTTP ${res.status}`, rawJson: safeStringify(res.body) };
     }
-    return { ...base, status: "success", completedAt: Date.now(), aiPercent: pct, raw: res.body };
+    return { ...base, status: "success", completedAt: Date.now(), aiPercent: pct, rawJson: safeStringify(res.body) };
   } catch (e) {
     return { ...base, status: "failed", completedAt: Date.now(), error: (e as Error).message };
   }
@@ -197,7 +197,7 @@ async function checkTurgenev(plain: string): Promise<ProviderResult> {
     } | null;
     const score = num(body?.result?.total_score ?? body?.total_score ?? body?.result?.risk ?? body?.risk ?? body?.result?.score ?? body?.score);
     if (!res.ok || score === undefined) {
-      return { ...base, status: "failed", completedAt: Date.now(), error: body?.error ?? body?.message ?? `HTTP ${res.status}`, raw: res.body };
+      return { ...base, status: "failed", completedAt: Date.now(), error: body?.error ?? body?.message ?? `HTTP ${res.status}`, rawJson: safeStringify(res.body) };
     }
     const risk: ProviderResult["turgenevRiskLevel"] =
       score >= 13 ? "critical" : score >= 8 ? "high" : score >= 5 ? "medium" : "ok";
@@ -208,7 +208,7 @@ async function checkTurgenev(plain: string): Promise<ProviderResult> {
       turgenevScore: score,
       turgenevRiskLevel: risk,
       reportUrl: body?.report_url,
-      raw: res.body,
+      rawJson: safeStringify(res.body),
     };
   } catch (e) {
     return { ...base, status: "failed", completedAt: Date.now(), error: (e as Error).message };
