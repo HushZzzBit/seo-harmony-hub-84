@@ -654,3 +654,205 @@ function highlightKeywords(html: string, phrases: string[]): string {
   return tpl.innerHTML;
 }
 
+
+// ============================================================
+// Quality checks (Text.ru / ZeroGPT / Тургенев)
+// ============================================================
+
+function useQualityRunner() {
+  const setQualityCheck = useStore((s) => s.setQualityCheck);
+  const check = useServerFn(checkTextQuality);
+  return async (url: string, html: string) => {
+    if (!url) return;
+    const plain = stripHtml(html);
+    if (plain.length < 50) return; // ниже минимума всех провайдеров
+    const requestedAt = Date.now();
+    const pendingProviders: QualityProviderResult[] = (["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((p) => ({
+      provider: p,
+      status: "pending",
+      requestedAt,
+    }));
+    setQualityCheck(url, {
+      url,
+      textHash: "",
+      requestedAt,
+      overall: "checking",
+      providers: pendingProviders,
+    });
+    try {
+      const res = await check({ data: { text: html } });
+      const providers = res.providers as unknown as QualityProviderResult[];
+      const next: TextQualityCheck = {
+        url,
+        textHash: res.textHash,
+        requestedAt: res.requestedAt,
+        completedAt: res.completedAt,
+        overall: "ok",
+        providers,
+      };
+      const { overallFromCheck } = await import("@/lib/quality");
+      next.overall = overallFromCheck(next);
+      setQualityCheck(url, next);
+    } catch (e) {
+      setQualityCheck(url, {
+        url,
+        textHash: "",
+        requestedAt,
+        completedAt: Date.now(),
+        overall: "error",
+        providers: pendingProviders.map((p) => ({
+          ...p,
+          status: "failed",
+          completedAt: Date.now(),
+          error: (e as Error).message,
+        })),
+      });
+    }
+  };
+}
+
+function QualityCell({ url }: { url: string }) {
+  const check = useStore((s) => s.qualityChecks[url]);
+  if (!check) return <span className="text-xs text-muted-foreground">—</span>;
+  const label = overallLabel[check.overall];
+  const dot = overallDot[check.overall];
+  return (
+    <div className="flex justify-center">
+      <div className="group relative inline-flex items-center gap-1 cursor-help">
+        <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
+        <span className="text-[10px] uppercase font-medium text-muted-foreground hidden xl:inline">
+          {check.overall === "checking" ? "…" : check.overall === "ok" ? "OK" : check.overall === "warning" ? "!" : check.overall === "fail" ? "×" : "err"}
+        </span>
+        <div className="absolute z-50 top-full right-0 mt-1 w-72 hidden group-hover:block">
+          <QualityTooltip check={check} label={label} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QualityTooltip({ check, label }: { check: TextQualityCheck; label: string }) {
+  return (
+    <div className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg p-3 text-xs space-y-2">
+      <div className="font-medium">{label}</div>
+      <div className="text-muted-foreground text-[10px]">
+        {check.completedAt ? new Date(check.completedAt).toLocaleString() : "…"}
+      </div>
+      <div className="space-y-1">
+        {check.providers.map((p) => (
+          <div key={p.provider} className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground">{providerLabel[p.provider]}</span>
+            <span className="flex items-center gap-1">
+              {p.status === "pending" && <Loader2 className="h-3 w-3 animate-spin" />}
+              {p.status === "failed" && <span className="text-rose-500">ошибка</span>}
+              {p.status === "skipped" && <span className="text-muted-foreground">—</span>}
+              {p.status === "success" && providerMetrics(p).map((m) => (
+                <span key={m.label} className={`px-1.5 py-0.5 rounded border text-[10px] ${zoneClass[m.zone]}`}>
+                  {m.label} {m.value}
+                </span>
+              ))}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QualityPanel({ url }: { url: string }) {
+  const check = useStore((s) => s.qualityChecks[url]);
+  const text = useStore((s) => s.texts[url]?.text);
+  const run = useQualityRunner();
+  if (!url) return null;
+  return (
+    <div className="border-t bg-muted/30 px-5 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className={`h-2.5 w-2.5 rounded-full ${overallDot[check?.overall ?? "checking"]}`} />
+          <span className="text-sm font-medium">
+            {check ? overallLabel[check.overall] : "Проверка качества не запускалась"}
+          </span>
+          {check?.completedAt && (
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(check.completedAt).toLocaleString()}
+            </span>
+          )}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={!text || check?.overall === "checking"}
+          onClick={() => text && run(url, text)}
+        >
+          <RefreshCw className={`h-3.5 w-3.5 mr-1 ${check?.overall === "checking" ? "animate-spin" : ""}`} />
+          Проверить заново
+        </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {(["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((prov) => {
+          const p = check?.providers.find((x) => x.provider === prov);
+          return <ProviderTile key={prov} provider={prov} p={p} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityProviderResult }) {
+  const label = providerLabel[provider];
+  if (!p) {
+    return (
+      <div className="rounded-md border border-border bg-background p-2 text-xs">
+        <div className="font-medium">{label}</div>
+        <div className="text-muted-foreground mt-1">Не запущено</div>
+      </div>
+    );
+  }
+  if (p.status === "pending") {
+    return (
+      <div className="rounded-md border border-border bg-background p-2 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="font-medium">{label}</span>
+          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+        </div>
+        <div className="text-muted-foreground mt-1">Проверка…</div>
+      </div>
+    );
+  }
+  if (p.status === "failed") {
+    return (
+      <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2 text-xs">
+        <div className="font-medium text-rose-600 dark:text-rose-300">{label}</div>
+        <div className="text-[11px] mt-1 line-clamp-3 opacity-80" title={p.error}>{p.error ?? "Ошибка"}</div>
+      </div>
+    );
+  }
+  if (p.status === "skipped") {
+    return (
+      <div className="rounded-md border border-border bg-background p-2 text-xs">
+        <div className="font-medium">{label}</div>
+        <div className="text-muted-foreground mt-1">Пропущено: {p.error}</div>
+      </div>
+    );
+  }
+  const metrics = providerMetrics(p);
+  return (
+    <div className="rounded-md border border-border bg-background p-2 text-xs space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="font-medium">{label}</span>
+        {p.reportUrl && (
+          <a href={p.reportUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline inline-flex items-center gap-0.5 text-[10px]">
+            Отчёт <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {metrics.map((m) => (
+          <span key={m.label} className={`px-1.5 py-0.5 rounded border text-[10px] ${zoneClass[m.zone]}`}>
+            {m.label} {m.value}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
