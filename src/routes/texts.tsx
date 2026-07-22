@@ -780,7 +780,7 @@ function QualityPanel({ url }: { url: string }) {
   const run = useQualityRunner();
   if (!url) return null;
   return (
-    <div className="border-t bg-muted/20 px-5 py-3">
+    <div className="border-t bg-background px-5 py-3">
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[check?.overall ?? "checking"]}`} />
