@@ -297,7 +297,16 @@ function TextsPage() {
                     <td className="px-1.5 py-1 align-middle">
                       <span className="text-[11px]">{MONTHS[planMonth]}</span>
                     </td>
-                    <td className="px-1.5 py-1 align-middle text-center text-sm">{has ? "🟢" : "🔴"}</td>
+                    <td className="px-1.5 py-1 align-middle">
+                      <div className="flex justify-center">
+                        <div className="inline-flex items-center gap-1">
+                          <span className={`h-2.5 w-2.5 rounded-full ${has ? "bg-emerald-500" : "bg-rose-500"}`} />
+                          <span className="text-muted-foreground hidden xl:inline-flex items-center">
+                            {has ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <X className="h-3.5 w-3.5 text-rose-500" />}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="px-1.5 py-1 align-middle text-right text-[11px]">{len}</td>
                     <td className="px-1.5 py-1 align-middle">
                       <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-6 text-[11px] w-full px-2" />
