@@ -594,9 +594,11 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
           </aside>
         </div>
 
-        <QualityPanel url={url} />
+        <div className="shrink-0">
+          <QualityPanel url={url} />
+        </div>
 
-        <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background">
+        <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background shrink-0">
           <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
             <span>{plain.length} симв.</span>
             <span>{wordsCnt} слов</span>
