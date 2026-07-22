@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
@@ -41,9 +42,6 @@ export const Route = createFileRoute("/meta")({
 type Row = { folder: string; group: string; url: string; qs: Query[] };
 type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
 type SortDir = "asc" | "desc";
-
-const priorityRank: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
-const priorityLabel: Record<Priority, string> = { high: "Высокий", medium: "Средний", low: "Низкий" };
 
 const PAGE_SIZE = 50;
 
