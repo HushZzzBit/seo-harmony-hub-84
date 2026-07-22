@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
 import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2, Check, AlertTriangle, X } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
