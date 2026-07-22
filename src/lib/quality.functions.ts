@@ -91,8 +91,8 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     const pollBody = new URLSearchParams();
     pollBody.set("uid", uid);
     pollBody.set("userkey", key);
-    // up to ~40s of polling with backoff
-    const delays = [5000, 5000, 5000, 5000, 5000, 5000, 10000];
+    // up to ~3 минут polling с бэкоффом
+    const delays = [6000, 6000, 8000, 8000, 10000, 10000, 15000, 15000, 20000, 20000, 25000, 25000];
     for (const wait of delays) {
       await new Promise((r) => setTimeout(r, wait));
       const poll = await fetchJson("https://api.text.ru/post", {
@@ -113,7 +113,8 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
       const seo = typeof seoRaw === "string" ? safeJson(seoRaw) : (seoRaw as Record<string, unknown> | undefined);
       const water = num((seo as { water_percent?: unknown })?.water_percent);
       const spam = num((seo as { spam_percent?: unknown })?.spam_percent);
-      if (water !== undefined || spam !== undefined) {
+      const uniq = num(p?.text_unique);
+      if (water !== undefined || spam !== undefined || uniq !== undefined) {
         return {
           ...base,
           status: "success",
@@ -125,7 +126,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
         };
       }
     }
-    return { ...base, status: "failed", completedAt: Date.now(), error: "Timeout ожидания text.ru" };
+    return { ...base, status: "failed", completedAt: Date.now(), error: "Timeout ожидания text.ru — проверка ещё идёт, повторите позже" };
   } catch (e) {
     return { ...base, status: "failed", completedAt: Date.now(), error: (e as Error).message };
   }
