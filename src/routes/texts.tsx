@@ -195,7 +195,7 @@ function TextsPage() {
             disabled={selected.size === 0 || !bulkStatus}
             onClick={() => {
               if (!bulkStatus) return;
-              for (const u of selected) setText(u, { status: bulkStatus as TextStatus });
+              useStore.getState().setTextsBulk(Array.from(selected), { status: bulkStatus as TextStatus });
               setSelected(new Set());
               setBulkStatus("");
             }}
@@ -248,12 +248,8 @@ function TextsPage() {
             </thead>
             <tbody>
               {visible.map(({ r, t, has, len, planMonth, seasonality, prio }) => {
-                const prioStyle = prio === "high"
-                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30"
-                  : prio === "medium"
-                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
-                  : "bg-muted text-muted-foreground border-border";
-                const prioLabel = prio === "high" ? "Высокий" : prio === "medium" ? "Средний" : "Низкий";
+                const prioClass = priorityStyle[prio];
+                const prioName = priorityLabel[prio];
                 const isSel = !!r.url && selected.has(r.url);
                 return (
                   <tr key={r.url || r.folder + r.group} className={`border-t border-border hover:bg-muted/30 ${isSel ? "bg-primary/5" : ""}`}>
