@@ -534,12 +534,6 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                   style={{ width: `${coverage}%` }}
                 />
               </div>
-              <Input
-                value={kwFilter}
-                onChange={(e) => setKwFilter(e.target.value)}
-                placeholder="Фильтр ключей..."
-                className="h-8 text-xs"
-              />
             </div>
 
             <div className="flex-1 overflow-auto p-2 space-y-3">
