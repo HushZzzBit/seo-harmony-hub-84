@@ -715,7 +715,7 @@ function useQualityRunner() {
       // Точный prev-текст не храним, поэтому используем длину как достаточное приближение.
       const diff = Math.abs(plain.length - (prev.textLength ?? 0));
       // Дополнительно: если хеши совпадают (текст идентичен нормализованно) — точно скипнуть.
-      const sameHash = prev.textHash && (await hashPlain(plain)) === prev.textHash;
+      const sameHash = prev.textHash && (await sha1Hex(plain)) === prev.textHash;
       if (sameHash || diff < QUALITY_MIN_DIFF_CHARS) {
         if (!opts?.silent) toast.info(`Изменения слишком малы (< ${QUALITY_MIN_DIFF_CHARS} симв.) — проверка не запускалась`);
         return;
