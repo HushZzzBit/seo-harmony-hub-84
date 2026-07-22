@@ -63,6 +63,16 @@ function MetaPage() {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
+  const [viewMode, setViewMode] = useState<"compact" | "expanded">("compact");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const toggleExpanded = useCallback((url: string) => {
+    setExpanded((prev) => {
+      const n = new Set(prev);
+      if (n.has(url)) n.delete(url);
+      else n.add(url);
+      return n;
+    });
+  }, []);
 
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
