@@ -119,13 +119,13 @@ function TextsPage() {
     else { setSortKey(k); setSortDir("asc"); }
   };
 
-  const SortHeader = ({ k, children, className = "text-left" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
+  const SortHeader = ({ k, children, className = "" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
     const Icon = sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
     return (
-      <th className={`p-2 ${className}`}>
+      <th className={`p-2 text-left ${className}`}>
         <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition uppercase text-xs">
           {children}
-          <Icon className={`h-3 w-3 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
+          <Icon className={`h-3 w-3 shrink-0 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
         </button>
       </th>
     );
@@ -201,10 +201,10 @@ function TextsPage() {
 
       <Card>
         <CardContent className="p-0 overflow-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
             <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="p-2 w-8">
+                <th className="p-2 w-10">
                   {(() => {
                     const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
                     const allChecked = visible.length > 0 && selCount === visible.length;
@@ -230,16 +230,16 @@ function TextsPage() {
                     );
                   })()}
                 </th>
-                <SortHeader k="priority">Приоритет</SortHeader>
-                <SortHeader k="group">Папка / Группа</SortHeader>
+                <SortHeader k="priority" className="w-24">Приоритет</SortHeader>
+                <SortHeader k="group" className="w-52">Папка / Группа</SortHeader>
                 <SortHeader k="url">URL</SortHeader>
-                <SortHeader k="planMonth">Плановый месяц</SortHeader>
-                <SortHeader k="hasText" className="text-center">Текст</SortHeader>
-                <SortHeader k="length" className="text-right">Длина</SortHeader>
-                <SortHeader k="assignee">Исполнитель</SortHeader>
-                <SortHeader k="status">Статус</SortHeader>
-                <th className="p-2 text-center">Качество</th>
-                <th className="p-2"></th>
+                <SortHeader k="planMonth" className="w-28">Плановый месяц</SortHeader>
+                <SortHeader k="hasText" className="text-center w-16">Текст</SortHeader>
+                <SortHeader k="length" className="text-right w-16">Длина</SortHeader>
+                <SortHeader k="assignee" className="w-36">Исполнитель</SortHeader>
+                <SortHeader k="status" className="w-40">Статус</SortHeader>
+                <th className="p-2 text-center w-20">Качество</th>
+                <th className="p-2 w-16"></th>
               </tr>
             </thead>
             <tbody>
@@ -272,25 +272,38 @@ function TextsPage() {
                     <td className="p-2 align-top">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${prioStyle}`}>{prioLabel}</span>
                     </td>
-                    <td className="p-2 align-top">
-                      <div className="text-xs text-muted-foreground">{r.folder}</div>
-                      <div className="font-medium">{r.group}</div>
+                    <td className="p-2 align-top overflow-hidden">
+                      <div className="text-xs text-muted-foreground truncate">{r.folder}</div>
+                      <div className="font-medium truncate">{r.group}</div>
                     </td>
-                    <td className="p-2 align-top max-w-[220px]"><div className="truncate text-xs">{r.url || "—"}</div></td>
-                    <td className="p-2 align-top">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs">{MONTHS[planMonth]}</span>
-                        <span className="text-[10px] text-muted-foreground">(реком.: {MONTHS[recommendedMonth(seasonality)]})</span>
+                    <td className="p-2 align-top overflow-hidden">
+                      <div className="flex items-center gap-1.5">
+                        <div className="truncate text-xs flex-1">{r.url || "—"}</div>
+                        {r.url && (
+                          <a
+                            href={r.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="shrink-0 inline-flex items-center justify-center text-muted-foreground hover:text-primary transition"
+                            title="Открыть URL"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
                       </div>
+                    </td>
+                    <td className="p-2 align-top">
+                      <span className="text-xs">{MONTHS[planMonth]}</span>
                     </td>
                     <td className="p-2 align-top text-center text-lg">{has ? "🟢" : "🔴"}</td>
                     <td className="p-2 align-top text-right">{len}</td>
                     <td className="p-2 align-top">
-                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-7 text-xs w-28" />
+                      <Input value={t.assignee ?? ""} onChange={(e) => setText(r.url, { assignee: e.target.value })} className="h-7 text-xs w-full" />
                     </td>
                     <td className="p-2 align-top">
                       <Select value={t.status} onValueChange={(v) => setText(r.url, { status: v as TextStatus })}>
-                        <SelectTrigger className="h-7 text-xs w-32"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-7 text-xs w-full"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                         </SelectContent>
@@ -581,9 +594,11 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
           </aside>
         </div>
 
-        <QualityPanel url={url} />
+        <div className="shrink-0">
+          <QualityPanel url={url} />
+        </div>
 
-        <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background">
+        <div className="flex justify-between items-center gap-4 px-5 py-3 border-t bg-background shrink-0">
           <div className="text-xs text-muted-foreground flex gap-3 flex-wrap">
             <span>{plain.length} симв.</span>
             <span>{wordsCnt} слов</span>
@@ -765,15 +780,15 @@ function QualityPanel({ url }: { url: string }) {
   const run = useQualityRunner();
   if (!url) return null;
   return (
-    <div className="border-t bg-muted/30 px-5 py-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${overallDot[check?.overall ?? "checking"]}`} />
-          <span className="text-sm font-medium">
+    <div className="border-t bg-muted/20 px-5 py-3">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${overallDot[check?.overall ?? "checking"]}`} />
+          <span className="text-sm font-medium truncate">
             {check ? overallLabel[check.overall] : "Проверка качества не запускалась"}
           </span>
           {check?.completedAt && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:inline">
               {new Date(check.completedAt).toLocaleString()}
             </span>
           )}
@@ -788,7 +803,7 @@ function QualityPanel({ url }: { url: string }) {
           Проверить заново
         </Button>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {(["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((prov) => {
           const p = check?.providers.find((x) => x.provider === prov);
           return <ProviderTile key={prov} provider={prov} p={p} />;
@@ -800,44 +815,45 @@ function QualityPanel({ url }: { url: string }) {
 
 function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityProviderResult }) {
   const label = providerLabel[provider];
+  const tileBase = "rounded-md border p-2 text-xs h-full flex flex-col gap-1.5";
   if (!p) {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="font-medium">{label}</div>
-        <div className="text-muted-foreground mt-1">Не запущено</div>
+        <div className="text-muted-foreground">Не запущено</div>
       </div>
     );
   }
   if (p.status === "pending") {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="flex items-center justify-between">
           <span className="font-medium">{label}</span>
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
-        <div className="text-muted-foreground mt-1">Проверка…</div>
+        <div className="text-muted-foreground">Проверка…</div>
       </div>
     );
   }
   if (p.status === "failed") {
     return (
-      <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2 text-xs">
+      <div className={`${tileBase} border-rose-500/30 bg-rose-500/5`}>
         <div className="font-medium text-rose-600 dark:text-rose-300">{label}</div>
-        <div className="text-[11px] mt-1 line-clamp-3 opacity-80" title={p.error}>{p.error ?? "Ошибка"}</div>
+        <div className="text-[11px] line-clamp-3 opacity-80" title={p.error}>{p.error ?? "Ошибка"}</div>
       </div>
     );
   }
   if (p.status === "skipped") {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="font-medium">{label}</div>
-        <div className="text-muted-foreground mt-1">Пропущено: {p.error}</div>
+        <div className="text-muted-foreground">Пропущено: {p.error}</div>
       </div>
     );
   }
   const metrics = providerMetrics(p);
   return (
-    <div className="rounded-md border border-border bg-background p-2 text-xs space-y-1.5">
+    <div className={`${tileBase} border-border bg-background`}>
       <div className="flex items-center justify-between">
         <span className="font-medium">{label}</span>
         {p.reportUrl && (
