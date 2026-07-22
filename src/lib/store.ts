@@ -57,11 +57,13 @@ import type {
   MetaHistoryEntry,
   MetaSource,
   PromptTemplate,
+  QualityThresholds,
   Query,
   TextQualityCheck,
   TextRow,
   UrlRow,
 } from "./types";
+import { DEFAULT_THRESHOLDS, applyThresholds } from "./quality";
 
 interface State {
   queries: Query[];
@@ -71,14 +73,13 @@ interface State {
   texts: Record<string, TextRow>;
   folderState: Record<string, FolderState>;
   groupState: Record<string, GroupState>;
-  /** Prompt templates. Key: folder name, or "__default" for the global template. */
   prompts: Record<string, PromptTemplate>;
-  /** Latest quality check per URL. */
   qualityChecks: Record<string, TextQualityCheck>;
+  qualityThresholds: QualityThresholds;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
-  applySeasonality: (map: Record<string, number[]>) => void; // key: phrase
+  applySeasonality: (map: Record<string, number[]>) => void;
   setMetaEdit: (url: string, patch: Partial<MetaEdit>) => void;
   setMetaEditsBulk: (urls: string[], patch: Partial<MetaEdit>) => void;
   setText: (url: string, patch: Partial<TextRow>) => void;
@@ -88,6 +89,8 @@ interface State {
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
   resetPrompt: (folder: string) => void;
   setQualityCheck: (url: string, check: TextQualityCheck) => void;
+  setQualityThresholds: (patch: Partial<QualityThresholds>) => void;
+  resetQualityThresholds: () => void;
   clearAll: () => void;
 }
 
@@ -104,6 +107,8 @@ export const useStore = create<State>()(
       groupState: {},
       prompts: {},
       qualityChecks: {},
+      qualityThresholds: JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)),
+
 
 
       upsertQueries: (rows) => {
@@ -210,6 +215,23 @@ export const useStore = create<State>()(
       },
       setQualityCheck: (url, check) =>
         set({ qualityChecks: { ...get().qualityChecks, [url]: check } }),
+      setQualityThresholds: (patch) => {
+        const cur = get().qualityThresholds;
+        const next: QualityThresholds = {
+          unique: { ...cur.unique, ...(patch.unique ?? {}) },
+          water: { ...cur.water, ...(patch.water ?? {}) },
+          spam: { ...cur.spam, ...(patch.spam ?? {}) },
+          ai: { ...cur.ai, ...(patch.ai ?? {}) },
+          turgenev: { ...cur.turgenev, ...(patch.turgenev ?? {}) },
+        };
+        applyThresholds(next);
+        set({ qualityThresholds: next });
+      },
+      resetQualityThresholds: () => {
+        const next = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)) as QualityThresholds;
+        applyThresholds(next);
+        set({ qualityThresholds: next });
+      },
       clearAll: () =>
         set({
           queries: [],
@@ -229,6 +251,9 @@ export const useStore = create<State>()(
       storage: createJSONStorage(() =>
         typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
       ),
+      onRehydrateStorage: () => (state) => {
+        if (state?.qualityThresholds) applyThresholds(state.qualityThresholds);
+      },
     },
   ),
 );

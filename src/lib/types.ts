@@ -108,4 +108,17 @@ export interface TextQualityCheck {
   runCount?: number;
 }
 
+/** Пороговые значения качества (редактируются в Настройках). */
+export interface QualityThresholds {
+  /** Уникальность text.ru: ok если >= ok, warning если >= warn, иначе fail. */
+  unique: { ok: number; warn: number };
+  /** Вода / Заспамленность / AI: ok если < warn, warning если <= fail, иначе fail. */
+  water: { warn: number; fail: number };
+  spam: { warn: number; fail: number };
+  ai: { warn: number; fail: number };
+  /** Тургенев: пороги риска (баллы). */
+  turgenev: { warn: number; fail: number; critical: number };
+}
+
+
 
