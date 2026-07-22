@@ -414,8 +414,11 @@ function MetaPage() {
             prio={e.prio}
             rec={e.rec}
             freq={e.freq}
+            seasonality={e.seasonality}
             selected={!!e.r.url && selected.has(e.r.url)}
             onToggleSelect={handleToggleSelect}
+            open={viewMode === "expanded" || (!!e.r.url && expanded.has(e.r.url))}
+            onToggleOpen={() => e.r.url && toggleExpanded(e.r.url)}
           />
         ))}
         {rows.length === 0 && (
