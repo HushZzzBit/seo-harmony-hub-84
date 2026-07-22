@@ -52,6 +52,7 @@ function TextsPage() {
   const [folder, setFolder] = useState("all");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -79,7 +80,7 @@ function TextsPage() {
     const enriched = Array.from(byUrl.values()).filter((r) => {
       if (folder !== "all" && r.folder !== folder) return false;
       if (category !== "all" && r.group !== category) return false;
-      if (search && !(r.url + r.group).toLowerCase().includes(search.toLowerCase())) return false;
+      if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
       return true;
@@ -113,9 +114,9 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, search, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
-  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, search, statusFilter, priorityFilter, sortKey, sortDir]);
+  useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
   const hasMore = rows.length > visible.length;
 
