@@ -448,12 +448,13 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
 
   const highlightedHtml = useMemo(() => {
     if (!highlight) return value;
-    if (!phrases.length) return value;
+    if (!phrases.length && !words.length) return value;
     return highlightKeywords(
       value,
       phrases.map((p) => p.phrase),
+      words.map((w) => w.word),
     );
-  }, [value, phrases, highlight]);
+  }, [value, phrases, words, highlight]);
 
   return (
     <Dialog
@@ -637,16 +638,39 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Заменяет е/ё в шаблоне на [её] и склеивает пробелы в \s+ для гибкого матчинга. */
+function normalizePattern(escaped: string): string {
+  return escaped
+    .replace(/[еёЕЁ]/g, "[её]")
+    .replace(/\s+/g, "\\s+");
+}
+
 /**
- * Highlight keyword phrases in an HTML string by wrapping matches with <mark>.
+ * Highlight keyword phrases and single stems in an HTML string.
  * Only touches text nodes so tag attributes stay intact.
+ * Handles ё↔е, flexible whitespace и словоформы (суффиксы до 4 симв.).
  */
-function highlightKeywords(html: string, phrases: string[]): string {
-  if (typeof window === "undefined" || !phrases.length) return html;
-  const uniq = Array.from(new Set(phrases.map((p) => p.trim()).filter(Boolean)))
+function highlightKeywords(html: string, phrases: string[], words: string[] = []): string {
+  if (typeof window === "undefined") return html;
+  const uniqPhrases = Array.from(new Set(phrases.map((p) => p.trim()).filter(Boolean)))
     .sort((a, b) => b.length - a.length);
-  if (!uniq.length) return html;
-  const re = new RegExp(`(${uniq.map(escapeRe).join("|")})`, "gi");
+  const uniqWords = Array.from(new Set(words.map((w) => w.trim().toLowerCase()).filter((w) => w.length > 2)));
+  const phrasePats = uniqPhrases.map((p) => normalizePattern(escapeRe(p)));
+  const wordPats = uniqWords.map((w) => {
+    const base = normalizePattern(escapeRe(w));
+    // не начинать с середины другого слова + допускать суффиксы до 4 симв.
+    return `(?<![а-яёa-z0-9])${base}[а-яёa-z]{0,4}`;
+  });
+  const patterns = [...phrasePats, ...wordPats];
+  if (!patterns.length) return html;
+  let re: RegExp;
+  try {
+    re = new RegExp(`(${patterns.join("|")})`, "gi");
+  } catch {
+    // fallback без lookbehind (старые движки)
+    const safe = [...phrasePats, ...uniqWords.map((w) => `${normalizePattern(escapeRe(w))}[а-яёa-z]{0,4}`)];
+    re = new RegExp(`(${safe.join("|")})`, "gi");
+  }
 
   const tpl = document.createElement("template");
   tpl.innerHTML = html;
@@ -659,6 +683,7 @@ function highlightKeywords(html: string, phrases: string[]): string {
     if (!parent) continue;
     if (["MARK", "SCRIPT", "STYLE", "CODE"].includes(parent.tagName)) continue;
     const text = node.nodeValue ?? "";
+    re.lastIndex = 0;
     if (!re.test(text)) continue;
     re.lastIndex = 0;
     const frag = document.createDocumentFragment();
@@ -671,6 +696,7 @@ function highlightKeywords(html: string, phrases: string[]): string {
       mark.textContent = m[0];
       frag.appendChild(mark);
       last = m.index + m[0].length;
+      if (m[0].length === 0) re.lastIndex++; // защита от бесконечного цикла
     }
     if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
     parent.replaceChild(frag, node);
