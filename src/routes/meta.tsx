@@ -1088,31 +1088,3 @@ function EditableCell({
     </div>
   );
 }
-
-function Highlighted({ text, words }: { text: string; words: Set<string> }) {
-  const seen = new Map<string, number>();
-  const parts = text.split(/(\s+)/);
-  return (
-    <span className="text-muted-foreground/70">
-      {parts.map((p, i) => {
-        const norm = p.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/gi, "");
-        if (!norm) return <span key={i}>{p}</span>;
-        if (!words.has(norm)) return <span key={i}>{p}</span>;
-        const count = (seen.get(norm) ?? 0) + 1;
-        seen.set(norm, count);
-        return (
-          <span
-            key={i}
-            className={
-              count > 1
-                ? "bg-chart-4/50 rounded px-0.5 text-foreground"
-                : "bg-chart-2/40 rounded px-0.5 text-foreground"
-            }
-          >
-            {p}
-          </span>
-        );
-      })}
-    </span>
-  );
-}
