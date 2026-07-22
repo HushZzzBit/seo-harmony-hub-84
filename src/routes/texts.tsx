@@ -231,14 +231,14 @@ function TextsPage() {
                 </th>
                 <SortHeader k="priority" className="w-20">Приор.</SortHeader>
                 <SortHeader k="group" className="w-44">Папка / Группа</SortHeader>
-                <SortHeader k="url">URL</SortHeader>
-                <SortHeader k="planMonth" className="w-20">Мес.</SortHeader>
-                <SortHeader k="hasText" className="text-center w-12">Текст</SortHeader>
+                <SortHeader k="url" className="w-[22%]">URL</SortHeader>
+                <SortHeader k="planMonth" className="w-16">Мес.</SortHeader>
+                <SortHeader k="hasText" className="text-center w-16">Наличие</SortHeader>
                 <SortHeader k="length" className="text-right w-14">Длина</SortHeader>
                 <SortHeader k="assignee" className="w-28">Исполн.</SortHeader>
                 <SortHeader k="status" className="w-32">Статус</SortHeader>
-                <th className="px-1.5 py-1.5 text-center w-16">Кач-во</th>
-                <th className="px-1.5 py-1.5 w-12"></th>
+                <th className="px-1.5 py-1.5 text-center w-14">Кач-во</th>
+                <th className="px-1.5 py-1.5 w-10"></th>
               </tr>
             </thead>
             <tbody>
