@@ -32,7 +32,7 @@ export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props
     editorProps: {
       attributes: {
         class:
-          "tiptap-editor prose prose-sm dark:prose-invert max-w-none focus:outline-none min-h-[55vh] px-6 py-4",
+          "tiptap-editor prose prose-sm dark:prose-invert max-w-none focus:outline-none px-6 py-4 min-h-full",
       },
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -48,17 +48,18 @@ export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props
     if (value && value !== current) editor.commands.setContent(value, { emitUpdate: false });
   }, [value, editor]);
 
-  if (!editor) return <div className="min-h-[55vh] border rounded-md" />;
+  if (!editor) return <div className="h-full border rounded-md" />;
 
   return (
-    <div className="flex flex-col border rounded-md bg-background overflow-hidden">
+    <div className="flex flex-col h-full min-h-0 border rounded-md bg-background overflow-hidden">
       <Toolbar editor={editor} />
-      <div className="overflow-auto max-h-[60vh]">
-        <EditorContent editor={editor} />
+      <div className="flex-1 min-h-0 overflow-auto">
+        <EditorContent editor={editor} className="h-full" />
       </div>
     </div>
   );
 }
+
 
 function Toolbar({ editor }: { editor: Editor }) {
   const btn = (active: boolean) =>
