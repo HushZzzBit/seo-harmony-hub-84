@@ -564,14 +564,6 @@ const MetaRow = memo(function MetaRow({
             checked={selected}
             onChange={(v) => onToggleSelect(row.url, v)}
           />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            title={expanded ? "Скрыть детали" : "Показать детали"}
-          >
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
             {priorityLabel[prio]}
           </span>
