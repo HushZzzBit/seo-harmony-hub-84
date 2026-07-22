@@ -92,6 +92,7 @@ interface State {
   setQualityCheck: (url: string, check: TextQualityCheck) => void;
   setQualityThresholds: (patch: Partial<QualityThresholds>) => void;
   resetQualityThresholds: () => void;
+  setWriterRequirements: (v: string) => void;
   clearAll: () => void;
 }
 
