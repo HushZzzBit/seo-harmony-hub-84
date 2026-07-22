@@ -18,6 +18,17 @@ import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
 import { overallDot, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
+import { toast } from "sonner";
+
+const QUALITY_MAX_RUNS = 5;
+const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
+const QUALITY_MIN_DIFF_CHARS = 10;
+
+/** Символьная дистанция «сколько добавили/убрали» — достаточно для порога 10 симв. */
+function charDiff(a: string, b: string): number {
+  if (a === b) return 0;
+  return Math.abs(a.length - b.length) + (a.length === b.length && a !== b ? a.length : 0);
+}
 
 export const Route = createFileRoute("/texts")({
   ssr: false,
