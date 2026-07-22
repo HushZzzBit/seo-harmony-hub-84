@@ -275,6 +275,26 @@ function MetaPage() {
               {sortDir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
             </button>
           </div>
+          <div className="flex items-center gap-0.5 rounded-md border border-border h-9 px-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("compact")}
+              className={
+                "h-7 px-2 text-xs rounded transition " +
+                (viewMode === "compact" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent")
+              }
+              title="Компактный список"
+            >Список</button>
+            <button
+              type="button"
+              onClick={() => setViewMode("expanded")}
+              className={
+                "h-7 px-2 text-xs rounded transition " +
+                (viewMode === "expanded" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-accent")
+              }
+              title="Все карточки развёрнуты"
+            >Карточки</button>
+          </div>
         </div>
       </div>
 
