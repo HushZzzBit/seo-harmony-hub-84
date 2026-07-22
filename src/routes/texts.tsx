@@ -486,16 +486,16 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                   </label>
                 </div>
                 <div
-                  className="prose prose-sm dark:prose-invert max-w-none border rounded-md p-6 h-[60vh] overflow-auto bg-background kw-preview"
+                  className="prose prose-sm dark:prose-invert max-w-none border rounded-md p-6 h-full overflow-auto bg-background kw-preview"
                   dangerouslySetInnerHTML={{ __html: highlightedHtml }}
                 />
               </TabsContent>
 
-              <TabsContent value="html" className="flex-1 min-h-0 mt-2">
+              <TabsContent value="html" className="flex-1 min-h-0 mt-2 flex flex-col">
                 <Textarea
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
-                  className="font-mono text-xs h-[60vh] resize-none"
+                  className="font-mono text-xs flex-1 min-h-0 resize-none"
                   spellCheck={false}
                 />
                 <div className="flex gap-2 mt-2">
