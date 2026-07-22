@@ -813,44 +813,45 @@ function QualityPanel({ url }: { url: string }) {
 
 function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityProviderResult }) {
   const label = providerLabel[provider];
+  const tileBase = "rounded-md border p-2 text-xs h-full flex flex-col gap-1.5";
   if (!p) {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="font-medium">{label}</div>
-        <div className="text-muted-foreground mt-1">Не запущено</div>
+        <div className="text-muted-foreground">Не запущено</div>
       </div>
     );
   }
   if (p.status === "pending") {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="flex items-center justify-between">
           <span className="font-medium">{label}</span>
           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
         </div>
-        <div className="text-muted-foreground mt-1">Проверка…</div>
+        <div className="text-muted-foreground">Проверка…</div>
       </div>
     );
   }
   if (p.status === "failed") {
     return (
-      <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-2 text-xs">
+      <div className={`${tileBase} border-rose-500/30 bg-rose-500/5`}>
         <div className="font-medium text-rose-600 dark:text-rose-300">{label}</div>
-        <div className="text-[11px] mt-1 line-clamp-3 opacity-80" title={p.error}>{p.error ?? "Ошибка"}</div>
+        <div className="text-[11px] line-clamp-3 opacity-80" title={p.error}>{p.error ?? "Ошибка"}</div>
       </div>
     );
   }
   if (p.status === "skipped") {
     return (
-      <div className="rounded-md border border-border bg-background p-2 text-xs">
+      <div className={`${tileBase} border-border bg-background`}>
         <div className="font-medium">{label}</div>
-        <div className="text-muted-foreground mt-1">Пропущено: {p.error}</div>
+        <div className="text-muted-foreground">Пропущено: {p.error}</div>
       </div>
     );
   }
   const metrics = providerMetrics(p);
   return (
-    <div className="rounded-md border border-border bg-background p-2 text-xs space-y-1.5">
+    <div className={`${tileBase} border-border bg-background`}>
       <div className="flex items-center justify-between">
         <span className="font-medium">{label}</span>
         {p.reportUrl && (
