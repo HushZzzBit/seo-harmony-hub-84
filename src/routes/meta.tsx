@@ -625,7 +625,10 @@ const MetaRow = memo(function MetaRow({
               <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
             </Field>
           </div>
-          <KeywordsPanel words={words} used={usedAll} />
+          <div className="space-y-2 min-w-0">
+            <KeywordsPanel words={words} used={usedAll} />
+            <PhrasesPanel qs={row.qs} texts={[title, desc, h1]} />
+          </div>
         </div>
       </CardContent>
     </Card>
