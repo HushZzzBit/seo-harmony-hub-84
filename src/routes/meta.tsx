@@ -632,9 +632,13 @@ const MetaRow = memo(function MetaRow({
           </div>
         )}
 
-        {/* Two-column: edits | keywords */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-3">
-          <div className="space-y-1.5">
+        {/* Two-column: editor (work area) | preview (result) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {/* Left: working area */}
+          <div className="rounded-md border border-border bg-background/40 p-2 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground px-1 pb-0.5">
+              Редактирование
+            </div>
             <Field label="H1">
               <EditableCell value={h1} onChange={setH1} onCommit={(v) => save({ h1: v })} words={wordSet} />
             </Field>
@@ -645,10 +649,16 @@ const MetaRow = memo(function MetaRow({
               <EditableCell value={desc} onChange={setDesc} onCommit={(v) => save({ description: v })} words={wordSet} rows={2} maxLen={160} />
             </Field>
           </div>
-          <div className="space-y-2 min-w-0">
-            <KeywordsPanel words={words} used={usedAll} />
-            <PhrasesPanel qs={row.qs} texts={[title, desc, h1]} />
-          </div>
+          {/* Right: preview / result */}
+          <MetaPreview
+            title={title}
+            desc={desc}
+            h1={h1}
+            words={words}
+            used={usedAll}
+            coverage={coverage}
+            qs={row.qs}
+          />
         </div>
       </CardContent>
     </Card>
