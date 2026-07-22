@@ -820,9 +820,10 @@ function QualityTooltip({ check, label }: { check: TextQualityCheck; label: stri
   );
 }
 
-function QualityPanel({ url }: { url: string }) {
+function QualityPanel({ url, currentValue }: { url: string; currentValue?: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
-  const text = useStore((s) => s.texts[url]?.text);
+  const savedText = useStore((s) => s.texts[url]?.text);
+  const text = currentValue ?? savedText;
   const run = useQualityRunner();
   if (!url) return null;
   return (
@@ -846,7 +847,7 @@ function QualityPanel({ url }: { url: string }) {
           onClick={() => text && run(url, text)}
         >
           <RefreshCw className={`h-3.5 w-3.5 mr-1 ${check?.overall === "checking" ? "animate-spin" : ""}`} />
-          Проверить заново
+          Проверить
         </Button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
