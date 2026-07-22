@@ -232,7 +232,7 @@ function TextsPage() {
                 </th>
                 <SortHeader k="priority" className="w-24">Приоритет</SortHeader>
                 <SortHeader k="group" className="w-52">Папка / Группа</SortHeader>
-                <SortHeader k="url" className="w-auto">URL</SortHeader>
+                <SortHeader k="url">URL</SortHeader>
                 <SortHeader k="planMonth" className="w-28">Плановый месяц</SortHeader>
                 <SortHeader k="hasText" className="text-center w-16">Текст</SortHeader>
                 <SortHeader k="length" className="text-right w-16">Длина</SortHeader>
