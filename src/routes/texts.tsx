@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStore } from "@/lib/store";
 import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
-import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2 } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2, Check, AlertTriangle, X } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
@@ -141,10 +141,10 @@ function TextsPage() {
   const SortHeader = ({ k, children, className = "" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
     const Icon = sortKey !== k ? ArrowUpDown : sortDir === "asc" ? ArrowUp : ArrowDown;
     return (
-      <th className={`p-2 text-left ${className}`}>
-        <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition uppercase text-xs">
-          {children}
-          <Icon className={`h-3 w-3 shrink-0 ${sortKey === k ? "text-foreground" : "opacity-50"}`} />
+      <th className={`px-2 py-2 text-left font-medium ${className}`}>
+        <button type="button" onClick={() => toggleSort(k)} className="inline-flex items-center gap-1 hover:text-foreground transition">
+          <span className="truncate">{children}</span>
+          <Icon className={`h-3 w-3 shrink-0 ${sortKey === k ? "text-foreground" : "opacity-40"}`} />
         </button>
       </th>
     );
@@ -161,23 +161,23 @@ function TextsPage() {
           <p className="text-sm text-muted-foreground">Планирование и написание текстов</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Input placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} className="w-56 h-9" />
+          <Input placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} className="w-40 md:w-48 h-9" />
           <Select value={folder} onValueChange={setFolder}>
-            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все папки</SelectItem>
               {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger className="w-48 h-9"><SelectValue placeholder="Категория" /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue placeholder="Категория" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все категории</SelectItem>
               {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
             </SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-40 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-32 md:w-36 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все приоритеты</SelectItem>
               <SelectItem value="high">Высокий</SelectItem>
@@ -186,7 +186,7 @@ function TextsPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-36 md:w-40 h-9"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
               {Object.entries(statusLabel).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
@@ -219,11 +219,11 @@ function TextsPage() {
       </div>
 
       <Card>
-        <CardContent className="p-0 overflow-auto">
-          <table className="w-full text-xs table-fixed">
-            <thead className="bg-muted/50 text-[10px] uppercase text-muted-foreground">
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full min-w-[960px] text-xs table-fixed">
+            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
               <tr>
-                <th className="px-1.5 py-1.5 w-8">
+                <th className="px-2 py-2 w-8 font-medium">
                   {(() => {
                     const selCount = visible.filter((e) => e.r.url && selected.has(e.r.url)).length;
                     const allChecked = visible.length > 0 && selCount === visible.length;
@@ -256,8 +256,8 @@ function TextsPage() {
                 <SortHeader k="length" className="text-right w-14">Длина</SortHeader>
                 <SortHeader k="assignee" className="w-28">Исполн.</SortHeader>
                 <SortHeader k="status" className="w-32">Статус</SortHeader>
-                <th className="px-1.5 py-1.5 text-center w-14">Кач-во</th>
-                <th className="px-1.5 py-1.5 w-10"></th>
+                <th className="px-2 py-2 text-center w-14 font-medium">Кач-во</th>
+                <th className="px-2 py-2 w-10 font-medium"></th>
               </tr>
             </thead>
             <tbody>
@@ -781,8 +781,18 @@ function QualityCell({ url }: { url: string }) {
     <div className="flex justify-center">
       <div className="group relative inline-flex items-center gap-1 cursor-help">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
-        <span className="text-[10px] uppercase font-medium text-muted-foreground hidden xl:inline">
-          {check.overall === "checking" ? "…" : check.overall === "ok" ? "OK" : check.overall === "warning" ? "!" : check.overall === "fail" ? "×" : "err"}
+        <span className="text-muted-foreground hidden xl:inline-flex items-center">
+          {check.overall === "checking" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : check.overall === "ok" ? (
+            <Check className="h-3.5 w-3.5 text-emerald-500" />
+          ) : check.overall === "warning" ? (
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+          ) : check.overall === "fail" ? (
+            <X className="h-3.5 w-3.5 text-rose-500" />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
         </span>
         <div className="absolute z-50 top-full right-0 mt-1 w-72 hidden group-hover:block">
           <QualityTooltip check={check} label={label} />
