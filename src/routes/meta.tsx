@@ -15,7 +15,7 @@ import {
   tokenize,
 } from "@/lib/seo";
 import type { MetaSource, Priority, Query, Status } from "@/lib/types";
-import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import { generateMeta } from "@/lib/openai.functions";
@@ -447,7 +447,7 @@ const MetaRow = memo(function MetaRow({
   const [title, setTitle] = useState(m.title);
   const [desc, setDesc] = useState(m.description);
   const [h1, setH1] = useState(m.h1);
-  const [expanded, setExpanded] = useState(false);
+  
   const status: Status = metaEdit?.status ?? "not_started";
   const [generating, setGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
@@ -977,11 +977,6 @@ function EditableCell({
         className="w-full resize-none bg-transparent text-sm leading-snug rounded px-2 py-1.5 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
         spellCheck={false}
       />
-      {value && (
-        <div className="px-1.5 pt-0.5 text-[10px] leading-snug break-words opacity-80">
-          <Highlighted text={value} words={words} />
-        </div>
-      )}
     </div>
   );
 }
