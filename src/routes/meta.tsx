@@ -808,8 +808,6 @@ function PhrasesPanel({ qs, texts }: { qs: Query[]; texts: string[] }) {
     if (!toks.length) return false;
     return toks.every((t) => combined.includes(t));
   };
-  const posColor = (p?: number) =>
-    !p ? "text-muted-foreground" : p <= 10 ? "text-chart-2" : p <= 30 ? "text-chart-4" : "text-destructive";
   return (
     <div className="rounded-md border border-border bg-muted/20 p-2 text-xs max-h-[240px] overflow-auto">
       <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-muted/40 backdrop-blur -mx-2 px-2 py-1">
