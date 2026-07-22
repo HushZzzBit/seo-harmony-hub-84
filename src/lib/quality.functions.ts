@@ -78,15 +78,31 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     submitForm.set("text", plain);
     submitForm.set("userkey", key);
     submitForm.set("jsonvisible", "detail");
-    const submit = await fetchJson("https://api.text.ru/post", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: submitForm.toString(),
-    });
-    const submitBody = submit.body as { text_uid?: string; error_code?: number; error_desc?: string } | null;
+    // text.ru фронт стоит за Cloudflare и на длинных текстах часто отдаёт 5xx (522/524/520).
+    // Ретраим submit до 4 раз с бэкоффом.
+    let submit: Awaited<ReturnType<typeof fetchJson>> | null = null;
+    let submitBody: { text_uid?: string; error_code?: number; error_desc?: string } | null = null;
+    const submitDelays = [0, 5000, 10000, 20000];
+    for (const wait of submitDelays) {
+      if (wait) await new Promise((r) => setTimeout(r, wait));
+      try {
+        submit = await fetchJson("https://api.text.ru/post", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: submitForm.toString(),
+        }, 40000);
+      } catch (e) {
+        submit = { ok: false, status: 0, body: null, text: (e as Error).message };
+      }
+      submitBody = (submit.body ?? null) as typeof submitBody;
+      if (submitBody?.text_uid) break;
+      // ретраим только на сетевых/5xx ошибках или пустом ответе
+      if (submit.status && submit.status < 500 && submit.status !== 0) break;
+    }
     const uid = submitBody?.text_uid;
-    if (!uid) {
-      return { ...base, status: "failed", completedAt: Date.now(), error: submitBody?.error_desc ?? `submit ${submit.status}`, rawJson: safeStringify(submit.body) };
+    if (!uid || !submit) {
+      const httpNote = submit && submit.status >= 500 ? ` (text.ru временно недоступен, HTTP ${submit.status})` : "";
+      return { ...base, status: "failed", completedAt: Date.now(), error: (submitBody?.error_desc ?? `submit ${submit?.status ?? "error"}`) + httpNote, rawJson: safeStringify(submit?.body) };
     }
 
     // 2) poll status
