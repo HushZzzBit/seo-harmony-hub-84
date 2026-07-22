@@ -1,5 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
 import { overallDot, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
+import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 
 const QUALITY_MAX_RUNS = 5;
@@ -35,21 +36,8 @@ export const Route = createFileRoute("/texts")({
   component: () => <ClientOnly fallback={null}><TextsPage /></ClientOnly>,
 });
 
-function normStatus(s: string | undefined): TextStatus {
-  if (s === "in_progress") return "copywriting";
-  if (s === "review") return "revision";
-  return (s as TextStatus) ?? "not_assigned";
-}
-
-const statusLabel: Record<TextStatus, string> = {
-  not_assigned: "Не назначено",
-  copywriting: "Копирайтинг",
-  expansion: "Расширение",
-  revision: "Доработка",
-  ready: "Готов к выгрузке",
-  in_csv: "В файле CSV",
-  done: "Готово",
-};
+const normStatus = normTextStatus;
+const statusLabel = textStatusLabel;
 
 const PAGE_SIZE = 50;
 
