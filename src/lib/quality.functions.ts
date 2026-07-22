@@ -91,8 +91,8 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     const pollBody = new URLSearchParams();
     pollBody.set("uid", uid);
     pollBody.set("userkey", key);
-    // up to ~40s of polling with backoff
-    const delays = [5000, 5000, 5000, 5000, 5000, 5000, 10000];
+    // up to ~3 минут polling с бэкоффом
+    const delays = [6000, 6000, 8000, 8000, 10000, 10000, 15000, 15000, 20000, 20000, 25000, 25000];
     for (const wait of delays) {
       await new Promise((r) => setTimeout(r, wait));
       const poll = await fetchJson("https://api.text.ru/post", {
@@ -113,7 +113,8 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
       const seo = typeof seoRaw === "string" ? safeJson(seoRaw) : (seoRaw as Record<string, unknown> | undefined);
       const water = num((seo as { water_percent?: unknown })?.water_percent);
       const spam = num((seo as { spam_percent?: unknown })?.spam_percent);
-      if (water !== undefined || spam !== undefined) {
+      const uniq = num(p?.text_unique);
+      if (water !== undefined || spam !== undefined || uniq !== undefined) {
         return {
           ...base,
           status: "success",
@@ -125,7 +126,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
         };
       }
     }
-    return { ...base, status: "failed", completedAt: Date.now(), error: "Timeout ожидания text.ru" };
+    return { ...base, status: "failed", completedAt: Date.now(), error: "Timeout ожидания text.ru — проверка ещё идёт, повторите позже" };
   } catch (e) {
     return { ...base, status: "failed", completedAt: Date.now(), error: (e as Error).message };
   }
@@ -184,24 +185,25 @@ async function checkTurgenev(plain: string): Promise<ProviderResult> {
   if (!key) return { ...base, status: "skipped", completedAt: Date.now(), error: "TURGENEV_API_KEY not configured" };
   if (plain.length < 100) return { ...base, status: "skipped", completedAt: Date.now(), error: "Текст слишком короткий (< 100 симв.)" };
   try {
-    // Официальный API v1: https://turgenev.ashmanov.com/api/v1/text
-    const res = await fetchJson("https://turgenev.ashmanov.com/api/v1/text", {
+    // Официальный API: POST https://turgenev.ashmanov.com/ с параметрами api=risk&key=&text=
+    const form = new URLSearchParams();
+    form.set("api", "risk");
+    form.set("key", key);
+    form.set("text", plain);
+    const res = await fetchJson("https://turgenev.ashmanov.com/", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ text: plain, checks: ["all"] }),
-    });
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    }, 60000);
     const body = res.body as {
-      result?: { total_score?: number; risk?: number; score?: number };
-      total_score?: number;
-      risk?: number;
-      score?: number;
-      report_url?: string;
+      risk?: number | string;
+      level?: string;
+      link?: string;
       error?: string;
-      message?: string;
     } | null;
-    const score = num(body?.result?.total_score ?? body?.total_score ?? body?.result?.risk ?? body?.risk ?? body?.result?.score ?? body?.score);
+    const score = num(body?.risk);
     if (!res.ok || score === undefined) {
-      return { ...base, status: "failed", completedAt: Date.now(), error: body?.error ?? body?.message ?? `HTTP ${res.status}`, rawJson: safeStringify(res.body) };
+      return { ...base, status: "failed", completedAt: Date.now(), error: body?.error ?? `HTTP ${res.status}`, rawJson: safeStringify(res.body) };
     }
     const risk: ProviderResult["turgenevRiskLevel"] =
       score >= 13 ? "critical" : score >= 8 ? "high" : score >= 5 ? "medium" : "ok";
@@ -211,7 +213,7 @@ async function checkTurgenev(plain: string): Promise<ProviderResult> {
       completedAt: Date.now(),
       turgenevScore: score,
       turgenevRiskLevel: risk,
-      reportUrl: body?.report_url,
+      reportUrl: body?.link ? `https://turgenev.ashmanov.com/?t=${body.link}` : undefined,
       rawJson: safeStringify(res.body),
     };
   } catch (e) {
