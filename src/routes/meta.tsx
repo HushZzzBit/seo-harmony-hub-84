@@ -15,7 +15,7 @@ import {
   tokenize,
 } from "@/lib/seo";
 import type { MetaSource, Priority, Query, Status } from "@/lib/types";
-import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Sparkles, Loader2 } from "lucide-react";
+import { AlertCircle, ArrowUpDown, ArrowUp, ArrowDown, Sparkles, Loader2 } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import { generateMeta } from "@/lib/openai.functions";
@@ -447,7 +447,7 @@ const MetaRow = memo(function MetaRow({
   const [title, setTitle] = useState(m.title);
   const [desc, setDesc] = useState(m.description);
   const [h1, setH1] = useState(m.h1);
-  const [expanded, setExpanded] = useState(false);
+  
   const status: Status = metaEdit?.status ?? "not_started";
   const [generating, setGenerating] = useState(false);
   const generateMetaFn = useServerFn(generateMeta);
@@ -564,14 +564,6 @@ const MetaRow = memo(function MetaRow({
             checked={selected}
             onChange={(v) => onToggleSelect(row.url, v)}
           />
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="text-muted-foreground hover:text-foreground shrink-0"
-            title={expanded ? "Скрыть детали" : "Показать детали"}
-          >
-            {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
           <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${prioStyle}`}>
             {priorityLabel[prio]}
           </span>
@@ -622,15 +614,13 @@ const MetaRow = memo(function MetaRow({
           </Select>
         </div>
 
-        {expanded && (
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 pl-6 text-muted-foreground">
-            <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
-            <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
-            <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
-            <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
-            <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mb-2 text-muted-foreground">
+          <span>Частота: <span className="tabular-nums text-foreground">{freq || "—"}</span></span>
+          <span title="Средняя позиция в Google">G: <span className={"tabular-nums " + posColor(gPos)}>{gPos || "—"}</span></span>
+          <span title="Средняя позиция в Яндекс">Я: <span className={"tabular-nums " + posColor(yPos)}>{yPos || "—"}</span></span>
+          <span>Рек. месяц: <span className="text-foreground">{MONTHS[rec]}</span></span>
+          <span>Ключей: <span className="tabular-nums text-foreground">{usedAll.size}/{wordSet.size}</span></span>
+        </div>
 
         {/* Two-column: editor (work area) | preview (result) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -825,32 +815,48 @@ function MetaPreview({
       {label}
     </button>
   );
+  const combined = useMemo(
+    () => [title, desc, h1].join(" \n ").toLowerCase().replace(/ё/g, "е"),
+    [title, desc, h1],
+  );
+  const phrasesUsed = useMemo(() => {
+    let n = 0;
+    for (const q of qs) {
+      const toks = q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w.length > 2);
+      if (toks.length && toks.every((t) => combined.includes(t))) n++;
+    }
+    return n;
+  }, [qs, combined]);
   return (
     <div className="rounded-md border border-border bg-muted/20 p-2 flex flex-col min-w-0">
       <div className="flex items-center justify-between mb-1.5 gap-2">
         <div className="flex items-center gap-0.5 rounded-md bg-muted/60 p-0.5">
           {tabBtn("preview", "Итог")}
           {tabBtn("keys", `Слова ${used.size}/${wordSet.size}`)}
-          {tabBtn("phrases", `Фразы ${qs.length}`)}
+          {tabBtn("phrases", `Фразы ${phrasesUsed}/${qs.length}`)}
         </div>
         <span className={"text-[11px] tabular-nums shrink-0 " + covColor} title="Покрытие ключевых слов">
           {coverage}%
         </span>
       </div>
       {tab === "preview" && (
-        <div className="kw-preview space-y-2 text-sm px-1 py-1">
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">H1</div>
-            <div className="font-semibold leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(h1, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Title</div>
-            <div className="text-primary leading-snug" dangerouslySetInnerHTML={{ __html: highlightHtml(title, wordSet) || '<span class="text-muted-foreground italic text-xs">пусто</span>' }} />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">Description</div>
-            <div className="text-xs text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: highlightHtml(desc, wordSet) || '<span class="text-muted-foreground italic">пусто</span>' }} />
-          </div>
+        <div className="kw-preview space-y-2 px-1 py-1 text-sm text-foreground/90">
+          {(["H1", "Title", "Description"] as const).map((label, i) => {
+            const value = [h1, title, desc][i];
+            return (
+              <div key={label}>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-0.5">{label}</div>
+                <div
+                  className="text-sm leading-snug"
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      highlightHtml(value, wordSet) ||
+                      '<span class="text-muted-foreground italic">пусто</span>',
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
       {tab === "keys" && <KeywordsPanel words={words} used={used} />}
@@ -987,11 +993,6 @@ function EditableCell({
         className="w-full resize-none bg-transparent text-sm leading-snug rounded px-2 py-1.5 border border-border/50 hover:border-border focus:border-ring focus:bg-background focus:outline-none focus:ring-1 focus:ring-ring"
         spellCheck={false}
       />
-      {value && (
-        <div className="px-1.5 pt-0.5 text-[10px] leading-snug break-words opacity-80">
-          <Highlighted text={value} words={words} />
-        </div>
-      )}
     </div>
   );
 }
