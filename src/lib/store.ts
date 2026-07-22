@@ -235,6 +235,7 @@ export const useStore = create<State>()(
         applyThresholds(next);
         set({ qualityThresholds: next });
       },
+      setWriterRequirements: (v) => set({ writerRequirements: v }),
       clearAll: () =>
         set({
           queries: [],
