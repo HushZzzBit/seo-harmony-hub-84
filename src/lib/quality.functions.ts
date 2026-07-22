@@ -78,10 +78,9 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
     submitForm.set("text", plain);
     submitForm.set("userkey", key);
     submitForm.set("jsonvisible", "detail");
-    // text.ru фронт стоит за Cloudflare и на длинных текстах часто отдаёт 5xx (522/524/520).
-    // Ретраим submit до 4 раз с бэкоффом.
+    type SubmitBody = { text_uid?: string; error_code?: number; error_desc?: string };
     let submit: Awaited<ReturnType<typeof fetchJson>> | null = null;
-    let submitBody: { text_uid?: string; error_code?: number; error_desc?: string } | null = null;
+    let submitBody: SubmitBody | null = null;
     const submitDelays = [0, 5000, 10000, 20000];
     for (const wait of submitDelays) {
       if (wait) await new Promise((r) => setTimeout(r, wait));
@@ -94,7 +93,7 @@ async function checkTextRu(plain: string): Promise<ProviderResult> {
       } catch (e) {
         submit = { ok: false, status: 0, body: null, text: (e as Error).message };
       }
-      submitBody = (submit.body ?? null) as typeof submitBody;
+      submitBody = (submit.body ?? null) as SubmitBody | null;
       if (submitBody?.text_uid) break;
       // ретраим только на сетевых/5xx ошибках или пустом ответе
       if (submit.status && submit.status < 500 && submit.status !== 0) break;
