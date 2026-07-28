@@ -75,8 +75,10 @@ interface State {
   groupState: Record<string, GroupState>;
   prompts: Record<string, PromptTemplate>;
   qualityChecks: Record<string, TextQualityCheck>;
-  qualityThresholds: QualityThresholds;
-  writerRequirements: string;
+  /** Per-folder thresholds. Ключ '__default' — глобальные значения (используются как фолбэк). */
+  qualityThresholds: Record<string, QualityThresholds>;
+  /** Per-folder writer requirements. Ключ '__default' — глобальный текст. */
+  writerRequirements: Record<string, string>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -90,10 +92,37 @@ interface State {
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
   resetPrompt: (folder: string) => void;
   setQualityCheck: (url: string, check: TextQualityCheck) => void;
-  setQualityThresholds: (patch: Partial<QualityThresholds>) => void;
-  resetQualityThresholds: () => void;
-  setWriterRequirements: (v: string) => void;
+  setQualityThresholds: (folder: string, patch: Partial<QualityThresholds>) => void;
+  resetQualityThresholds: (folder: string) => void;
+  setWriterRequirements: (folder: string, v: string) => void;
   clearAll: () => void;
+}
+
+export const GLOBAL_FOLDER_KEY = "__default";
+
+function cloneDefaults(): QualityThresholds {
+  return JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS));
+}
+
+/** Resolves per-folder thresholds with a global fallback. */
+export function resolveThresholds(
+  map: Record<string, QualityThresholds> | undefined,
+  folder: string | undefined | null,
+): QualityThresholds {
+  const f = (folder ?? "").trim();
+  if (f && map?.[f]) return map[f];
+  if (map?.[GLOBAL_FOLDER_KEY]) return map[GLOBAL_FOLDER_KEY];
+  return cloneDefaults();
+}
+
+/** Resolves per-folder writer requirements. */
+export function resolveWriterRequirements(
+  map: Record<string, string> | undefined,
+  folder: string | undefined | null,
+): string {
+  const f = (folder ?? "").trim();
+  if (f && map?.[f]) return map[f];
+  return map?.[GLOBAL_FOLDER_KEY] ?? "";
 }
 
 
