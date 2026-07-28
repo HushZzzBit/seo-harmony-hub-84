@@ -46,37 +46,27 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function LsiPanel() {
   const queries = useStore((s) => s.queries);
-  const getS = useServerFn(getLsiSettings);
-  const setS = useServerFn(setLsiSettings);
   const listA = useServerFn(listAnalyses);
-  const [settings, setSettings] = useState<Awaited<ReturnType<typeof getLsiSettings>> | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
-  const [blDraft, setBlDraft] = useState("");
   const [folderFilter, setFolderFilter] = useState("all");
   const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(20);
   const PAGE_SIZE = 20;
 
-  const [settingsScope, setSettingsScope] = useState<string>("__default");
-
   async function reloadAll() {
-    const [s, a] = await Promise.all([
-      getS({ data: { folder: settingsScope } as never }),
-      listA(),
-    ]);
-    setSettings(s);
+    const a = await listA();
     setAnalyses(a);
-    setBlDraft(s.blacklist_domains.join(", "));
   }
   useEffect(() => {
     reloadAll().catch((e) => toast.error((e as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsScope]);
+  }, []);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
   }, [folderFilter, prioFilter, search]);
+
 
   // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
