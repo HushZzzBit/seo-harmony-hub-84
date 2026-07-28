@@ -55,6 +55,8 @@ export function LsiPanel() {
   const [folderFilter, setFolderFilter] = useState("all");
   const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
   const [search, setSearch] = useState("");
+  const [limit, setLimit] = useState(20);
+  const PAGE_SIZE = 20;
 
   async function reloadAll() {
     const [s, a] = await Promise.all([getS(), listA()]);
