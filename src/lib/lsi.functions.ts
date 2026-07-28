@@ -195,12 +195,13 @@ export const collectCompetitors = createServerFn({ method: "POST" })
     const analysisId = inserted.id as string;
 
     try {
-      const { items, raw, snapshotDate } = await fetchSerpCandidates({
+      const { items, raw, snapshotDate, matchedKeywords } = await fetchSerpCandidates({
         projectId: s.topvisor_project_id,
         regionIndex: s.topvisor_region_index,
         searchEngine: s.search_engine,
         depth: s.serp_depth,
         keywords: data.keywords,
+        targetUrl: data.target_url ?? null,
       });
       const picked = pickCompetitors(items, {
         projectDomain: s.project_domain,
@@ -224,6 +225,15 @@ export const collectCompetitors = createServerFn({ method: "POST" })
         );
       }
 
+      let msg: string | null = null;
+      if (matchedKeywords === 0) {
+        msg = "В проекте Topvisor не найдено ключевых фраз по этому URL/названиям. Проверьте project_id и что фразы добавлены в проект.";
+      } else if (items.length === 0) {
+        msg = `Найдено ${matchedKeywords} фраз в проекте, но снимки выдачи пусты. Запустите съём позиций в Topvisor для этих фраз.`;
+      } else if (picked.length < s.competitor_count) {
+        msg = `Найдено только ${picked.length} конкурентов (из ${s.competitor_count}).`;
+      }
+
       await sb
         .from("text_requirement_analysis")
         .update({
@@ -231,11 +241,12 @@ export const collectCompetitors = createServerFn({ method: "POST" })
           raw_topvisor_response: raw as never,
           serp_date: snapshotDate ?? now,
           updated_at: new Date().toISOString(),
-          error_message: picked.length < s.competitor_count ? `Найдено только ${picked.length} конкурентов` : null,
+          error_message: msg,
         })
         .eq("id", analysisId);
 
-      return { analysisId, competitorsFound: picked.length };
+      return { analysisId, competitorsFound: picked.length, matchedKeywords, serpItems: items.length };
+
     } catch (e) {
       await sb
         .from("text_requirement_analysis")
