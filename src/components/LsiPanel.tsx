@@ -12,8 +12,6 @@ import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/
 import { priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 import type { Priority, Query } from "@/lib/types";
 import {
-  getLsiSettings,
-  setLsiSettings,
   listAnalyses,
   getAnalysis,
   collectCompetitors,
@@ -34,6 +32,7 @@ import {
   type VersionRow,
 } from "@/lib/lsi.functions";
 
+
 const STATUS_LABEL: Record<string, string> = {
   draft: "Черновик",
   collecting_serp: "Сбор SERP…",
@@ -46,37 +45,27 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function LsiPanel() {
   const queries = useStore((s) => s.queries);
-  const getS = useServerFn(getLsiSettings);
-  const setS = useServerFn(setLsiSettings);
   const listA = useServerFn(listAnalyses);
-  const [settings, setSettings] = useState<Awaited<ReturnType<typeof getLsiSettings>> | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
-  const [blDraft, setBlDraft] = useState("");
   const [folderFilter, setFolderFilter] = useState("all");
   const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
   const [search, setSearch] = useState("");
   const [limit, setLimit] = useState(20);
   const PAGE_SIZE = 20;
 
-  const [settingsScope, setSettingsScope] = useState<string>("__default");
-
   async function reloadAll() {
-    const [s, a] = await Promise.all([
-      getS({ data: { folder: settingsScope } as never }),
-      listA(),
-    ]);
-    setSettings(s);
+    const a = await listA();
     setAnalyses(a);
-    setBlDraft(s.blacklist_domains.join(", "));
   }
   useEffect(() => {
     reloadAll().catch((e) => toast.error((e as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settingsScope]);
+  }, []);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
   }, [folderFilter, prioFilter, search]);
+
 
   // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
@@ -126,109 +115,9 @@ export function LsiPanel() {
     return m;
   }, [analyses]);
 
-  async function saveSettings(patch: Partial<NonNullable<typeof settings>>) {
-    const next = await setS({ data: { folder: settingsScope, patch } as never });
-    setSettings(next);
-  }
-
-  if (!settings) {
-    return <div className="text-xs text-muted-foreground">Загрузка настроек LSI…</div>;
-  }
-
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <div className="text-sm font-medium">LSI и конкуренты</div>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-[11px] text-muted-foreground">Стрим:</span>
-              <Select value={settingsScope} onValueChange={setSettingsScope}>
-                <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__default">Глобально (по умолчанию)</SelectItem>
-                  {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="text-xs text-muted-foreground">
-            Автоматический сбор конкурентов из SERP (Topvisor) и анализ через Miratext.
-            Требуются ключи <code>TOPVISOR_USER_ID</code>, <code>TOPVISOR_API_KEY</code>, <code>MIRATEXT_API_KEY</code> во вкладке API и Ключи.
-            {settingsScope !== "__default" && <span className="block mt-1">Настройки применяются к стриму <b>{settingsScope}</b>. Пустые поля наследуются из глобальных.</span>}
-          </div>
 
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Field label="Topvisor project_id">
-              <Input
-                value={settings.topvisor_project_id ?? ""}
-                onChange={(e) => setSettings({ ...settings, topvisor_project_id: e.target.value })}
-                onBlur={() => saveSettings({ topvisor_project_id: settings.topvisor_project_id })}
-                className="h-8 text-xs"
-              />
-            </Field>
-            <Field label="Поисковик (ПС)">
-              <Select
-                value={settings.search_engine}
-                onValueChange={(v) => { setSettings({ ...settings, search_engine: v }); saveSettings({ search_engine: v }); }}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="google">Google</SelectItem>
-                  <SelectItem value="yandex">Yandex</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-
-            <Field label="Глубина SERP">
-              <Select
-                value={String(settings.serp_depth)}
-                onValueChange={(v) => { setSettings({ ...settings, serp_depth: Number(v) }); saveSettings({ serp_depth: Number(v) }); }}
-              >
-                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">TOP-10</SelectItem>
-                  <SelectItem value="20">TOP-20</SelectItem>
-                  <SelectItem value="30">TOP-30</SelectItem>
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="Кол-во конкурентов">
-              <Input
-                type="number"
-                min={1}
-                max={10}
-                value={settings.competitor_count}
-                onChange={(e) => setSettings({ ...settings, competitor_count: Number(e.target.value) || 3 })}
-                onBlur={() => saveSettings({ competitor_count: settings.competitor_count })}
-                className="h-8 text-xs"
-              />
-            </Field>
-            <Field label="Домен проекта (исключить)">
-              <Input
-                value={settings.project_domain}
-                onChange={(e) => setSettings({ ...settings, project_domain: e.target.value })}
-                onBlur={() => saveSettings({ project_domain: settings.project_domain })}
-                className="h-8 text-xs"
-              />
-            </Field>
-            <Field label="Blacklist доменов (через запятую)" className="col-span-2">
-              <Input
-                value={blDraft}
-                onChange={(e) => setBlDraft(e.target.value)}
-                onBlur={() => {
-                  const list = blDraft.split(",").map((x) => x.trim()).filter(Boolean);
-                  setSettings({ ...settings, blacklist_domains: list });
-                  saveSettings({ blacklist_domains: list });
-                }}
-                className="h-8 text-xs"
-              />
-            </Field>
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardContent className="p-3 space-y-3">
