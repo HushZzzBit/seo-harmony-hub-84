@@ -158,69 +158,230 @@ async function fetchProjectKeywords(params: {
   return list;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function num(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function text(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+type SnapRec = {
+  url?: string;
+  domain?: string;
+  snippet_title?: string;
+  snippet_body?: string;
+  position?: number | string;
+};
+
+type SnapKw = {
+  id?: number;
+  name?: string;
+  snapshotsData?: Record<string, SnapRec | SnapRec[]>;
+};
+
 /** Auto-resolve region_index for the project: Moscow / smartphone / requested searcher. */
-async function resolveRegionIndex(projectId: string, searchEngine: string, fallback?: number | null): Promise<number> {
+async function resolveRegionIndexes(projectId: string, searchEngine: string, fallback?: number | null): Promise<number[]> {
   type Region = {
     index?: number;
     name?: string;
+    title?: string;
     country_code?: string;
     country?: string;
     device?: number | string;
+    region_device?: number | string;
     lang?: string;
     searcher_key?: number | string;
     searcherKey?: number | string;
+    searcher_name?: string;
   };
   const se = (searchEngine || "").toLowerCase();
   const wantKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
+  const wantName = wantKey === 1 ? /яндекс|yandex/i : /google|гугл/i;
 
-  // Try known endpoints in order (Topvisor API varies by version).
-  const candidates = [
-    "/v2/json/get/projects_2/searchers_regions/list",
-    "/v2/json/get/projects_2/searchers/regions",
-  ];
   let regions: Region[] = [];
   let lastErr: unknown = null;
-  for (const path of candidates) {
-    try {
-      const raw = (await topvisorFetch(path, {
-        project_id: Number(projectId) || projectId,
-      })) as { result?: unknown; errors?: unknown };
-      if (raw.errors) { lastErr = raw.errors; continue; }
-      const r = raw.result;
-      if (Array.isArray(r)) {
-        // Either flat regions[] or searchers[]{regions[]}.
-        const first = r[0] as Record<string, unknown> | undefined;
-        if (first && Array.isArray((first as { regions?: unknown }).regions)) {
-          regions = (r as Array<{ key?: number | string; regions?: Region[] }>)
-            .flatMap((s) => (s.regions ?? []).map((rg) => ({ ...rg, searcher_key: rg.searcher_key ?? s.key })));
-        } else {
-          regions = r as Region[];
-        }
-      } else if (r && typeof r === "object" && Array.isArray((r as { regions?: Region[] }).regions)) {
-        regions = (r as { regions?: Region[] }).regions ?? [];
+
+  const collectRegions = (node: unknown, inherited: { searcherKey?: unknown; searcherName?: unknown } = {}) => {
+    if (Array.isArray(node)) {
+      for (const item of node) collectRegions(item, inherited);
+      return;
+    }
+    const obj = asRecord(node);
+    if (!obj) return;
+
+    const ownSearcherKey = obj.searcher_key ?? obj.searcherKey ?? obj.key;
+    const ownSearcherName = obj.searcher_name ?? obj.searcherName ?? obj.name ?? obj.title;
+    const nextInherited = {
+      searcherKey: ownSearcherKey ?? inherited.searcherKey,
+      searcherName: ownSearcherName ?? inherited.searcherName,
+    };
+
+    const index = num(obj.index);
+    const hasRegionFields = index != null && (
+      obj.region_key != null
+      || obj.regionKey != null
+      || obj.region_device != null
+      || obj.device != null
+      || obj.lang != null
+      || obj.country != null
+      || obj.country_code != null
+      || obj.regions == null
+    );
+    if (hasRegionFields) {
+      regions.push({
+        index,
+        name: text(obj.name),
+        title: text(obj.title),
+        country_code: text(obj.country_code),
+        country: text(obj.country),
+        device: obj.device as number | string | undefined,
+        region_device: obj.region_device as number | string | undefined,
+        lang: text(obj.lang),
+        searcher_key: (obj.searcher_key ?? inherited.searcherKey) as number | string | undefined,
+        searcherKey: obj.searcherKey as number | string | undefined,
+        searcher_name: text(obj.searcher_name) ?? text(inherited.searcherName),
+      });
+    }
+
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === "regions" || key === "searchers" || key === "searchers_regions" || key === "searchersRegions") {
+        collectRegions(value, nextInherited);
+      } else if (Array.isArray(value)) {
+        const looksNested = value.some((item) => {
+          const rec = asRecord(item);
+          return rec && (rec.regions != null || rec.searchers != null || rec.index != null);
+        });
+        if (looksNested) collectRegions(value, nextInherited);
       }
-      if (regions.length) break;
-    } catch (e) { lastErr = e; }
-  }
-  if (!regions.length) {
-    throw new Error(`Topvisor regions: не удалось получить список регионов проекта. ${lastErr ? JSON.stringify(lastErr).slice(0, 200) : ""}`);
+    }
+  };
+
+  try {
+    const raw = (await topvisorFetch("/v2/json/get/projects_2/projects", {
+      fields: ["id", "name", "site"],
+      filters: [{ name: "id", operator: "EQUALS", values: [Number(projectId) || projectId] }],
+      show_searchers_and_regions: 1,
+      limit: 1,
+    })) as { result?: unknown; errors?: unknown };
+    if (raw.errors) {
+      lastErr = raw.errors;
+    } else {
+      collectRegions(raw.result);
+    }
+  } catch (e) {
+    lastErr = e;
   }
 
-  const matchedBySearcher = regions.filter((r) => {
-    const k = r.searcher_key ?? r.searcherKey;
-    return k == null ? true : Number(k) === wantKey;
-  });
-  const pool = matchedBySearcher.length ? matchedBySearcher : regions;
-  const scored = pool.map((r) => {
-    const isMoscow = /москв|moscow/i.test(r.name ?? "");
-    const isMobile = Number(r.device) === 1;
-    const isRu = (r.country_code ?? r.country ?? "").toString().toUpperCase() === "RU";
-    return { r, score: (isMoscow ? 4 : 0) + (isMobile ? 2 : 0) + (isRu ? 1 : 0) };
-  }).sort((a, b) => b.score - a.score);
-  const picked = scored[0]?.r?.index;
-  if (picked != null) return Number(picked);
-  if (fallback != null) return Number(fallback);
-  throw new Error(`Не удалось определить region_index в проекте Topvisor для ПС "${searchEngine}". Проверьте что регион добавлен в проект.`);
+  const ordered: number[] = [];
+  const addUnique = (value: number | null | undefined) => {
+    if (value == null || ordered.includes(value)) return;
+    ordered.push(value);
+  };
+
+  if (regions.length) {
+    const matchedBySearcher = regions.filter((r) => {
+      const k = r.searcher_key ?? r.searcherKey;
+      if (k != null) return Number(k) === wantKey;
+      const n = `${r.searcher_name ?? ""} ${r.name ?? ""} ${r.title ?? ""}`;
+      return n.trim() ? wantName.test(n) : true;
+    });
+    const pool = matchedBySearcher.length ? matchedBySearcher : regions;
+    const scored = pool.map((r) => {
+      const label = `${r.name ?? ""} ${r.title ?? ""}`;
+      const isMoscow = /москв|moscow/i.test(label);
+      const device = num(r.region_device ?? r.device);
+      const isMobile = device === 2 || /смартф|phone|mobile/i.test(label);
+      const isRu = (r.country_code ?? r.country ?? r.lang ?? "").toString().toUpperCase().includes("RU");
+      return { r, score: (isMoscow ? 4 : 0) + (isMobile ? 2 : 0) + (isRu ? 1 : 0) };
+    }).sort((a, b) => b.score - a.score);
+
+    for (const item of scored) addUnique(num(item.r.index));
+    for (const item of regions) addUnique(num(item.index));
+  }
+
+  addUnique(fallback ?? null);
+
+  // If Topvisor does not return project regions, probe common project-local indexes.
+  // The snapshots endpoint itself confirms which index actually has saved SERP data.
+  if (!ordered.length) {
+    for (let i = 1; i <= 10; i += 1) addUnique(i);
+  }
+
+  if (ordered.length) return ordered;
+
+  throw new Error(`Topvisor regions: не удалось получить список регионов проекта. ${lastErr ? JSON.stringify(lastErr).slice(0, 200) : ""}`);
+}
+
+function normalizeSnapshotKeywords(raw: {
+  result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>;
+}): SnapKw[] {
+  const r = raw.result;
+  if (Array.isArray(r)) return r;
+  if (r && typeof r === "object") {
+    if (Array.isArray((r as { keywords?: SnapKw[] }).keywords)) {
+      return (r as { keywords: SnapKw[] }).keywords;
+    }
+    return Object.values(r as Record<string, SnapKw>);
+  }
+  return [];
+}
+
+function countSnapshotKeys(raw: { result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw> }): number {
+  return normalizeSnapshotKeywords(raw).reduce((sum, kw) => sum + Object.keys(kw.snapshotsData ?? {}).length, 0);
+}
+
+async function fetchSnapshotsWithRegionFallback(params: {
+  projectId: string;
+  searchEngine: string;
+  fallbackRegionIndex?: number | null;
+  baseBody: Omit<Record<string, unknown>, "region_index">;
+}): Promise<{
+  raw: { result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>; errors?: unknown };
+  body: Record<string, unknown>;
+  attempts: Array<{ region_index: number; snapshotKeys?: number; error?: unknown }>;
+}> {
+  const regionIndexes = await resolveRegionIndexes(params.projectId, params.searchEngine, params.fallbackRegionIndex);
+  const attempts: Array<{ region_index: number; snapshotKeys?: number; error?: unknown }> = [];
+  let firstOk: {
+    raw: { result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>; errors?: unknown };
+    body: Record<string, unknown>;
+  } | null = null;
+  let lastErr: unknown = null;
+
+  for (const regionIndex of regionIndexes) {
+    const body = { ...params.baseBody, region_index: regionIndex };
+    try {
+      const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
+        result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>;
+        errors?: unknown;
+      };
+      if (raw.errors) {
+        attempts.push({ region_index: regionIndex, error: raw.errors });
+        lastErr = raw.errors;
+        continue;
+      }
+      const snapshotKeys = countSnapshotKeys(raw);
+      attempts.push({ region_index: regionIndex, snapshotKeys });
+      if (!firstOk) firstOk = { raw, body };
+      if (snapshotKeys > 0) return { raw, body, attempts };
+    } catch (e) {
+      attempts.push({ region_index: regionIndex, error: e instanceof Error ? e.message : e });
+      lastErr = e;
+    }
+  }
+
+  if (firstOk) return { ...firstOk, attempts };
+  throw new Error(`Topvisor snapshots: ${JSON.stringify(lastErr).slice(0, 300)}`);
 }
 
 
