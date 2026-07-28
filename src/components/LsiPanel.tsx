@@ -12,8 +12,6 @@ import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/
 import { priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 import type { Priority, Query } from "@/lib/types";
 import {
-  getLsiSettings,
-  setLsiSettings,
   listAnalyses,
   getAnalysis,
   collectCompetitors,
@@ -33,6 +31,7 @@ import {
   type LsiItemType,
   type VersionRow,
 } from "@/lib/lsi.functions";
+
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Черновик",
