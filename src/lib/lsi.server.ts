@@ -593,17 +593,37 @@ export interface MiratextResult {
   raw: unknown;
 }
 
+// Сериализация вложенных объектов в PHP-стиле (http_build_query),
+// как это делает эталонный PHP-клиент Миратекст.
+function phpBuildQuery(obj: Record<string, unknown>, prefix?: string): string {
+  const parts: string[] = [];
+  const push = (k: string, v: unknown) => {
+    if (v === undefined || v === null) return;
+    if (Array.isArray(v)) {
+      v.forEach((item, i) => push(`${k}[${i}]`, item));
+    } else if (typeof v === "object") {
+      for (const [kk, vv] of Object.entries(v as Record<string, unknown>)) {
+        push(`${k}[${kk}]`, vv);
+      }
+    } else {
+      const val = typeof v === "boolean" ? (v ? "1" : "0") : String(v);
+      parts.push(`${encodeURIComponent(k)}=${encodeURIComponent(val)}`);
+    }
+  };
+  for (const [k, v] of Object.entries(obj)) push(prefix ? `${prefix}[${k}]` : k, v);
+  return parts.join("&");
+}
+
 async function miratextFetch(action: string, params: Record<string, unknown>): Promise<unknown> {
   const apiKey = await getApiKey("MIRATEXT_API_KEY");
   if (!apiKey) throw new Error("Не задан MIRATEXT_API_KEY");
-  // Miratext ждёт ключ в query string (?key=...), тело — form-urlencoded, параметры в поле data (JSON).
-  const url = `${MIRATEXT_BASE}/${action}?key=${encodeURIComponent(apiKey)}`;
-  const form = new URLSearchParams();
-  form.set("data", JSON.stringify(params));
-  const res = await fetch(url, {
+  // Миратекст ждёт POST с телом form-urlencoded (PHP http_build_query),
+  // ключ передаётся как поле api_key на верхнем уровне.
+  const body = phpBuildQuery({ api_key: apiKey, ...params });
+  const res = await fetch(`${MIRATEXT_BASE}/${action}`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: form.toString(),
+    body,
   });
   if (!res.ok) throw new Error(`Miratext HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.json();
