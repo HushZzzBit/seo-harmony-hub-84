@@ -63,13 +63,15 @@ async function fetchJson(url: string, init: RequestInit, timeoutMs = 25000): Pro
 // --------- Text.ru ---------
 async function checkTextRu(plain: string): Promise<ProviderResult> {
   const started = Date.now();
-  const key = process.env.TEXT_RU_USERKEY;
+  const { getApiKey } = await import("./apiKeys.server");
+  const key = await getApiKey("TEXT_RU_USERKEY");
   const base: Omit<ProviderResult, "status"> = {
     provider: "text_ru",
     requestedAt: started,
     completedAt: started,
   };
   if (!key) return { ...base, status: "skipped", completedAt: Date.now(), error: "TEXT_RU_USERKEY not configured" };
+
   if (plain.length < 100) return { ...base, status: "skipped", completedAt: Date.now(), error: "Текст слишком короткий (< 100 симв.)" };
 
   try {
@@ -175,10 +177,12 @@ function num(v: unknown): number | undefined {
 // --------- ZeroGPT ---------
 async function checkZeroGpt(plain: string): Promise<ProviderResult> {
   const started = Date.now();
-  const key = process.env.ZEROGPT_API_KEY;
+  const { getApiKey } = await import("./apiKeys.server");
+  const key = await getApiKey("ZEROGPT_API_KEY");
   const base: Omit<ProviderResult, "status"> = { provider: "zerogpt", requestedAt: started, completedAt: started };
   if (!key) return { ...base, status: "skipped", completedAt: Date.now(), error: "ZEROGPT_API_KEY not configured" };
   if (plain.length < 50) return { ...base, status: "skipped", completedAt: Date.now(), error: "Текст слишком короткий (< 50 симв.)" };
+
   try {
     const res = await fetchJson("https://api.zerogpt.com/api/detect/detectText", {
       method: "POST",
@@ -203,10 +207,12 @@ async function checkZeroGpt(plain: string): Promise<ProviderResult> {
 // --------- Turgenev (Ашманов) ---------
 async function checkTurgenev(plain: string): Promise<ProviderResult> {
   const started = Date.now();
-  const key = process.env.TURGENEV_API_KEY;
+  const { getApiKey } = await import("./apiKeys.server");
+  const key = await getApiKey("TURGENEV_API_KEY");
   const base: Omit<ProviderResult, "status"> = { provider: "turgenev", requestedAt: started, completedAt: started };
   if (!key) return { ...base, status: "skipped", completedAt: Date.now(), error: "TURGENEV_API_KEY not configured" };
   if (plain.length < 100) return { ...base, status: "skipped", completedAt: Date.now(), error: "Текст слишком короткий (< 100 симв.)" };
+
   try {
     // Официальный API: POST https://turgenev.ashmanov.com/ с параметрами api=risk&key=&text=
     const form = new URLSearchParams();

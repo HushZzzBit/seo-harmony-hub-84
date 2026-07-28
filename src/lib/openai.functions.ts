@@ -137,8 +137,10 @@ export function renderPrompt(template: string, vars: Record<string, string>): st
 export const generateMeta = createServerFn({ method: "POST" })
   .inputValidator((data: GenInput) => data)
   .handler(async ({ data }): Promise<GenResult> => {
-    const key = process.env.OPENAI_API_KEY;
+    const { getApiKey } = await import("./apiKeys.server");
+    const key = await getApiKey("OPENAI_API_KEY");
     if (!key) throw new Error("OPENAI_API_KEY is not configured");
+
 
     const vars = buildVariables(data);
     const userPrompt = renderPrompt(data.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE, vars);
