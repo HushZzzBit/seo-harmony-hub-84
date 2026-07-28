@@ -301,7 +301,17 @@ export const useStore = create<State>()(
         typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
       ),
       onRehydrateStorage: () => (state) => {
-        if (state?.qualityThresholds) applyThresholds(state.qualityThresholds);
+        if (!state) return;
+        // Migrate legacy shape: qualityThresholds was QualityThresholds, writerRequirements was string.
+        const qt = state.qualityThresholds as unknown;
+        if (qt && typeof qt === "object" && "unique" in (qt as Record<string, unknown>)) {
+          state.qualityThresholds = { [GLOBAL_FOLDER_KEY]: qt as QualityThresholds };
+        }
+        const wr = state.writerRequirements as unknown;
+        if (typeof wr === "string") {
+          state.writerRequirements = wr ? { [GLOBAL_FOLDER_KEY]: wr } : {};
+        }
+        applyThresholds(state.qualityThresholds?.[GLOBAL_FOLDER_KEY]);
       },
     },
   ),
