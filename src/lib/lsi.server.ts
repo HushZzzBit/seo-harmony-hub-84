@@ -984,7 +984,7 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
     try {
       const q = new URLSearchParams(params);
       q.set("query", phrase);
-      const res = await fetch(`http://xmlriver.com/wordstat/new/json?${q.toString()}`);
+      const res = await fetch(`https://xmlriver.com/wordstat/new/json?${q.toString()}`);
       if (!res.ok) { errors.push(`${phrase}: HTTP ${res.status}`); continue; }
       const j = (await res.json()) as {
         graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[] } } };
