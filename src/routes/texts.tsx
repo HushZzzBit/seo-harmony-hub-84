@@ -17,6 +17,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
+import { getActiveRequirementsForGroup, type ActiveRequirements } from "@/lib/lsi.functions";
 import { overallDot, overallFromCheck, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
