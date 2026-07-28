@@ -172,7 +172,7 @@ function PromptsPage() {
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => navigate({ search: (prev) => ({ ...prev, tab: v }) })}
+        onValueChange={(v) => navigate({ search: { tab: v } })}
         className="w-full"
       >
         <TabsList className="mb-4">
