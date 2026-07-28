@@ -364,14 +364,30 @@ function GroupRow({
     finally { setBusy(""); }
   }
 
+  const prioClass = priorityStyle[g.prio];
+  const isCurrent = g.planMonth === new Date().getMonth();
+  const rowAccent = g.prio === "high" ? "bg-rose-500/5" : g.prio === "medium" ? "bg-amber-500/5" : "";
+
   return (
-    <tr className="border-t border-border hover:bg-muted/30 align-middle">
+    <tr className={`border-t border-border hover:bg-muted/30 align-middle ${rowAccent}`}>
+      <td className="px-2 py-2">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] ${prioClass}`}>
+          {priorityLabel[g.prio]}
+        </span>
+      </td>
       <td className="px-2 py-2">
         <div className="text-[10px] text-muted-foreground">{g.folder}</div>
         <div className="font-medium">{g.group}</div>
       </td>
       <td className="px-2 py-2 font-mono text-[11px] truncate max-w-[280px]">{g.url || "—"}</td>
       <td className="px-2 py-2 text-right">{g.keywords.length}</td>
+      <td className="px-2 py-2 text-[11px]">
+        {g.hasSeason ? (
+          <span className={isCurrent ? "font-semibold text-primary" : "text-foreground"}>{MONTHS[g.planMonth]}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
       <td className="px-2 py-2">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] ${badgeCls}`}>
           {STATUS_LABEL[st] ?? st}
