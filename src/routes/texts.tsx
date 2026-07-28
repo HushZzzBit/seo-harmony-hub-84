@@ -382,6 +382,14 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [tab, setTab] = useState("editor");
   const [highlight, setHighlight] = useState(true);
 
+  // Active LSI requirements for this group (loaded when popup opens).
+  const getReq = useServerFn(getActiveRequirementsForGroup);
+  const [lsi, setLsi] = useState<ActiveRequirements | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    getReq({ data: { group_key: `${folder}::${group}` } }).then(setLsi).catch(() => setLsi(null));
+  }, [open, folder, group, getReq]);
+
   const groupQueries = useMemo(
     () => queries.filter((q) => q.folder === folder && q.group === group),
     [queries, folder, group],
