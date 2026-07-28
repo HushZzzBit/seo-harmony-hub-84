@@ -798,6 +798,54 @@ export async function pullAllTopvisorQueries(): Promise<{ rows: PulledQueryRow[]
   return { rows: dedup, projects, errors };
 }
 
+async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const pid = Number(projectId) || projectId;
+  let regionIndexes: number[] = [];
+  try {
+    regionIndexes = await resolveRegionIndexes(String(projectId), searchEngine, null);
+  } catch {
+    return map;
+  }
+  const today = new Date();
+  const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+
+  for (const regionIndex of regionIndexes.slice(0, 5)) {
+    try {
+      const raw = (await topvisorFetch("/v2/json/get/positions_2/history", {
+        project_id: pid,
+        regions_indexes: [regionIndex],
+        date1: fmt(past),
+        date2: fmt(today),
+        count_dates: 1,
+        type_range: 7,
+        show_headers: 0,
+        show_visitors: 0,
+        positions_fields: ["relevant_url", "position"],
+      })) as { result?: { keywords?: Array<{ id?: number | string; positionsData?: Record<string, { relevant_url?: string; position?: number | string }> }> }; errors?: unknown };
+      if (raw.errors) continue;
+      const kws = raw.result?.keywords ?? [];
+      for (const kw of kws) {
+        if (kw.id == null) continue;
+        const id = String(kw.id);
+        if (map.has(id)) continue;
+        let best: { date: string; url: string } | null = null;
+        for (const [k, v] of Object.entries(kw.positionsData ?? {})) {
+          const url = v?.relevant_url;
+          if (!url) continue;
+          const date = k.split(":")[0] ?? "";
+          if (!best || date > best.date) best = { date, url };
+        }
+        if (best?.url) map.set(id, best.url);
+      }
+    } catch {
+      // try next region
+    }
+  }
+  return map;
+}
+
 async function pullTopvisorProject(projectId: string, folderFallback: string | null): Promise<PulledQueryRow[]> {
   const pid = Number(projectId) || projectId;
 
@@ -847,11 +895,23 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     throw new Error(`keywords: ${attempts.join(" | ")}`);
   }
 
+  // Relevant URLs from last SERP snapshot; priority > target when present/different.
+  const relevantByKw = new Map<string, string>();
+  for (const se of ["google", "yandex"]) {
+    try {
+      const m = await fetchRelevantUrlMap(projectId, se);
+      for (const [k, v] of m.entries()) if (!relevantByKw.has(k)) relevantByKw.set(k, v);
+    } catch { /* noop */ }
+  }
+
   const rows: PulledQueryRow[] = [];
   for (const k of list) {
     const phrase = String(k.name ?? "").trim();
     if (!phrase) continue;
-    const url = k.target ? String(k.target).trim() : undefined;
+    const target = k.target ? String(k.target).trim() : undefined;
+    const relevant = k.id != null ? relevantByKw.get(String(k.id)) : undefined;
+    // Priority: relevant (if present) > target
+    const url = (relevant && relevant.trim()) || target || undefined;
     const groupId = k.group_id ?? k.group;
     const group = groupId != null ? (groupNameById.get(String(groupId)) || "Без группы") : "Без группы";
     const folder = folderFromUrl(url) || folderFallback || "/";
