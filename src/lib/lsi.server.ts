@@ -100,13 +100,8 @@ async function topvisorFetch(path: string, body: unknown): Promise<unknown> {
   const apiKey = await getApiKey("TOPVISOR_API_KEY");
   if (!userId) throw new Error("Не задан TOPVISOR_USER_ID");
   if (!apiKey) throw new Error("Не задан TOPVISOR_API_KEY");
-  const payload = path.includes("/snapshots_2/history") && body && typeof body === "object"
-    ? Object.fromEntries(
-      Object.entries(body as Record<string, unknown>).filter(
-        ([key]) => !["searcher_key", "searchers", "region_device", "region_lang"].includes(key),
-      ),
-    )
-    : body;
+  const payload = body;
+
   const res = await fetch(`${TOPVISOR_BASE}${path}`, {
     method: "POST",
     headers: {
@@ -195,11 +190,12 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  // Note: snapshots_2/history doesn't accept searcher_key/searchers here — the
-  // searcher is bound to project keywords. We filter results by search engine
-  // downstream if the project has multiple searchers enabled.
+  // snapshots_2/history requires searcher_key as an integer (0=Google, 1=Yandex).
+  const se = (params.searchEngine || "").toLowerCase();
+  const searcherKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
   const body: Record<string, unknown> = {
-    project_id: params.projectId,
+    project_id: Number(params.projectId) || params.projectId,
+    searcher_key: searcherKey,
     date1: fmt(past),
     date2: fmt(today),
     positions_fields: ["url", "domain", "snippet_title", "snippet_body"],
@@ -210,6 +206,7 @@ export async function fetchSerpCandidates(params: {
     filter_by_dynamic: 0,
     filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
+
 
 
 
