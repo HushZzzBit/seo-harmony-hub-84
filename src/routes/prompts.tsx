@@ -325,9 +325,7 @@ function PromptsPage() {
         </TabsContent>
 
         <TabsContent value="requirements" className="space-y-4">
-          <LsiPanel />
-          <WriterRequirementsPanel />
-          <QualityThresholdsPanel />
+          <RequirementsTab />
         </TabsContent>
 
         <TabsContent value="apikeys" className="space-y-4">
