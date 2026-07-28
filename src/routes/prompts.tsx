@@ -170,7 +170,11 @@ function PromptsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="prompts" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => navigate({ search: (prev) => ({ ...prev, tab: v }) })}
+        className="w-full"
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="prompts" className="gap-1.5">
             <Wand2 className="h-3.5 w-3.5" /> AI Промты
