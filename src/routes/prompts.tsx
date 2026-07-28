@@ -325,31 +325,80 @@ function PromptsPage() {
   );
 }
 
+function useFolderList() {
+  const queries = useStore((s) => s.queries);
+  return useMemo(() => {
+    const set = new Set<string>();
+    for (const q of queries) if (q.folder) set.add(q.folder);
+    return Array.from(set).sort();
+  }, [queries]);
+}
+
+function FolderScopeSelect({
+  value,
+  onChange,
+  marked,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  marked?: Set<string>;
+}) {
+  const folders = useFolderList();
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 text-xs w-56"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value={GLOBAL_KEY}>Глобально (по умолчанию)</SelectItem>
+        {folders.map((f) => (
+          <SelectItem key={f} value={f}>
+            {f} {marked?.has(f) ? "•" : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 function WriterRequirementsPanel() {
-  const value = useStore((s) => s.writerRequirements);
+  const map = useStore((s) => s.writerRequirements);
   const setValue = useStore((s) => s.setWriterRequirements);
-  const [draft, setDraft] = useState(value);
+  const [scope, setScope] = useState(GLOBAL_KEY);
+
+  const effective = map[scope] ?? (scope !== GLOBAL_KEY ? map[GLOBAL_KEY] ?? "" : "");
+  const [draft, setDraft] = useState(effective);
+  const [scopeSync, setScopeSync] = useState(scope);
+  if (scope !== scopeSync) {
+    setScopeSync(scope);
+    setDraft(effective);
+  }
+
+  const overriddenFolders = useMemo(
+    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
+    [map],
+  );
+
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div>
             <div className="text-sm font-medium">Требования к тексту (плейсхолдер в редакторе)</div>
             <div className="text-xs text-muted-foreground">
-              Отображается в попапе копирайтера вместо стандартного «Начните писать текст…».
+              Отображается в попапе копирайтера вместо стандартного «Начните писать текст…». Своё значение для каждого стрима с фолбэком на глобальное.
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <FolderScopeSelect value={scope} onChange={setScope} marked={overriddenFolders} />
             <button
               type="button"
-              onClick={() => { setDraft(""); setValue(""); toast.success("Требования очищены"); }}
+              onClick={() => { setDraft(""); setValue(scope, ""); toast.success("Требования очищены"); }}
               className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
             >
               <RotateCcw className="h-3.5 w-3.5" /> Очистить
             </button>
             <button
               type="button"
-              onClick={() => { setValue(draft); toast.success("Требования сохранены"); }}
+              onClick={() => { setValue(scope, draft); toast.success("Требования сохранены"); }}
               className="h-9 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1"
             >
               <Save className="h-3.5 w-3.5" /> Сохранить
@@ -369,33 +418,44 @@ function WriterRequirementsPanel() {
 }
 
 function QualityThresholdsPanel() {
-  const thresholds = useStore((s) => s.qualityThresholds);
-  const setQualityThresholds = useStore((s) => s.setQualityThresholds);
-  const resetQualityThresholds = useStore((s) => s.resetQualityThresholds);
+  const map = useStore((s) => s.qualityThresholds);
+  const setQT = useStore((s) => s.setQualityThresholds);
+  const resetQT = useStore((s) => s.resetQualityThresholds);
+  const [scope, setScope] = useState(GLOBAL_KEY);
+
+  const overridden = useMemo(
+    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
+    [map],
+  );
+  const thresholds = map[scope] ?? map[GLOBAL_KEY];
 
   const num = (v: string) => {
     const n = Number(v);
     return Number.isFinite(n) ? n : 0;
   };
+  const patch = (p: Parameters<typeof setQT>[1]) => setQT(scope, p);
 
   return (
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
               <div className="text-sm font-medium">Пороги качества текста</div>
               <div className="text-xs text-muted-foreground">
-                На основе этих значений автоматически присваивается общий статус качества (OK / Требует внимания / На доработку).
+                Свои пороги для каждого стрима. Если для стрима не задано — используются глобальные значения.
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => { resetQualityThresholds(); toast.success("Сброшено до значений по умолчанию"); }}
-              className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Сброс
-            </button>
+            <div className="flex items-center gap-2">
+              <FolderScopeSelect value={scope} onChange={setScope} marked={overridden} />
+              <button
+                type="button"
+                onClick={() => { resetQT(scope); toast.success(scope === GLOBAL_KEY ? "Глобальные значения сброшены" : "Пороги стрима сброшены"); }}
+                className="h-9 px-3 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Сброс
+              </button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -405,8 +465,8 @@ function QualityThresholdsPanel() {
           title="Text.ru — Уникальность"
           hint="Процент уникальности. Чем выше — тем лучше."
           fields={[
-            { label: "OK, если ≥", value: thresholds.unique.ok, onChange: (v) => setQualityThresholds({ unique: { ...thresholds.unique, ok: num(v) } }), suffix: "%" },
-            { label: "Warning, если ≥", value: thresholds.unique.warn, onChange: (v) => setQualityThresholds({ unique: { ...thresholds.unique, warn: num(v) } }), suffix: "%" },
+            { label: "OK, если ≥", value: thresholds.unique.ok, onChange: (v) => patch({ unique: { ...thresholds.unique, ok: num(v) } }), suffix: "%" },
+            { label: "Warning, если ≥", value: thresholds.unique.warn, onChange: (v) => patch({ unique: { ...thresholds.unique, warn: num(v) } }), suffix: "%" },
           ]}
           footer="Ниже второго порога — Fail."
         />
@@ -415,8 +475,8 @@ function QualityThresholdsPanel() {
           title="Text.ru — Вода"
           hint="Чем ниже, тем лучше."
           fields={[
-            { label: "Warning, если ≥", value: thresholds.water.warn, onChange: (v) => setQualityThresholds({ water: { ...thresholds.water, warn: num(v) } }), suffix: "%" },
-            { label: "Fail, если >", value: thresholds.water.fail, onChange: (v) => setQualityThresholds({ water: { ...thresholds.water, fail: num(v) } }), suffix: "%" },
+            { label: "Warning, если ≥", value: thresholds.water.warn, onChange: (v) => patch({ water: { ...thresholds.water, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.water.fail, onChange: (v) => patch({ water: { ...thresholds.water, fail: num(v) } }), suffix: "%" },
           ]}
         />
 
@@ -424,8 +484,8 @@ function QualityThresholdsPanel() {
           title="Text.ru — Заспамленность"
           hint="Чем ниже, тем лучше."
           fields={[
-            { label: "Warning, если ≥", value: thresholds.spam.warn, onChange: (v) => setQualityThresholds({ spam: { ...thresholds.spam, warn: num(v) } }), suffix: "%" },
-            { label: "Fail, если >", value: thresholds.spam.fail, onChange: (v) => setQualityThresholds({ spam: { ...thresholds.spam, fail: num(v) } }), suffix: "%" },
+            { label: "Warning, если ≥", value: thresholds.spam.warn, onChange: (v) => patch({ spam: { ...thresholds.spam, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.spam.fail, onChange: (v) => patch({ spam: { ...thresholds.spam, fail: num(v) } }), suffix: "%" },
           ]}
         />
 
@@ -433,8 +493,8 @@ function QualityThresholdsPanel() {
           title="ZeroGPT — AI-контент"
           hint="Процент вероятности AI-генерации. Чем ниже, тем лучше."
           fields={[
-            { label: "Warning, если ≥", value: thresholds.ai.warn, onChange: (v) => setQualityThresholds({ ai: { ...thresholds.ai, warn: num(v) } }), suffix: "%" },
-            { label: "Fail, если >", value: thresholds.ai.fail, onChange: (v) => setQualityThresholds({ ai: { ...thresholds.ai, fail: num(v) } }), suffix: "%" },
+            { label: "Warning, если ≥", value: thresholds.ai.warn, onChange: (v) => patch({ ai: { ...thresholds.ai, warn: num(v) } }), suffix: "%" },
+            { label: "Fail, если >", value: thresholds.ai.fail, onChange: (v) => patch({ ai: { ...thresholds.ai, fail: num(v) } }), suffix: "%" },
           ]}
         />
 
@@ -442,9 +502,9 @@ function QualityThresholdsPanel() {
           title="Тургенев (Ашманов) — Риск"
           hint="Баллы риска переспама. Чем ниже, тем лучше."
           fields={[
-            { label: "Warning, если ≥", value: thresholds.turgenev.warn, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, warn: num(v) } }), suffix: "б" },
-            { label: "Fail, если ≥", value: thresholds.turgenev.fail, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, fail: num(v) } }), suffix: "б" },
-            { label: "Critical, если ≥", value: thresholds.turgenev.critical, onChange: (v) => setQualityThresholds({ turgenev: { ...thresholds.turgenev, critical: num(v) } }), suffix: "б" },
+            { label: "Warning, если ≥", value: thresholds.turgenev.warn, onChange: (v) => patch({ turgenev: { ...thresholds.turgenev, warn: num(v) } }), suffix: "б" },
+            { label: "Fail, если ≥", value: thresholds.turgenev.fail, onChange: (v) => patch({ turgenev: { ...thresholds.turgenev, fail: num(v) } }), suffix: "б" },
+            { label: "Critical, если ≥", value: thresholds.turgenev.critical, onChange: (v) => patch({ turgenev: { ...thresholds.turgenev, critical: num(v) } }), suffix: "б" },
           ]}
         />
       </div>
@@ -454,7 +514,7 @@ function QualityThresholdsPanel() {
           <div className="font-medium text-foreground text-xs">Как считается общий статус</div>
           <div>• Каждой метрике присваивается зона: OK / Warning / Fail / Critical.</div>
           <div>• Общий статус текста — худшая зона среди всех проверок.</div>
-          <div>• Значения применяются сразу после сохранения — новые проверки и повторный вход в попап покажут актуальные зоны.</div>
+          <div>• Пороги применяются по стриму URL; если для стрима не задано — берутся глобальные.</div>
         </CardContent>
       </Card>
     </div>
