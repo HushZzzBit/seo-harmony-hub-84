@@ -17,6 +17,7 @@ import { useStore } from "@/lib/store";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
+import { Settings } from "lucide-react";
 import { pullTopvisorQueries, pullXmlriverSeasonalityFn } from "@/lib/lsi.functions";
 
 export const Route = createFileRoute("/import")({
