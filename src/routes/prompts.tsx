@@ -165,7 +165,11 @@ function PromptsPage() {
             <Wand2 className="h-3.5 w-3.5" /> AI Промты
           </TabsTrigger>
           <TabsTrigger value="requirements">Требования и примеры текстов</TabsTrigger>
+          <TabsTrigger value="apikeys" className="gap-1.5">
+            <KeyRound className="h-3.5 w-3.5" /> API и Ключи
+          </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="prompts" className="space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
