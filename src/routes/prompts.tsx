@@ -53,6 +53,10 @@ export function resolvePrompt(
 }
 
 function PromptsPage() {
+  const search = useSearch({ from: "/prompts" });
+  const navigate = useNavigate({ from: "/prompts" });
+  const activeTab = search.tab ?? "prompts";
+
   const queries = useStore((s) => s.queries);
   const prompts = useStore((s) => s.prompts);
   const setPrompt = useStore((s) => s.setPrompt);
