@@ -598,7 +598,19 @@ const API_KEY_META: Record<string, { label: string; hint: string; docsUrl?: stri
     hint: "Анализ LSI/тошноты/воды у конкурентных URL.",
     docsUrl: "https://miratext.ru/",
   },
+  XMLRIVER_USER: {
+    label: "XMLRiver User ID",
+    hint: "ID пользователя xmlriver.com для Wordstat (сезонность).",
+    docsUrl: "http://xmlriver.com/",
+    placeholder: "14608",
+  },
+  XMLRIVER_KEY: {
+    label: "XMLRiver API Key",
+    hint: "Ключ xmlriver.com для запросов Wordstat/сезонности.",
+    docsUrl: "http://xmlriver.com/",
+  },
 };
+
 
 function ApiKeysPanel() {
   const listFn = useServerFn(listApiKeys);
