@@ -114,7 +114,7 @@ export async function fetchSerpCandidates(params: {
     orders: [],
     limit: Math.max(params.depth, 10),
   };
-  if (params.regionIndex != null) body.region_index = params.regionIndex;
+  if (params.regionIndex != null) body.region_key = params.regionIndex;
   if (params.keywords.length) body.keywords = params.keywords.slice(0, 30);
 
 
