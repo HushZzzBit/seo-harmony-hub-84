@@ -667,7 +667,10 @@ function ApiKeysPanel() {
           <div className="text-xs text-muted-foreground">{loading ? "Загрузка…" : ""}</div>
         )}
       </div>
+
+      <LsiSettingsPanel />
     </div>
+
   );
 }
 
