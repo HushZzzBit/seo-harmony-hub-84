@@ -100,13 +100,8 @@ async function topvisorFetch(path: string, body: unknown): Promise<unknown> {
   const apiKey = await getApiKey("TOPVISOR_API_KEY");
   if (!userId) throw new Error("Не задан TOPVISOR_USER_ID");
   if (!apiKey) throw new Error("Не задан TOPVISOR_API_KEY");
-  const payload = path.includes("/snapshots_2/history") && body && typeof body === "object"
-    ? Object.fromEntries(
-      Object.entries(body as Record<string, unknown>).filter(
-        ([key]) => !["searcher_key", "searchers", "region_device", "region_lang"].includes(key),
-      ),
-    )
-    : body;
+  const payload = body;
+
   const res = await fetch(`${TOPVISOR_BASE}${path}`, {
     method: "POST",
     headers: {
