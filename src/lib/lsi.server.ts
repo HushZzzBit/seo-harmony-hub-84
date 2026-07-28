@@ -160,19 +160,58 @@ async function fetchProjectKeywords(params: {
 
 /** Auto-resolve region_index for the project: Moscow / smartphone / requested searcher. */
 async function resolveRegionIndex(projectId: string, searchEngine: string, fallback?: number | null): Promise<number> {
-  type Region = { index?: number; name?: string; country_code?: string; country?: string; device?: number | string; lang?: string };
-  type Searcher = { key?: number | string; name?: string; regions?: Region[] };
-  const raw = (await topvisorFetch("/v2/json/get/projects_2/searchers", {
-    project_id: Number(projectId) || projectId,
-  })) as { result?: Searcher[]; errors?: unknown };
-  if (raw.errors) throw new Error(`Topvisor searchers: ${JSON.stringify(raw.errors).slice(0, 200)}`);
-  const searchers = raw.result ?? [];
+  type Region = {
+    index?: number;
+    name?: string;
+    country_code?: string;
+    country?: string;
+    device?: number | string;
+    lang?: string;
+    searcher_key?: number | string;
+    searcherKey?: number | string;
+  };
   const se = (searchEngine || "").toLowerCase();
   const wantKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
-  const matchSearcher = searchers.find((s) => Number(s.key) === wantKey) ?? searchers[0];
-  const regions = matchSearcher?.regions ?? [];
-  // device=1 (mobile/smartphone) in Topvisor; 0 = desktop
-  const scored = regions.map((r) => {
+
+  // Try known endpoints in order (Topvisor API varies by version).
+  const candidates = [
+    "/v2/json/get/projects_2/searchers_regions/list",
+    "/v2/json/get/projects_2/searchers/regions",
+  ];
+  let regions: Region[] = [];
+  let lastErr: unknown = null;
+  for (const path of candidates) {
+    try {
+      const raw = (await topvisorFetch(path, {
+        project_id: Number(projectId) || projectId,
+      })) as { result?: unknown; errors?: unknown };
+      if (raw.errors) { lastErr = raw.errors; continue; }
+      const r = raw.result;
+      if (Array.isArray(r)) {
+        // Either flat regions[] or searchers[]{regions[]}.
+        const first = r[0] as Record<string, unknown> | undefined;
+        if (first && Array.isArray((first as { regions?: unknown }).regions)) {
+          regions = (r as Array<{ key?: number | string; regions?: Region[] }>)
+            .flatMap((s) => (s.regions ?? []).map((rg) => ({ ...rg, searcher_key: rg.searcher_key ?? s.key })));
+        } else {
+          regions = r as Region[];
+        }
+      } else if (r && typeof r === "object" && Array.isArray((r as { regions?: Region[] }).regions)) {
+        regions = (r as { regions?: Region[] }).regions ?? [];
+      }
+      if (regions.length) break;
+    } catch (e) { lastErr = e; }
+  }
+  if (!regions.length) {
+    throw new Error(`Topvisor regions: не удалось получить список регионов проекта. ${lastErr ? JSON.stringify(lastErr).slice(0, 200) : ""}`);
+  }
+
+  const matchedBySearcher = regions.filter((r) => {
+    const k = r.searcher_key ?? r.searcherKey;
+    return k == null ? true : Number(k) === wantKey;
+  });
+  const pool = matchedBySearcher.length ? matchedBySearcher : regions;
+  const scored = pool.map((r) => {
     const isMoscow = /москв|moscow/i.test(r.name ?? "");
     const isMobile = Number(r.device) === 1;
     const isRu = (r.country_code ?? r.country ?? "").toString().toUpperCase() === "RU";
