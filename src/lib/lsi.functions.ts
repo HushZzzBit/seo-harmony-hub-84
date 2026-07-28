@@ -225,7 +225,7 @@ export const collectCompetitors = createServerFn({ method: "POST" })
         .from("text_requirement_analysis")
         .update({
           status: "competitors_found",
-          raw_topvisor_response: raw as unknown,
+          raw_topvisor_response: raw as never,
           serp_date: snapshotDate ?? now,
           updated_at: new Date().toISOString(),
           error_message: picked.length < s.competitor_count ? `Найдено только ${picked.length} конкурентов` : null,
@@ -263,7 +263,7 @@ export const runMiratext = createServerFn({ method: "POST" })
         .update({
           status: "analyzing_miratext",
           miratext_hash: hash,
-          raw_miratext_response: raw as unknown,
+          raw_miratext_response: raw as never,
           updated_at: new Date().toISOString(),
           error_message: null,
         })
@@ -301,7 +301,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
         .update({
           status: "failed",
           error_message: res.error ?? "Miratext error",
-          raw_miratext_response: res.raw as unknown,
+          raw_miratext_response: res.raw as never,
           updated_at: new Date().toISOString(),
         })
         .eq("id", data.analysisId);
@@ -311,7 +311,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
       // wipe previous items so re-runs don't duplicate
       await sb.from("text_requirement_item").delete().eq("analysis_id", data.analysisId).eq("is_manual", false);
       const rows = buildItemsFromMiratext(data.analysisId, res.data);
-      if (rows.length) await sb.from("text_requirement_item").insert(rows);
+      if (rows.length) await sb.from("text_requirement_item").insert(rows as never);
 
       // Create draft version if none exists yet
       const { data: existing } = await sb
@@ -335,7 +335,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
         .from("text_requirement_analysis")
         .update({
           status: "ready_for_review",
-          raw_miratext_response: res.raw as unknown,
+          raw_miratext_response: res.raw as never,
           updated_at: new Date().toISOString(),
           error_message: null,
         })
