@@ -182,18 +182,20 @@ export function LsiPanel() {
               </Select>
             </Field>
 
-            <Field label="Поисковик">
+            <Field label="Глубина SERP">
               <Select
-                value={settings.search_engine}
-                onValueChange={(v) => { setSettings({ ...settings, search_engine: v }); saveSettings({ search_engine: v }); }}
+                value={String(settings.serp_depth)}
+                onValueChange={(v) => { setSettings({ ...settings, serp_depth: Number(v) }); saveSettings({ serp_depth: Number(v) }); }}
               >
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="google">Google</SelectItem>
-                  <SelectItem value="yandex">Yandex</SelectItem>
+                  <SelectItem value="10">TOP-10</SelectItem>
+                  <SelectItem value="20">TOP-20</SelectItem>
+                  <SelectItem value="30">TOP-30</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
+
             <Field label="Глубина SERP">
               <Select
                 value={String(settings.serp_depth)}
