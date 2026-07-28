@@ -229,11 +229,12 @@ export const collectCompetitors = createServerFn({ method: "POST" })
       if (matchedKeywords === 0) {
         msg = "В проекте Topvisor не найдено ключевых фраз по этому URL/названиям. Проверьте project_id и что фразы добавлены в проект.";
       } else if (items.length === 0) {
-        const diag = (raw as { diagnostic?: { requestBody?: { region_index?: number }; keywordsInResult?: number; snapshotsPerKeyword?: Array<{ name?: string; snapshotKeys: string[] }> } })?.diagnostic;
+        const diag = (raw as { diagnostic?: { requestBody?: { region_index?: number }; regionAttempts?: Array<{ region_index: number; snapshotKeys?: number }>; keywordsInResult?: number; snapshotsPerKeyword?: Array<{ name?: string; snapshotKeys: string[] }> } })?.diagnostic;
         const kwCount = diag?.keywordsInResult ?? 0;
         const withSnaps = diag?.snapshotsPerKeyword?.filter((k) => k.snapshotKeys.length > 0).length ?? 0;
         const usedRegion = diag?.requestBody?.region_index ?? s.topvisor_region_index;
-        msg = `Найдено ${matchedKeywords} фраз в проекте. Topvisor вернул ${kwCount} фраз в ответе (ПС: ${s.search_engine}, region_index=${usedRegion}), из них со снимками: ${withSnaps}. Проверьте, что снимки выдачи собраны для этого региона и ПС (в проекте Топвизора включён "Сбор снимков" при съёме позиций).`;
+        const attempts = diag?.regionAttempts?.length ? ` Проверенные region_index: ${diag.regionAttempts.map((a) => `${a.region_index}=${a.snapshotKeys ?? 0}`).join(", ")}.` : "";
+        msg = `Найдено ${matchedKeywords} фраз в проекте. Topvisor вернул ${kwCount} фраз в ответе (ПС: ${s.search_engine}, region_index=${usedRegion}), из них со снимками: ${withSnaps}.${attempts} Проверьте, что снимки выдачи собраны для этого региона и ПС (в проекте Топвизора включён "Сбор снимков" при съёме позиций).`;
       } else if (picked.length < s.competitor_count) {
         msg = `Найдено только ${picked.length} конкурентов (из ${s.competitor_count}).`;
       }
