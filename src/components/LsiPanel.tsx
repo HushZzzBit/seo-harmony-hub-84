@@ -266,7 +266,7 @@ export function LsiPanel() {
                 </tr>
               </thead>
               <tbody>
-                {visibleGroups.map((g) => (
+                {slicedGroups.map((g) => (
                   <GroupRow
                     key={g.key}
                     g={g}
@@ -274,7 +274,7 @@ export function LsiPanel() {
                     onChanged={reloadAll}
                   />
                 ))}
-                {visibleGroups.length === 0 && (
+                {slicedGroups.length === 0 && (
                   <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">
                     {groups.length === 0 ? "Нет групп. Импортируйте данные во вкладке Импорт." : "Нет групп под текущие фильтры."}
                   </td></tr>
@@ -282,6 +282,19 @@ export function LsiPanel() {
               </tbody>
             </table>
           </div>
+
+          {limit < visibleGroups.length && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
+                className="h-8 text-xs"
+              >
+                Показать ещё {Math.min(PAGE_SIZE, visibleGroups.length - limit)}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
