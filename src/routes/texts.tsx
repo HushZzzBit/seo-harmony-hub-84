@@ -937,7 +937,7 @@ function QualityCell({ url }: { url: string }) {
           )}
         </span>
         <div className="absolute z-50 top-full right-0 mt-1 w-72 hidden group-hover:block">
-          <QualityTooltip check={check} label={label} />
+          <QualityTooltip check={check} label={label} T={T} />
         </div>
       </div>
     </div>
