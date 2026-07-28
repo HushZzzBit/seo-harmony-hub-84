@@ -944,7 +944,7 @@ function QualityCell({ url }: { url: string }) {
   );
 }
 
-function QualityTooltip({ check, label }: { check: TextQualityCheck; label: string }) {
+function QualityTooltip({ check, label, T }: { check: TextQualityCheck; label: string; T: import("@/lib/types").QualityThresholds }) {
   return (
     <div className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg p-3 text-xs space-y-2">
       <div className="font-medium">{label}</div>
@@ -959,7 +959,7 @@ function QualityTooltip({ check, label }: { check: TextQualityCheck; label: stri
               {p.status === "pending" && <Loader2 className="h-3 w-3 animate-spin" />}
               {p.status === "failed" && <span className="text-rose-500">ошибка</span>}
               {p.status === "skipped" && <span className="text-muted-foreground">—</span>}
-              {p.status === "success" && providerMetrics(p).map((m) => (
+              {p.status === "success" && providerMetricsWith(T, p).map((m) => (
                 <span key={m.label} className={`px-1.5 py-0.5 rounded border text-[10px] ${zoneClass[m.zone]}`}>
                   {m.label} {m.value}
                 </span>
