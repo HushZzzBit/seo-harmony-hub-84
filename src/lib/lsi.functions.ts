@@ -479,3 +479,25 @@ export const rollbackToVersion = createServerFn({ method: "POST" })
       .eq("id", data.versionId);
     return { ok: true };
   });
+
+// -------- Data pull: Topvisor + XmlRiver seasonality --------
+
+export const pullTopvisorQueries = createServerFn({ method: "POST" }).handler(async () => {
+  const { pullAllTopvisorQueries } = await import("./lsi.server");
+  return pullAllTopvisorQueries();
+});
+
+export const pullXmlriverSeasonalityFn = createServerFn({ method: "POST" })
+  .inputValidator((data: {
+    phrases: string[];
+    device?: "phone" | "desktop" | "tablet";
+    regions?: string;
+    groupBy?: "day" | "week" | "month";
+    dateFrom?: string;
+    dateTo?: string;
+  }) => data)
+  .handler(async ({ data }) => {
+    const { pullXmlriverSeasonality } = await import("./lsi.server");
+    return pullXmlriverSeasonality(data);
+  });
+

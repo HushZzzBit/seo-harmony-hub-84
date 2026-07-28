@@ -81,6 +81,7 @@ interface State {
   writerRequirements: Record<string, string>;
 
   upsertQueries: (rows: Query[]) => void;
+  mergeQueriesFromPull: (rows: Array<Omit<Query, "id" | "seasonality">>) => { added: number; updated: number };
   upsertUrls: (rows: UrlRow[]) => void;
   applySeasonality: (map: Record<string, number[]>) => void;
   setMetaEdit: (url: string, patch: Partial<MetaEdit>) => void;
@@ -147,6 +148,45 @@ export const useStore = create<State>()(
         const map = new Map(get().queries.map((q) => [q.id, q]));
         for (const r of rows) map.set(r.id, { ...map.get(r.id), ...r });
         set({ queries: Array.from(map.values()) });
+      },
+      mergeQueriesFromPull: (rows) => {
+        const existing = get().queries;
+        const keyOf = (phrase: string, url?: string) =>
+          `${phrase.toLowerCase().trim()}|${(url ?? "").toLowerCase().trim()}`;
+        const byKey = new Map(existing.map((q) => [keyOf(q.phrase, q.url), q]));
+        let added = 0, updated = 0;
+        const next: Query[] = [...existing];
+        for (const r of rows) {
+          const k = keyOf(r.phrase, r.url);
+          const prev = byKey.get(k);
+          if (prev) {
+            const idx = next.findIndex((q) => q.id === prev.id);
+            if (idx >= 0) {
+              next[idx] = {
+                ...prev,
+                phrase: r.phrase,
+                folder: r.folder,
+                group: r.group,
+                url: r.url,
+                frequency: r.frequency || prev.frequency,
+              };
+              updated++;
+            }
+          } else {
+            next.push({
+              id: `${r.folder}::${r.group}::${r.phrase}::${next.length}`,
+              phrase: r.phrase,
+              folder: r.folder,
+              group: r.group,
+              url: r.url,
+              frequency: r.frequency,
+              seasonality: new Array(12).fill(0),
+            });
+            added++;
+          }
+        }
+        set({ queries: next });
+        return { added, updated };
       },
       upsertUrls: (rows) => {
         const urls = { ...get().urls };

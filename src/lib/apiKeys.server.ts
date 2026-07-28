@@ -9,6 +9,8 @@ export const API_KEY_NAMES = [
   "TOPVISOR_API_KEY",
   "TOPVISOR_USER_ID",
   "MIRATEXT_API_KEY",
+  "XMLRIVER_USER",
+  "XMLRIVER_KEY",
 ] as const;
 
 export type ApiKeyName = (typeof API_KEY_NAMES)[number];
