@@ -416,12 +416,8 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  // Авто-подбор region_index: Москва / смартфон / выбранная ПС.
-  const regionIndex = await resolveRegionIndex(params.projectId, params.searchEngine, params.regionIndex);
-
-  const body: Record<string, unknown> = {
+  const baseBody: Record<string, unknown> = {
     project_id: Number(params.projectId) || params.projectId,
-    region_index: regionIndex,
     date1: fmt(past),
     date2: fmt(today),
     positions_fields: ["url", "domain", "snippet_title", "snippet_body"],
