@@ -67,19 +67,45 @@ export function LsiPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // groups from local store (folder::group)
+  // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
     const map = new Map<
       string,
-      { key: string; folder: string; group: string; url: string; keywords: string[] }
+      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[] }
     >();
     for (const q of queries) {
       const key = `${q.folder}::${q.group}`;
-      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [] });
-      map.get(key)!.keywords.push(q.phrase);
+      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [] });
+      const g = map.get(key)!;
+      g.keywords.push(q.phrase);
+      g.qs.push(q);
     }
-    return Array.from(map.values()).sort((a, b) => (a.folder + a.group).localeCompare(b.folder + b.group));
+    const now = new Date().getMonth();
+    return Array.from(map.values()).map((g) => {
+      const season = groupSeasonality(g.qs);
+      const planMonth = recommendedMonth(season);
+      const prio = priorityForGroup(season);
+      const dist = (planMonth - now + 12) % 12;
+      return { ...g, season, planMonth, prio, dist, hasSeason: season.some((v) => v > 0) };
+    });
   }, [queries]);
+
+  const folders = useMemo(() => Array.from(new Set(groups.map((g) => g.folder))).sort(), [groups]);
+
+  const visibleGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return groups
+      .filter((g) => folderFilter === "all" || g.folder === folderFilter)
+      .filter((g) => prioFilter === "all" || g.prio === prioFilter)
+      .filter((g) => !q || g.group.toLowerCase().includes(q) || g.folder.toLowerCase().includes(q) || g.url.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const d = priorityRank[a.prio] - priorityRank[b.prio];
+        if (d !== 0) return d;
+        if (a.hasSeason !== b.hasSeason) return a.hasSeason ? -1 : 1;
+        if (a.dist !== b.dist) return a.dist - b.dist;
+        return (a.folder + a.group).localeCompare(b.folder + b.group);
+      });
+  }, [groups, folderFilter, prioFilter, search]);
 
   const byGroup = useMemo(() => {
     const m = new Map<string, AnalysisRow>();
