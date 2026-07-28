@@ -425,27 +425,59 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const coverage = phrases.length ? Math.round((usedPhrases / phrases.length) * 100) : 0;
 
   const words = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const q of groupQueries) {
-      for (const w of new Set(
-        q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w && w.length > 2),
-      )) {
-        map.set(w, (map.get(w) ?? 0) + (q.frequency || 1));
+    // Prefer LSI-based words when an approved requirements version exists.
+    const lsiWords = (lsi?.items ?? []).filter((it) => it.type === "word" && it.status !== "excluded");
+    const source: Array<{ word: string; weight: number }> = [];
+    if (lsiWords.length) {
+      for (const it of lsiWords) {
+        source.push({
+          word: it.value.toLowerCase().replace(/ё/g, "е"),
+          weight: (it.recommended_count ?? 1) + (it.priority === "high" ? 10 : it.priority === "medium" ? 5 : 0),
+        });
       }
+    } else {
+      const map = new Map<string, number>();
+      for (const q of groupQueries) {
+        for (const w of new Set(
+          q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w && w.length > 2),
+        )) {
+          map.set(w, (map.get(w) ?? 0) + (q.frequency || 1));
+        }
+      }
+      for (const [word, weight] of map) source.push({ word, weight });
     }
-    return Array.from(map, ([word, weight]) => {
+    return source
+      .map(({ word, weight }) => {
+        let count = 0;
+        try {
+          const re = new RegExp(`(?<![а-яёa-z0-9])${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+          count = (plainLower.match(re) ?? []).length;
+        } catch {
+          const re = new RegExp(`\\b${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+          count = (plainLower.match(re) ?? []).length;
+        }
+        return { word, weight, count };
+      })
+      .sort((a, b) => b.weight - a.weight);
+  }, [groupQueries, plainLower, lsi]);
+
+  // LSI phrases (2/3 words) — only visible when active version exists.
+  const lsiPhrases = useMemo(() => {
+    const src = (lsi?.items ?? []).filter((it) => (it.type === "phrase_2" || it.type === "phrase_3") && it.status !== "excluded");
+    return src.map((it) => {
       let count = 0;
       try {
-        // те же правила, что и в подсветке: ё↔е и суффиксы до 4 симв., не с середины слова
-        const re = new RegExp(`(?<![а-яёa-z0-9])${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+        const re = new RegExp(normalizePattern(escapeRe(it.value)), "gi");
         count = (plainLower.match(re) ?? []).length;
-      } catch {
-        const re = new RegExp(`\\b${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
-        count = (plainLower.match(re) ?? []).length;
-      }
-      return { word, weight, count };
-    }).sort((a, b) => b.weight - a.weight);
-  }, [groupQueries, plainLower]);
+      } catch { count = 0; }
+      return { phrase: it.value, freq: it.recommended_count ?? 0, count, priority: it.priority };
+    }).sort((a, b) => b.freq - a.freq);
+  }, [lsi, plainLower]);
+
+  const stopwords = useMemo(
+    () => (lsi?.items ?? []).filter((it) => it.type === "stopword").map((it) => it.value),
+    [lsi],
+  );
 
   const visiblePhrases = phrases;
   const visibleWords = words;
