@@ -122,17 +122,69 @@ export interface TopvisorSerpItem {
   keyword?: string;
 }
 
-/** Fetches the most recent SERP snapshot for given keywords and flattens results. */
+function normDomain(d: string): string {
+  return d.toLowerCase().replace(/^www\./, "");
+}
+
+/** Fetch project keywords, optionally filtered by target URL and/or names.
+ *  Returns [{id, name, url}]. Uses /keywords_2/keywords. */
+async function fetchProjectKeywords(params: {
+  projectId: string;
+  targetUrl?: string | null;
+  names?: string[];
+}): Promise<Array<{ id: number; name: string; url?: string }>> {
+  const body: Record<string, unknown> = {
+    project_id: params.projectId,
+    fields: ["id", "name", "url"],
+  };
+  const filters: Array<Record<string, unknown>> = [];
+  if (params.names && params.names.length) {
+    filters.push({ name: "name", operator: "IN", values: params.names.slice(0, 200) });
+  }
+  if (filters.length) body.filters = filters;
+  const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", body)) as {
+    result?: Array<{ id: number; name: string; url?: string }>;
+    errors?: unknown;
+  };
+  if (raw.errors) throw new Error(`Topvisor keywords: ${JSON.stringify(raw.errors).slice(0, 300)}`);
+  let list = raw.result ?? [];
+  if (params.targetUrl) {
+    const t = params.targetUrl.toLowerCase().replace(/\/+$/, "");
+    const matches = list.filter((k) => (k.url ?? "").toLowerCase().replace(/\/+$/, "") === t);
+    if (matches.length) list = matches;
+  }
+  return list;
+}
+
+/** Fetches SERP snapshots for keywords in a Topvisor project.
+ *  Uses "Снимки выдачи" (/snapshots_2/history) filtered by keyword IDs. */
 export async function fetchSerpCandidates(params: {
   projectId: string;
   regionIndex?: number | null;
   searchEngine: string;
   depth: number;
   keywords: string[];
-}): Promise<{ items: TopvisorSerpItem[]; raw: unknown; snapshotDate?: string }> {
-  // Topvisor requires date1/date2 window. Use last 30 days.
+  targetUrl?: string | null;
+}): Promise<{ items: TopvisorSerpItem[]; raw: unknown; snapshotDate?: string; matchedKeywords: number }> {
+  // 1) Resolve keyword IDs from the project.
+  const projectKeywords = await fetchProjectKeywords({
+    projectId: params.projectId,
+    targetUrl: params.targetUrl ?? null,
+    names: params.keywords,
+  });
+  if (!projectKeywords.length) {
+    return {
+      items: [],
+      raw: { note: "no project keywords matched", requestedNames: params.keywords.slice(0, 20), targetUrl: params.targetUrl },
+      matchedKeywords: 0,
+    };
+  }
+  const keywordIds = projectKeywords.map((k) => k.id);
+  const nameById = new Map(projectKeywords.map((k) => [k.id, k.name]));
+
+  // 2) Request last SERP snapshot for those keywords.
   const today = new Date();
-  const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const past = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   const body: Record<string, unknown> = {
@@ -144,62 +196,95 @@ export async function fetchSerpCandidates(params: {
     type_range: 7,
     show_exists_dates: 0,
     show_ams: 0,
+    filter_by_dynamic: 0,
+    filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
   if (params.regionIndex != null) body.region_index = params.regionIndex;
-  if (params.keywords.length) {
-    body.filters = [
-      {
-        name: "name",
-        operator: "IN",
-        values: params.keywords.slice(0, 30),
-      },
-    ];
-  }
 
   const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
     result?: {
       keywords?: Array<{
+        id?: number;
         name?: string;
         snapshotsData?: Record<
           string,
-          {
-            url?: string;
-            domain?: string;
-            snippet_title?: string;
-            snippet_body?: string;
-          }
+          | {
+              url?: string;
+              domain?: string;
+              snippet_title?: string;
+              snippet_body?: string;
+              position?: number | string;
+            }
+          | Array<{
+              url?: string;
+              domain?: string;
+              snippet_title?: string;
+              snippet_body?: string;
+              position?: number | string;
+            }>
         >;
       }>;
-      dates?: string[];
-      depthPositions?: number;
     };
     errors?: unknown;
   };
-  if (raw.errors) throw new Error(`Topvisor: ${JSON.stringify(raw.errors).slice(0, 300)}`);
+  if (raw.errors) throw new Error(`Topvisor snapshots: ${JSON.stringify(raw.errors).slice(0, 300)}`);
 
   const items: TopvisorSerpItem[] = [];
   let snapshotDate: string | undefined;
+
+  const pushOne = (
+    kwName: string | undefined,
+    date: string | undefined,
+    positionFromKey: number,
+    r: {
+      url?: string;
+      domain?: string;
+      snippet_title?: string;
+      snippet_body?: string;
+      position?: number | string;
+    },
+  ) => {
+    const position = r.position != null ? Number(r.position) : positionFromKey;
+    if (!r.url || Number.isNaN(position) || position <= 0) return;
+    if (position > params.depth) return;
+    if (date && !snapshotDate) snapshotDate = date;
+    const domain = r.domain || (() => {
+      try {
+        return normDomain(new URL(r.url!).hostname);
+      } catch {
+        return "";
+      }
+    })();
+    if (!domain) return;
+    items.push({
+      url: r.url,
+      domain,
+      position,
+      snippet_title: r.snippet_title,
+      snippet_body: r.snippet_body,
+      keyword: kwName,
+    });
+  };
+
   for (const kw of raw.result?.keywords ?? []) {
+    const kwName = kw.name ?? (kw.id != null ? nameById.get(kw.id) : undefined);
     const snapshotsData = kw.snapshotsData ?? {};
-    for (const [key, r] of Object.entries(snapshotsData)) {
-      // key format: "date:position:regionIndex"
-      const [date, positionStr] = key.split(":");
-      const position = Number(positionStr);
-      if (!r?.url || !r?.domain || Number.isNaN(position)) continue;
-      if (position > params.depth) continue;
-      if (date && !snapshotDate) snapshotDate = date;
-      items.push({
-        url: r.url,
-        domain: r.domain,
-        position,
-        snippet_title: r.snippet_title,
-        snippet_body: r.snippet_body,
-        keyword: kw.name,
-      });
+    for (const [key, val] of Object.entries(snapshotsData)) {
+      // key format: "date:position:regionIndex" or "date:position"
+      const parts = key.split(":");
+      const date = parts[0];
+      const positionFromKey = Number(parts[1]);
+      if (Array.isArray(val)) {
+        for (const r of val) pushOne(kwName, date, positionFromKey, r);
+      } else if (val && typeof val === "object") {
+        pushOne(kwName, date, positionFromKey, val);
+      }
     }
   }
-  return { items, raw, snapshotDate };
+
+  return { items, raw, snapshotDate, matchedKeywords: projectKeywords.length };
 }
+
 
 const FILE_EXT_RE = /\.(pdf|docx?|xlsx?|pptx?|zip|rar|jpe?g|png|gif|webp|svg|mp4|mp3)(\?|$)/i;
 
