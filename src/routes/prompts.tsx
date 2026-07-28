@@ -520,6 +520,38 @@ function QualityThresholdsPanel({ scope }: { scope: string }) {
   );
 }
 
+function RequirementsTab() {
+  const [scope, setScope] = useState(GLOBAL_KEY);
+  const writerReqMap = useStore((s) => s.writerRequirements);
+  const qtMap = useStore((s) => s.qualityThresholds);
+
+  const marked = useMemo(() => {
+    const set = new Set<string>();
+    for (const k of Object.keys(writerReqMap)) if (k !== GLOBAL_KEY) set.add(k);
+    for (const k of Object.keys(qtMap)) if (k !== GLOBAL_KEY) set.add(k);
+    return set;
+  }, [writerReqMap, qtMap]);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-sm font-medium">Стрим / папка</div>
+            <div className="text-xs text-muted-foreground">
+              Глобальный переключатель стрима для всех настроек этого раздела.
+            </div>
+          </div>
+          <FolderScopeSelect value={scope} onChange={setScope} marked={marked} />
+        </CardContent>
+      </Card>
+
+      <WriterRequirementsPanel scope={scope} />
+      <QualityThresholdsPanel scope={scope} />
+    </div>
+  );
+}
+
 interface ThresholdField {
   label: string;
   value: number;
