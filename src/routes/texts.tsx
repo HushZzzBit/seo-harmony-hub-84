@@ -17,6 +17,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
+import { getActiveRequirementsForGroup, type ActiveRequirements } from "@/lib/lsi.functions";
 import { overallDot, overallFromCheck, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
@@ -381,6 +382,14 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [tab, setTab] = useState("editor");
   const [highlight, setHighlight] = useState(true);
 
+  // Active LSI requirements for this group (loaded when popup opens).
+  const getReq = useServerFn(getActiveRequirementsForGroup);
+  const [lsi, setLsi] = useState<ActiveRequirements | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    getReq({ data: { group_key: `${folder}::${group}` } }).then(setLsi).catch(() => setLsi(null));
+  }, [open, folder, group, getReq]);
+
   const groupQueries = useMemo(
     () => queries.filter((q) => q.folder === folder && q.group === group),
     [queries, folder, group],
@@ -416,27 +425,59 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const coverage = phrases.length ? Math.round((usedPhrases / phrases.length) * 100) : 0;
 
   const words = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const q of groupQueries) {
-      for (const w of new Set(
-        q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w && w.length > 2),
-      )) {
-        map.set(w, (map.get(w) ?? 0) + (q.frequency || 1));
+    // Prefer LSI-based words when an approved requirements version exists.
+    const lsiWords = (lsi?.items ?? []).filter((it) => it.type === "word" && it.status !== "excluded");
+    const source: Array<{ word: string; weight: number }> = [];
+    if (lsiWords.length) {
+      for (const it of lsiWords) {
+        source.push({
+          word: it.value.toLowerCase().replace(/ё/g, "е"),
+          weight: (it.recommended_count ?? 1) + (it.priority === "high" ? 10 : it.priority === "medium" ? 5 : 0),
+        });
       }
+    } else {
+      const map = new Map<string, number>();
+      for (const q of groupQueries) {
+        for (const w of new Set(
+          q.phrase.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/i).filter((w) => w && w.length > 2),
+        )) {
+          map.set(w, (map.get(w) ?? 0) + (q.frequency || 1));
+        }
+      }
+      for (const [word, weight] of map) source.push({ word, weight });
     }
-    return Array.from(map, ([word, weight]) => {
+    return source
+      .map(({ word, weight }) => {
+        let count = 0;
+        try {
+          const re = new RegExp(`(?<![а-яёa-z0-9])${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+          count = (plainLower.match(re) ?? []).length;
+        } catch {
+          const re = new RegExp(`\\b${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+          count = (plainLower.match(re) ?? []).length;
+        }
+        return { word, weight, count };
+      })
+      .sort((a, b) => b.weight - a.weight);
+  }, [groupQueries, plainLower, lsi]);
+
+  // LSI phrases (2/3 words) — only visible when active version exists.
+  const lsiPhrases = useMemo(() => {
+    const src = (lsi?.items ?? []).filter((it) => (it.type === "phrase_2" || it.type === "phrase_3") && it.status !== "excluded");
+    return src.map((it) => {
       let count = 0;
       try {
-        // те же правила, что и в подсветке: ё↔е и суффиксы до 4 симв., не с середины слова
-        const re = new RegExp(`(?<![а-яёa-z0-9])${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
+        const re = new RegExp(normalizePattern(escapeRe(it.value)), "gi");
         count = (plainLower.match(re) ?? []).length;
-      } catch {
-        const re = new RegExp(`\\b${normalizePattern(escapeRe(word))}[а-яёa-z]{0,4}`, "gi");
-        count = (plainLower.match(re) ?? []).length;
-      }
-      return { word, weight, count };
-    }).sort((a, b) => b.weight - a.weight);
-  }, [groupQueries, plainLower]);
+      } catch { count = 0; }
+      return { phrase: it.value, freq: it.recommended_count ?? 0, count, priority: it.priority };
+    }).sort((a, b) => b.freq - a.freq);
+  }, [lsi, plainLower]);
+
+  const stopwords = useMemo(
+    () => (lsi?.items ?? []).filter((it) => it.type === "stopword").map((it) => it.value),
+    [lsi],
+  );
 
   const visiblePhrases = phrases;
   const visibleWords = words;
@@ -534,21 +575,50 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
           <aside className="w-[340px] shrink-0 border-l flex flex-col bg-muted/20">
             <div className="p-3 border-b space-y-2">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold">Ключи</div>
-                <div className="text-xs text-muted-foreground">{usedPhrases}/{phrases.length} использовано</div>
+                <div className="text-sm font-semibold">Требования к тексту</div>
+                {lsi?.version ? (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600">
+                    v{lsi.version.version_number}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">не подготовлены</span>
+                )}
+              </div>
+              {lsi?.version && (
+                <div className="text-[10px] text-muted-foreground">
+                  Обновлено {new Date(lsi.version.approved_at ?? lsi.version.created_at).toLocaleDateString()}
+                  {lsi.competitors.length ? ` · Конкурентов: ${lsi.competitors.length}` : ""}
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-1">
+                <div className="text-[11px] text-muted-foreground">Покрытие ключей</div>
+                <div className="text-xs text-muted-foreground">{usedPhrases}/{phrases.length}</div>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 transition-all"
-                  style={{ width: `${coverage}%` }}
-                />
+                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${coverage}%` }} />
               </div>
             </div>
 
             <div className="flex-1 overflow-auto p-2 space-y-3">
+              {lsi?.competitors && lsi.competitors.length > 0 && (
+                <details className="rounded-md border bg-background px-2 py-1.5">
+                  <summary className="text-[11px] font-medium cursor-pointer text-muted-foreground">
+                    Конкуренты ({lsi.competitors.length})
+                  </summary>
+                  <div className="mt-1.5 space-y-0.5">
+                    {lsi.competitors.map((c) => (
+                      <a key={c.id} href={c.url} target="_blank" rel="noreferrer"
+                         className="block text-[10px] font-mono text-primary hover:underline truncate">
+                        {c.url}
+                      </a>
+                    ))}
+                  </div>
+                </details>
+              )}
+
               <section>
                 <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
-                  Фразы ({visiblePhrases.length})
+                  Ключевые запросы ({visiblePhrases.length})
                 </div>
                 <div className="space-y-1">
                   {visiblePhrases.map((p) => (
@@ -566,14 +636,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                       <span className="truncate">{p.phrase}</span>
                       <span className="flex items-center gap-1 shrink-0 text-[10px] text-muted-foreground">
                         <span title="Частотность">{p.freq}</span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded-full font-semibold ${
-                            p.count > 0
-                              ? "bg-emerald-500 text-white"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                          title="Вхождений в текст"
-                        >
+                        <span className={`px-1.5 py-0.5 rounded-full font-semibold ${p.count > 0 ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"}`}>
                           {p.count}
                         </span>
                       </span>
@@ -585,12 +648,38 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                 </div>
               </section>
 
+              {lsiPhrases.length > 0 && (
+                <section>
+                  <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
+                    LSI-фразы ({lsiPhrases.length})
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {lsiPhrases.map((p) => (
+                      <button
+                        key={p.phrase}
+                        type="button"
+                        onClick={() => insertAtCursor(p.phrase)}
+                        className={`px-2 py-0.5 rounded-full text-[11px] border transition ${
+                          p.count > 0
+                            ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-700 dark:text-emerald-300"
+                            : "bg-background border-border hover:bg-accent"
+                        }`}
+                        title={`приоритет ${p.priority ?? "—"}, вхождений ${p.count}`}
+                      >
+                        {p.phrase}
+                        {p.count > 0 && <span className="ml-1 opacity-70">×{p.count}</span>}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               <section>
                 <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
-                  Слова ({visibleWords.length})
+                  {lsi?.version ? "LSI-слова" : "Слова"} ({visibleWords.length})
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {visibleWords.slice(0, 60).map((w) => (
+                  {visibleWords.slice(0, 80).map((w) => (
                     <button
                       key={w.word}
                       type="button"
@@ -608,9 +697,25 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                   ))}
                 </div>
               </section>
+
+              {stopwords.length > 0 && (
+                <section>
+                  <div className="text-[10px] font-semibold uppercase text-rose-500/80 px-1 mb-1">
+                    Стоп-слова ({stopwords.length})
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {stopwords.map((w) => (
+                      <span key={w} className="px-2 py-0.5 rounded-full text-[11px] border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-300">
+                        {w}
+                      </span>
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           </aside>
         </div>
+
 
         <div className="shrink-0">
           <QualityPanel url={url} currentValue={value} />

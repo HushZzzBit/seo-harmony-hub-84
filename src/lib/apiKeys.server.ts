@@ -6,6 +6,9 @@ export const API_KEY_NAMES = [
   "TEXT_RU_USERKEY",
   "ZEROGPT_API_KEY",
   "TURGENEV_API_KEY",
+  "TOPVISOR_API_KEY",
+  "TOPVISOR_USER_ID",
+  "MIRATEXT_API_KEY",
 ] as const;
 
 export type ApiKeyName = (typeof API_KEY_NAMES)[number];

@@ -15,6 +15,7 @@ import {
   previewPrompt,
 } from "@/lib/openai.functions";
 import { listApiKeys, setApiKey, deleteApiKey, type ApiKeyStatus } from "@/lib/apiKeys.functions";
+import { LsiPanel } from "@/components/LsiPanel";
 import { toast } from "sonner";
 import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Trash2, Wand2 } from "lucide-react";
 
@@ -310,6 +311,7 @@ function PromptsPage() {
         </TabsContent>
 
         <TabsContent value="requirements" className="space-y-4">
+          <LsiPanel />
           <WriterRequirementsPanel />
           <QualityThresholdsPanel />
         </TabsContent>
@@ -517,6 +519,22 @@ const API_KEY_META: Record<string, { label: string; hint: string; docsUrl?: stri
     label: "Тургенев (Ашманов)",
     hint: "Оценка риска переоптимизации.",
     docsUrl: "https://turgenev.ashmanov.com/",
+  },
+  TOPVISOR_USER_ID: {
+    label: "Topvisor User ID",
+    hint: "ID пользователя Topvisor (заголовок User-Id).",
+    docsUrl: "https://topvisor.com/api/",
+    placeholder: "12345",
+  },
+  TOPVISOR_API_KEY: {
+    label: "Topvisor API Key",
+    hint: "Ключ Topvisor для сбора конкурентов из SERP.",
+    docsUrl: "https://topvisor.com/api/",
+  },
+  MIRATEXT_API_KEY: {
+    label: "Miratext API Key",
+    hint: "Анализ LSI/тошноты/воды у конкурентных URL.",
+    docsUrl: "https://miratext.ru/",
   },
 };
 
