@@ -169,15 +169,19 @@ export function LsiPanel() {
                 className="h-8 text-xs"
               />
             </Field>
-            <Field label="Region index (Topvisor)">
-              <Input
-                type="number"
-                value={settings.topvisor_region_index ?? ""}
-                onChange={(e) => setSettings({ ...settings, topvisor_region_index: e.target.value ? Number(e.target.value) : null })}
-                onBlur={() => saveSettings({ topvisor_region_index: settings.topvisor_region_index })}
-                className="h-8 text-xs"
-              />
+            <Field label="Поисковик (ПС)">
+              <Select
+                value={settings.search_engine}
+                onValueChange={(v) => { setSettings({ ...settings, search_engine: v }); saveSettings({ search_engine: v }); }}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="google">Google</SelectItem>
+                  <SelectItem value="yandex">Yandex</SelectItem>
+                </SelectContent>
+              </Select>
             </Field>
+
             <Field label="Поисковик">
               <Select
                 value={settings.search_engine}
