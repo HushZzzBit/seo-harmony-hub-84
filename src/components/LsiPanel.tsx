@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Play, RefreshCw, Sparkles, Save, Trash2, Plus, Check, History } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
+import { priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
+import type { Priority, Query } from "@/lib/types";
 import {
   getLsiSettings,
   setLsiSettings,
@@ -49,6 +52,9 @@ export function LsiPanel() {
   const [settings, setSettings] = useState<Awaited<ReturnType<typeof getLsiSettings>> | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
   const [blDraft, setBlDraft] = useState("");
+  const [folderFilter, setFolderFilter] = useState("all");
+  const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
+  const [search, setSearch] = useState("");
 
   async function reloadAll() {
     const [s, a] = await Promise.all([getS(), listA()]);
@@ -61,19 +67,45 @@ export function LsiPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // groups from local store (folder::group)
+  // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
     const map = new Map<
       string,
-      { key: string; folder: string; group: string; url: string; keywords: string[] }
+      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[] }
     >();
     for (const q of queries) {
       const key = `${q.folder}::${q.group}`;
-      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [] });
-      map.get(key)!.keywords.push(q.phrase);
+      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [] });
+      const g = map.get(key)!;
+      g.keywords.push(q.phrase);
+      g.qs.push(q);
     }
-    return Array.from(map.values()).sort((a, b) => (a.folder + a.group).localeCompare(b.folder + b.group));
+    const now = new Date().getMonth();
+    return Array.from(map.values()).map((g) => {
+      const season = groupSeasonality(g.qs);
+      const planMonth = recommendedMonth(season);
+      const prio = priorityForGroup(season);
+      const dist = (planMonth - now + 12) % 12;
+      return { ...g, season, planMonth, prio, dist, hasSeason: season.some((v) => v > 0) };
+    });
   }, [queries]);
+
+  const folders = useMemo(() => Array.from(new Set(groups.map((g) => g.folder))).sort(), [groups]);
+
+  const visibleGroups = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return groups
+      .filter((g) => folderFilter === "all" || g.folder === folderFilter)
+      .filter((g) => prioFilter === "all" || g.prio === prioFilter)
+      .filter((g) => !q || g.group.toLowerCase().includes(q) || g.folder.toLowerCase().includes(q) || g.url.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const d = priorityRank[a.prio] - priorityRank[b.prio];
+        if (d !== 0) return d;
+        if (a.hasSeason !== b.hasSeason) return a.hasSeason ? -1 : 1;
+        if (a.dist !== b.dist) return a.dist - b.dist;
+        return (a.folder + a.group).localeCompare(b.folder + b.group);
+      });
+  }, [groups, folderFilter, prioFilter, search]);
 
   const byGroup = useMemo(() => {
     const m = new Map<string, AnalysisRow>();
@@ -182,32 +214,66 @@ export function LsiPanel() {
       </Card>
 
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full min-w-[900px] text-xs">
-            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left px-2 py-2">Папка / Группа</th>
-                <th className="text-left px-2 py-2">URL</th>
-                <th className="text-right px-2 py-2">Ключей</th>
-                <th className="text-left px-2 py-2">Статус</th>
-                <th className="text-left px-2 py-2">Обновлено</th>
-                <th className="text-right px-2 py-2">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g) => (
-                <GroupRow
-                  key={g.key}
-                  g={g}
-                  analysis={byGroup.get(g.key)}
-                  onChanged={reloadAll}
-                />
-              ))}
-              {groups.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Нет групп. Импортируйте данные во вкладке Импорт.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <CardContent className="p-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={folderFilter} onValueChange={setFolderFilter}>
+              <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Стрим (папка)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все стримы</SelectItem>
+                {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={prioFilter} onValueChange={(v) => setPrioFilter(v as "all" | Priority)}>
+              <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Приоритет" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Любой приоритет</SelectItem>
+                <SelectItem value="high">Высокий</SelectItem>
+                <SelectItem value="medium">Средний</SelectItem>
+                <SelectItem value="low">Низкий</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск по группе / URL"
+              className="h-8 text-xs w-[240px]"
+            />
+            <div className="ml-auto text-[11px] text-muted-foreground">
+              Показано: {visibleGroups.length} из {groups.length}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-xs">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left px-2 py-2 w-24">Приоритет</th>
+                  <th className="text-left px-2 py-2">Папка / Группа</th>
+                  <th className="text-left px-2 py-2">URL</th>
+                  <th className="text-right px-2 py-2">Ключей</th>
+                  <th className="text-left px-2 py-2">План. мес.</th>
+                  <th className="text-left px-2 py-2">Статус</th>
+                  <th className="text-left px-2 py-2">Обновлено</th>
+                  <th className="text-right px-2 py-2">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleGroups.map((g) => (
+                  <GroupRow
+                    key={g.key}
+                    g={g}
+                    analysis={byGroup.get(g.key)}
+                    onChanged={reloadAll}
+                  />
+                ))}
+                {visibleGroups.length === 0 && (
+                  <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    {groups.length === 0 ? "Нет групп. Импортируйте данные во вкладке Импорт." : "Нет групп под текущие фильтры."}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -228,7 +294,7 @@ function GroupRow({
   analysis,
   onChanged,
 }: {
-  g: { key: string; folder: string; group: string; url: string; keywords: string[] };
+  g: { key: string; folder: string; group: string; url: string; keywords: string[]; prio: Priority; planMonth: number; hasSeason: boolean };
   analysis: AnalysisRow | undefined;
   onChanged: () => Promise<void>;
 }) {
@@ -298,14 +364,30 @@ function GroupRow({
     finally { setBusy(""); }
   }
 
+  const prioClass = priorityStyle[g.prio];
+  const isCurrent = g.planMonth === new Date().getMonth();
+  const rowAccent = g.prio === "high" ? "bg-rose-500/5" : g.prio === "medium" ? "bg-amber-500/5" : "";
+
   return (
-    <tr className="border-t border-border hover:bg-muted/30 align-middle">
+    <tr className={`border-t border-border hover:bg-muted/30 align-middle ${rowAccent}`}>
+      <td className="px-2 py-2">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] ${prioClass}`}>
+          {priorityLabel[g.prio]}
+        </span>
+      </td>
       <td className="px-2 py-2">
         <div className="text-[10px] text-muted-foreground">{g.folder}</div>
         <div className="font-medium">{g.group}</div>
       </td>
       <td className="px-2 py-2 font-mono text-[11px] truncate max-w-[280px]">{g.url || "—"}</td>
       <td className="px-2 py-2 text-right">{g.keywords.length}</td>
+      <td className="px-2 py-2 text-[11px]">
+        {g.hasSeason ? (
+          <span className={isCurrent ? "font-semibold text-primary" : "text-foreground"}>{MONTHS[g.planMonth]}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
+      </td>
       <td className="px-2 py-2">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] ${badgeCls}`}>
           {STATUS_LABEL[st] ?? st}
