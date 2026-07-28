@@ -191,14 +191,21 @@ function ImportPage() {
         <CardHeader><CardTitle>Данные Топвизора</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground max-w-2xl">
-            Подтягивает все фразы из проектов Топвизора, настроенных в разделе «Настройки → LSI и конкуренты»
+            Подтягивает все фразы из проектов Топвизора, настроенных в разделе «Настройки → API и Ключи»
             (глобальный и/или пер-стрим project_id). Определяет папку по целевому URL,
             группу — по группам Топвизора, частоту — из поля volume.
             Позиции и сезонность у существующих фраз сохраняются.
           </div>
-          <Button onClick={handlePull} disabled={pulling}>
-            {pulling ? "Загружается…" : "Подтянуть данные"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/prompts" search={{ tab: "apikeys" }}>
+                <Settings className="h-4 w-4 mr-1.5" /> Настройки проекта
+              </Link>
+            </Button>
+            <Button onClick={handlePull} disabled={pulling}>
+              {pulling ? "Загружается…" : "Подтянуть данные"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
