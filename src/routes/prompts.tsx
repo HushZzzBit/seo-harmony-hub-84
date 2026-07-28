@@ -313,6 +313,11 @@ function PromptsPage() {
           <WriterRequirementsPanel />
           <QualityThresholdsPanel />
         </TabsContent>
+
+        <TabsContent value="apikeys" className="space-y-4">
+          <ApiKeysPanel />
+        </TabsContent>
+
       </Tabs>
     </AppShell>
   );
