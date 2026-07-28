@@ -134,38 +134,44 @@ export async function fetchSerpCandidates(params: {
   const today = new Date();
   const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  // searcher_key: 0 = Google, 1 = Yandex (Topvisor convention)
-  // region_device: 0 = desktop, 1 = mobile, 2 = tablet
-  const searcherKey = params.searchEngine?.toLowerCase() === "yandex" ? 1 : 0;
+
   const body: Record<string, unknown> = {
     project_id: params.projectId,
-    searcher_key: searcherKey,
-    region_device: 0,
     date1: fmt(past),
     date2: fmt(today),
-    fields: ["url", "domain", "position", "snippet_title", "snippet_body"],
-    filters: [],
-    orders: [],
-    limit: Math.max(params.depth, 10),
-    region_lang: "ru",
+    positions_fields: ["url", "domain", "snippet_title", "snippet_body"],
+    count_dates: 1,
+    type_range: 7,
+    show_exists_dates: 0,
+    show_ams: 0,
   };
-  if (params.regionIndex != null) body.region_key = params.regionIndex;
-  if (params.keywords.length) body.keywords = params.keywords.slice(0, 30);
-
+  if (params.regionIndex != null) body.region_index = params.regionIndex;
+  if (params.keywords.length) {
+    body.filters = [
+      {
+        name: "name",
+        operator: "IN",
+        values: params.keywords.slice(0, 30),
+      },
+    ];
+  }
 
   const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
     result?: {
-      snapshots?: Array<{
-        date?: string;
-        keyword?: string;
-        results?: Array<{
-          url?: string;
-          domain?: string;
-          position?: number;
-          snippet_title?: string;
-          snippet_body?: string;
-        }>;
+      keywords?: Array<{
+        name?: string;
+        snapshotsData?: Record<
+          string,
+          {
+            url?: string;
+            domain?: string;
+            snippet_title?: string;
+            snippet_body?: string;
+          }
+        >;
       }>;
+      dates?: string[];
+      depthPositions?: number;
     };
     errors?: unknown;
   };
@@ -173,18 +179,22 @@ export async function fetchSerpCandidates(params: {
 
   const items: TopvisorSerpItem[] = [];
   let snapshotDate: string | undefined;
-  for (const snap of raw.result?.snapshots ?? []) {
-    if (snap.date && !snapshotDate) snapshotDate = snap.date;
-    for (const r of snap.results ?? []) {
-      if (!r.url || !r.domain || !r.position) continue;
-      if (r.position > params.depth) continue;
+  for (const kw of raw.result?.keywords ?? []) {
+    const snapshotsData = kw.snapshotsData ?? {};
+    for (const [key, r] of Object.entries(snapshotsData)) {
+      // key format: "date:position:regionIndex"
+      const [date, positionStr] = key.split(":");
+      const position = Number(positionStr);
+      if (!r?.url || !r?.domain || Number.isNaN(position)) continue;
+      if (position > params.depth) continue;
+      if (date && !snapshotDate) snapshotDate = date;
       items.push({
         url: r.url,
         domain: r.domain,
-        position: r.position,
+        position,
         snippet_title: r.snippet_title,
         snippet_body: r.snippet_body,
-        keyword: snap.keyword,
+        keyword: kw.name,
       });
     }
   }
