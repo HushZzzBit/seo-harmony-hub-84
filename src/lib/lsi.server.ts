@@ -427,43 +427,15 @@ export async function fetchSerpCandidates(params: {
     show_ams: 0,
     filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
+  const { raw, body, attempts } = await fetchSnapshotsWithRegionFallback({
+    projectId: params.projectId,
+    searchEngine: params.searchEngine,
+    fallbackRegionIndex: params.regionIndex,
+    baseBody,
+  });
 
-
-
-
-
-
-  type SnapRec = {
-    url?: string;
-    domain?: string;
-    snippet_title?: string;
-    snippet_body?: string;
-    position?: number | string;
-  };
-  type SnapKw = {
-    id?: number;
-    name?: string;
-    snapshotsData?: Record<string, SnapRec | SnapRec[]>;
-  };
-
-  const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
-    result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>;
-    errors?: unknown;
-  };
-  if (raw.errors) throw new Error(`Topvisor snapshots: ${JSON.stringify(raw.errors).slice(0, 300)}`);
-
-  // Normalize result to array of SnapKw regardless of shape.
-  let keywordsResult: SnapKw[] = [];
+  const keywordsResult = normalizeSnapshotKeywords(raw);
   const r = raw.result;
-  if (Array.isArray(r)) keywordsResult = r;
-  else if (r && typeof r === "object") {
-    if (Array.isArray((r as { keywords?: SnapKw[] }).keywords)) {
-      keywordsResult = (r as { keywords: SnapKw[] }).keywords;
-    } else {
-      // object keyed by id/name
-      keywordsResult = Object.values(r as Record<string, SnapKw>);
-    }
-  }
 
   const items: TopvisorSerpItem[] = [];
   let snapshotDate: string | undefined;
