@@ -113,6 +113,8 @@ export function LsiPanel() {
       });
   }, [groups, folderFilter, prioFilter, search]);
 
+  const slicedGroups = useMemo(() => visibleGroups.slice(0, limit), [visibleGroups, limit]);
+
   const byGroup = useMemo(() => {
     const m = new Map<string, AnalysisRow>();
     for (const a of analyses) if (!m.has(a.group_key)) m.set(a.group_key, a);
