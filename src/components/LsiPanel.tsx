@@ -169,16 +169,7 @@ export function LsiPanel() {
                 className="h-8 text-xs"
               />
             </Field>
-            <Field label="Region index (Topvisor)">
-              <Input
-                type="number"
-                value={settings.topvisor_region_index ?? ""}
-                onChange={(e) => setSettings({ ...settings, topvisor_region_index: e.target.value ? Number(e.target.value) : null })}
-                onBlur={() => saveSettings({ topvisor_region_index: settings.topvisor_region_index })}
-                className="h-8 text-xs"
-              />
-            </Field>
-            <Field label="Поисковик">
+            <Field label="Поисковик (ПС)">
               <Select
                 value={settings.search_engine}
                 onValueChange={(v) => { setSettings({ ...settings, search_engine: v }); saveSettings({ search_engine: v }); }}
@@ -190,6 +181,7 @@ export function LsiPanel() {
                 </SelectContent>
               </Select>
             </Field>
+
             <Field label="Глубина SERP">
               <Select
                 value={String(settings.serp_depth)}
