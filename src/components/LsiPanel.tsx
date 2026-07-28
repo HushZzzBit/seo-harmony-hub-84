@@ -127,7 +127,7 @@ export function LsiPanel() {
   }, [analyses]);
 
   async function saveSettings(patch: Partial<NonNullable<typeof settings>>) {
-    const next = await setS({ data: patch as never });
+    const next = await setS({ data: { folder: settingsScope, patch } as never });
     setSettings(next);
   }
 
