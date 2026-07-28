@@ -62,7 +62,43 @@ function ImportPage() {
   const add = (m: string) =>
     setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 30));
 
-  // ---- Topvisor pull ----
+  // ---- XmlRiver seasonality (config declared before pull so we can chain) ----
+  const seasonFn = useServerFn(pullXmlriverSeasonalityFn);
+  const today = new Date();
+  const y = today.getFullYear();
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const [device, setDevice] = useState<"phone" | "desktop" | "tablet">("phone");
+  const [regions, setRegions] = useState<string>("225");
+  const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("month");
+  const [dateFrom, setDateFrom] = useState<string>(iso(new Date(y - 1, today.getMonth(), 1)));
+  const [dateTo, setDateTo] = useState<string>(iso(today));
+  const [seasoning, setSeasoning] = useState(false);
+
+  async function collectSeasonality(phrases: string[]) {
+    if (!phrases.length) return { ok: 0 };
+    setSeasoning(true);
+    try {
+      const batchSize = 50;
+      let done = 0, ok = 0;
+      const totalMap: Record<string, number[]> = {};
+      for (let i = 0; i < phrases.length; i += batchSize) {
+        const batch = phrases.slice(i, i + batchSize);
+        const res = await seasonFn({
+          data: { phrases: batch, device, regions, groupBy, dateFrom, dateTo },
+        });
+        Object.assign(totalMap, res.map);
+        ok += Object.keys(res.map).length;
+        done += batch.length;
+        add(`Сезонность: ${done}/${phrases.length} (успех ${ok})`);
+      }
+      applySeasonality(totalMap);
+      return { ok };
+    } finally {
+      setSeasoning(false);
+    }
+  }
+
+  // ---- Topvisor pull (+ auto-seasonality) ----
   const pullFn = useServerFn(pullTopvisorQueries);
   const [pulling, setPulling] = useState(false);
   async function handlePull() {
@@ -74,7 +110,22 @@ function ImportPage() {
         `Топвизор: получено ${res.rows.length} фраз из ${res.projects.length} проектов. Добавлено ${added}, обновлено ${updated}.`,
       );
       if (res.errors.length) res.errors.forEach((e) => add(`Ошибка: ${e}`));
-      toast.success(`Подтянуто ${res.rows.length} фраз (+${added}, ~${updated})`);
+
+      if (res.rows.length) {
+        toast.success(`Подтянуто ${res.rows.length} фраз (+${added}, ~${updated}). Запускаю сезонность…`);
+        const phrases = Array.from(new Set(res.rows.map((r) => r.phrase).filter(Boolean)));
+        try {
+          const { ok } = await collectSeasonality(phrases);
+          toast.success(`Сезонность применена к ${ok}/${phrases.length} фразам`);
+          add(`Сезонность применена: ${ok} фраз (регион ${regions}, ${device}, ${groupBy})`);
+        } catch (e) {
+          const m = e instanceof Error ? e.message : String(e);
+          add(`Ошибка сезонности: ${m}`);
+          toast.error(`Сезонность: ${m}`);
+        }
+      } else {
+        toast.error(`Топвизор вернул 0 фраз${res.errors[0] ? ` — ${res.errors[0]}` : ""}`);
+      }
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       add(`Ошибка Топвизор: ${m}`);
@@ -83,18 +134,6 @@ function ImportPage() {
       setPulling(false);
     }
   }
-
-  // ---- XmlRiver seasonality ----
-  const seasonFn = useServerFn(pullXmlriverSeasonalityFn);
-  const today = new Date();
-  const y = today.getFullYear();
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const [device, setDevice] = useState<"phone" | "desktop" | "tablet">("phone");
-  const [regions, setRegions] = useState<string>("225");
-  const [groupBy, setGroupBy] = useState<"day" | "week" | "month">("month");
-  const [dateFrom, setDateFrom] = useState<string>(iso(new Date(y - 1, today.getMonth(), 1)));
-  const [dateTo, setDateTo] = useState<string>(iso(today));
-  const [seasoning, setSeasoning] = useState(false);
 
   const uniqPhrases = useMemo(() => {
     const set = new Set<string>();
@@ -107,31 +146,14 @@ function ImportPage() {
       toast.error("Нет фраз. Сначала подтяните данные Топвизора.");
       return;
     }
-    setSeasoning(true);
     try {
-      // батчами по 50 — чтобы не подвешивать API
-      const batchSize = 50;
-      let done = 0, ok = 0;
-      const totalMap: Record<string, number[]> = {};
-      for (let i = 0; i < uniqPhrases.length; i += batchSize) {
-        const batch = uniqPhrases.slice(i, i + batchSize);
-        const res = await seasonFn({
-          data: { phrases: batch, device, regions, groupBy, dateFrom, dateTo },
-        });
-        Object.assign(totalMap, res.map);
-        ok += Object.keys(res.map).length;
-        done += batch.length;
-        add(`Сезонность: ${done}/${uniqPhrases.length} (успех ${ok})`);
-      }
-      applySeasonality(totalMap);
+      const { ok } = await collectSeasonality(uniqPhrases);
       toast.success(`Сезонность применена к ${ok} фразам`);
       add(`Сезонность применена: ${ok} фраз (регион ${regions}, ${device}, ${groupBy})`);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       add(`Ошибка сезонности: ${m}`);
       toast.error(m);
-    } finally {
-      setSeasoning(false);
     }
   }
 
