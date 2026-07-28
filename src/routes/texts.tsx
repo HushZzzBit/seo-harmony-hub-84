@@ -373,7 +373,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const urlText = useStore((s) => s.urls[url]?.text);
   const queries = useStore((s) => s.queries);
   const setText = useStore((s) => s.setText);
-  const writerRequirements = useStore((s) => s.writerRequirements);
+  const writerRequirements = useStore((s) => resolveWriterRequirements(s.writerRequirements, folder));
   const runQualityCheck = useQualityRunner();
   const [open, setOpen] = useState(false);
   const initial = t.text ?? urlText ?? "";
