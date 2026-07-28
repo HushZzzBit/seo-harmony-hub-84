@@ -185,7 +185,7 @@ export async function fetchSerpCandidates(params: {
 
   // 2) Request last SERP snapshot for those keywords.
   const today = new Date();
-  const past = new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000);
+  const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   const body: Record<string, unknown> = {
@@ -202,33 +202,37 @@ export async function fetchSerpCandidates(params: {
   };
   if (params.regionIndex != null) body.region_index = params.regionIndex;
 
+  type SnapRec = {
+    url?: string;
+    domain?: string;
+    snippet_title?: string;
+    snippet_body?: string;
+    position?: number | string;
+  };
+  type SnapKw = {
+    id?: number;
+    name?: string;
+    snapshotsData?: Record<string, SnapRec | SnapRec[]>;
+  };
+
   const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
-    result?: {
-      keywords?: Array<{
-        id?: number;
-        name?: string;
-        snapshotsData?: Record<
-          string,
-          | {
-              url?: string;
-              domain?: string;
-              snippet_title?: string;
-              snippet_body?: string;
-              position?: number | string;
-            }
-          | Array<{
-              url?: string;
-              domain?: string;
-              snippet_title?: string;
-              snippet_body?: string;
-              position?: number | string;
-            }>
-        >;
-      }>;
-    };
+    result?: SnapKw[] | { keywords?: SnapKw[] } | Record<string, SnapKw>;
     errors?: unknown;
   };
   if (raw.errors) throw new Error(`Topvisor snapshots: ${JSON.stringify(raw.errors).slice(0, 300)}`);
+
+  // Normalize result to array of SnapKw regardless of shape.
+  let keywordsResult: SnapKw[] = [];
+  const r = raw.result;
+  if (Array.isArray(r)) keywordsResult = r;
+  else if (r && typeof r === "object") {
+    if (Array.isArray((r as { keywords?: SnapKw[] }).keywords)) {
+      keywordsResult = (r as { keywords: SnapKw[] }).keywords;
+    } else {
+      // object keyed by id/name
+      keywordsResult = Object.values(r as Record<string, SnapKw>);
+    }
+  }
 
   const items: TopvisorSerpItem[] = [];
   let snapshotDate: string | undefined;
@@ -237,54 +241,60 @@ export async function fetchSerpCandidates(params: {
     kwName: string | undefined,
     date: string | undefined,
     positionFromKey: number,
-    r: {
-      url?: string;
-      domain?: string;
-      snippet_title?: string;
-      snippet_body?: string;
-      position?: number | string;
-    },
+    rec: SnapRec,
   ) => {
-    const position = r.position != null ? Number(r.position) : positionFromKey;
-    if (!r.url || Number.isNaN(position) || position <= 0) return;
+    const position = rec.position != null ? Number(rec.position) : positionFromKey;
+    if (!rec.url || Number.isNaN(position) || position <= 0) return;
     if (position > params.depth) return;
     if (date && !snapshotDate) snapshotDate = date;
-    const domain = r.domain || (() => {
+    const domain = rec.domain || (() => {
       try {
-        return normDomain(new URL(r.url!).hostname);
+        return normDomain(new URL(rec.url!).hostname);
       } catch {
         return "";
       }
     })();
     if (!domain) return;
     items.push({
-      url: r.url,
+      url: rec.url,
       domain,
       position,
-      snippet_title: r.snippet_title,
-      snippet_body: r.snippet_body,
+      snippet_title: rec.snippet_title,
+      snippet_body: rec.snippet_body,
       keyword: kwName,
     });
   };
 
-  for (const kw of raw.result?.keywords ?? []) {
+  for (const kw of keywordsResult) {
     const kwName = kw.name ?? (kw.id != null ? nameById.get(kw.id) : undefined);
     const snapshotsData = kw.snapshotsData ?? {};
     for (const [key, val] of Object.entries(snapshotsData)) {
-      // key format: "date:position:regionIndex" or "date:position"
       const parts = key.split(":");
       const date = parts[0];
       const positionFromKey = Number(parts[1]);
       if (Array.isArray(val)) {
-        for (const r of val) pushOne(kwName, date, positionFromKey, r);
+        for (const rec of val) pushOne(kwName, date, positionFromKey, rec);
       } else if (val && typeof val === "object") {
         pushOne(kwName, date, positionFromKey, val);
       }
     }
   }
 
-  return { items, raw, snapshotDate, matchedKeywords: projectKeywords.length };
+  // Enrich diagnostic in raw for debugging when items are empty.
+  const diag = {
+    requestBody: body,
+    responseShape: Array.isArray(r) ? "array" : r && typeof r === "object" ? Object.keys(r as object).slice(0, 10) : typeof r,
+    keywordsInResult: keywordsResult.length,
+    snapshotsPerKeyword: keywordsResult.map((k) => ({
+      id: k.id,
+      name: k.name,
+      snapshotKeys: Object.keys(k.snapshotsData ?? {}).slice(0, 5),
+    })),
+  };
+
+  return { items, raw: { topvisor: raw, diagnostic: diag }, snapshotDate, matchedKeywords: projectKeywords.length };
 }
+
 
 
 const FILE_EXT_RE = /\.(pdf|docx?|xlsx?|pptx?|zip|rar|jpe?g|png|gif|webp|svg|mp4|mp3)(\?|$)/i;

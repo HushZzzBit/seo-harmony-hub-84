@@ -229,7 +229,10 @@ export const collectCompetitors = createServerFn({ method: "POST" })
       if (matchedKeywords === 0) {
         msg = "В проекте Topvisor не найдено ключевых фраз по этому URL/названиям. Проверьте project_id и что фразы добавлены в проект.";
       } else if (items.length === 0) {
-        msg = `Найдено ${matchedKeywords} фраз в проекте, но снимки выдачи пусты. Запустите съём позиций в Topvisor для этих фраз.`;
+        const diag = (raw as { diagnostic?: { keywordsInResult?: number; snapshotsPerKeyword?: Array<{ name?: string; snapshotKeys: string[] }> } })?.diagnostic;
+        const kwCount = diag?.keywordsInResult ?? 0;
+        const withSnaps = diag?.snapshotsPerKeyword?.filter((k) => k.snapshotKeys.length > 0).length ?? 0;
+        msg = `Найдено ${matchedKeywords} фраз в проекте. Topvisor вернул ${kwCount} фраз в ответе, из них со снимками: ${withSnaps}. Проверьте что region_index в настройках LSI совпадает с регионом, где снимаются позиции, и что для этих фраз включён сбор снимков выдачи.`;
       } else if (picked.length < s.competitor_count) {
         msg = `Найдено только ${picked.length} конкурентов (из ${s.competitor_count}).`;
       }
