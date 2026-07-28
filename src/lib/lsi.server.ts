@@ -158,6 +158,32 @@ async function fetchProjectKeywords(params: {
   return list;
 }
 
+/** Auto-resolve region_index for the project: Moscow / smartphone / requested searcher. */
+async function resolveRegionIndex(projectId: string, searchEngine: string, fallback?: number | null): Promise<number> {
+  type Region = { index?: number; name?: string; country_code?: string; country?: string; device?: number | string; lang?: string };
+  type Searcher = { key?: number | string; name?: string; regions?: Region[] };
+  const raw = (await topvisorFetch("/v2/json/get/projects_2/searchers", {
+    project_id: Number(projectId) || projectId,
+  })) as { result?: Searcher[]; errors?: unknown };
+  if (raw.errors) throw new Error(`Topvisor searchers: ${JSON.stringify(raw.errors).slice(0, 200)}`);
+  const searchers = raw.result ?? [];
+  const se = (searchEngine || "").toLowerCase();
+  const wantKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
+  const matchSearcher = searchers.find((s) => Number(s.key) === wantKey) ?? searchers[0];
+  const regions = matchSearcher?.regions ?? [];
+  // device=1 (mobile/smartphone) in Topvisor; 0 = desktop
+  const scored = regions.map((r) => {
+    const isMoscow = /москв|moscow/i.test(r.name ?? "");
+    const isMobile = Number(r.device) === 1;
+    const isRu = (r.country_code ?? r.country ?? "").toString().toUpperCase() === "RU";
+    return { r, score: (isMoscow ? 4 : 0) + (isMobile ? 2 : 0) + (isRu ? 1 : 0) };
+  }).sort((a, b) => b.score - a.score);
+  const picked = scored[0]?.r?.index;
+  if (picked != null) return Number(picked);
+  if (fallback != null) return Number(fallback);
+  throw new Error(`Не удалось определить region_index в проекте Topvisor для ПС "${searchEngine}". Проверьте что регион добавлен в проект.`);
+}
+
 
 /** Fetches SERP snapshots for keywords in a Topvisor project.
  *  Uses "Снимки выдачи" (/snapshots_2/history) filtered by keyword IDs. */
@@ -190,14 +216,12 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  // Согласно docs: обязательные параметры — project_id и region_index.
-  // Параметра searcher_key у этого метода нет (поисковик определяется регионом проекта).
-  if (params.regionIndex == null) {
-    throw new Error("Не задан region_index (индекс региона Топвизора). Укажите его в настройках LSI для этого стрима.");
-  }
+  // Авто-подбор region_index: Москва / смартфон / выбранная ПС.
+  const regionIndex = await resolveRegionIndex(params.projectId, params.searchEngine, params.regionIndex);
+
   const body: Record<string, unknown> = {
     project_id: Number(params.projectId) || params.projectId,
-    region_index: Number(params.regionIndex),
+    region_index: regionIndex,
     date1: fmt(past),
     date2: fmt(today),
     positions_fields: ["url", "domain", "snippet_title", "snippet_body"],
@@ -207,6 +231,7 @@ export async function fetchSerpCandidates(params: {
     show_ams: 0,
     filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
+
 
 
 
