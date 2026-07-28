@@ -761,18 +761,29 @@ export async function pullAllTopvisorQueries(): Promise<{ rows: PulledQueryRow[]
   const errors: string[] = [];
   const seenProjects = new Set<string>();
 
-  for (const s of (settings ?? []) as Array<Record<string, unknown>>) {
+  const settingsRows = (settings ?? []) as Array<Record<string, unknown>>;
+  if (!settingsRows.length) {
+    errors.push("В таблице lsi_settings нет ни одной строки. Настройте проект(ы) Топвизора в разделе Настройки → API и Ключи.");
+  }
+
+  for (const s of settingsRows) {
     const pid = (s.topvisor_project_id as string | null) ?? null;
-    if (!pid || seenProjects.has(pid)) continue;
+    if (!pid) continue;
+    if (seenProjects.has(pid)) continue;
     seenProjects.add(pid);
     projects.push(pid);
     const folderFallback = (s.folder as string | null) ?? null;
     try {
       const rows = await pullTopvisorProject(pid, folderFallback);
+      if (!rows.length) errors.push(`Проект ${pid}: получено 0 фраз (проверьте, что в проекте есть ключевые фразы и указан TOPVISOR_USER_ID/TOPVISOR_API_KEY)`);
       rowsAll.push(...rows);
     } catch (e) {
       errors.push(`Проект ${pid}: ${(e as Error).message}`);
     }
+  }
+
+  if (projects.length === 0 && settingsRows.length > 0) {
+    errors.push("Ни в одной строке lsi_settings не указан topvisor_project_id.");
   }
 
   // Deduplicate by phrase+url across projects
