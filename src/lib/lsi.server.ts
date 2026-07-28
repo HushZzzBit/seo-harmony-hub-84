@@ -135,10 +135,12 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   // searcher_key: 0 = Google, 1 = Yandex (Topvisor convention)
+  // region_device: 0 = desktop, 1 = mobile, 2 = tablet
   const searcherKey = params.searchEngine?.toLowerCase() === "yandex" ? 1 : 0;
   const body: Record<string, unknown> = {
     project_id: params.projectId,
     searcher_key: searcherKey,
+    region_device: 0,
     date1: fmt(past),
     date2: fmt(today),
     fields: ["url", "domain", "position", "snippet_title", "snippet_body"],
