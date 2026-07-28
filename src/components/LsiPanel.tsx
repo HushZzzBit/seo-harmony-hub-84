@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Play, RefreshCw, Sparkles, Save, Trash2, Plus, Check, History } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
+import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
+import { priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
+import type { Priority, Query } from "@/lib/types";
 import {
   getLsiSettings,
   setLsiSettings,
