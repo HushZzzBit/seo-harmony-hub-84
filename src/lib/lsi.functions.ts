@@ -232,7 +232,7 @@ export const collectCompetitors = createServerFn({ method: "POST" })
         const diag = (raw as { diagnostic?: { keywordsInResult?: number; snapshotsPerKeyword?: Array<{ name?: string; snapshotKeys: string[] }> } })?.diagnostic;
         const kwCount = diag?.keywordsInResult ?? 0;
         const withSnaps = diag?.snapshotsPerKeyword?.filter((k) => k.snapshotKeys.length > 0).length ?? 0;
-        msg = `Найдено ${matchedKeywords} фраз в проекте. Topvisor вернул ${kwCount} фраз в ответе, из них со снимками: ${withSnaps}. Проверьте что region_index в настройках LSI совпадает с регионом, где снимаются позиции, и что для этих фраз включён сбор снимков выдачи.`;
+        msg = `Найдено ${matchedKeywords} фраз в проекте. Topvisor вернул ${kwCount} фраз в ответе (ПС: ${s.search_engine}), из них со снимками: ${withSnaps}. Убедитесь что в проекте Topvisor включён сбор снимков выдачи для выбранной ПС (регион Москва, смартфон) и что съём уже прошёл.`;
       } else if (picked.length < s.competitor_count) {
         msg = `Найдено только ${picked.length} конкурентов (из ${s.competitor_count}).`;
       }
