@@ -58,8 +58,13 @@ export function LsiPanel() {
   const [limit, setLimit] = useState(20);
   const PAGE_SIZE = 20;
 
+  const [settingsScope, setSettingsScope] = useState<string>("__default");
+
   async function reloadAll() {
-    const [s, a] = await Promise.all([getS(), listA()]);
+    const [s, a] = await Promise.all([
+      getS({ data: { folder: settingsScope } as never }),
+      listA(),
+    ]);
     setSettings(s);
     setAnalyses(a);
     setBlDraft(s.blacklist_domains.join(", "));
@@ -67,7 +72,7 @@ export function LsiPanel() {
   useEffect(() => {
     reloadAll().catch((e) => toast.error((e as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [settingsScope]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
