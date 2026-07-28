@@ -190,12 +190,14 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  // snapshots_2/history requires searcher_key as an integer (0=Google, 1=Yandex).
-  const se = (params.searchEngine || "").toLowerCase();
-  const searcherKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
+  // Согласно docs: обязательные параметры — project_id и region_index.
+  // Параметра searcher_key у этого метода нет (поисковик определяется регионом проекта).
+  if (params.regionIndex == null) {
+    throw new Error("Не задан region_index (индекс региона Топвизора). Укажите его в настройках LSI для этого стрима.");
+  }
   const body: Record<string, unknown> = {
     project_id: Number(params.projectId) || params.projectId,
-    searcher_key: searcherKey,
+    region_index: Number(params.regionIndex),
     date1: fmt(past),
     date2: fmt(today),
     positions_fields: ["url", "domain", "snippet_title", "snippet_body"],
@@ -203,9 +205,9 @@ export async function fetchSerpCandidates(params: {
     type_range: 7,
     show_exists_dates: 0,
     show_ams: 0,
-    filter_by_dynamic: 0,
     filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
+
 
 
 
