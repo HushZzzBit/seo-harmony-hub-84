@@ -69,6 +69,10 @@ export function LsiPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    setLimit(PAGE_SIZE);
+  }, [folderFilter, prioFilter, search]);
+
   // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
     const map = new Map<
