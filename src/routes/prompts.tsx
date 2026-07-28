@@ -1,4 +1,4 @@
-import { createFileRoute, ClientOnly } from "@tanstack/react-router";
+import { createFileRoute, ClientOnly, useSearch, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { z } from "zod";
 import { useStore } from "@/lib/store";
 import type { PromptTemplate, Query } from "@/lib/types";
 import {
@@ -24,6 +25,9 @@ import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Sparkles, Trash2, Wan
 
 export const Route = createFileRoute("/prompts")({
   ssr: false,
+  validateSearch: z.object({
+    tab: z.enum(["prompts", "requirements", "apikeys"]).optional(),
+  }),
   component: () => (
     <ClientOnly fallback={null}>
       <PromptsPage />
@@ -49,6 +53,10 @@ export function resolvePrompt(
 }
 
 function PromptsPage() {
+  const search = useSearch({ from: "/prompts" });
+  const navigate = useNavigate({ from: "/prompts" });
+  const activeTab = search.tab ?? "prompts";
+
   const queries = useStore((s) => s.queries);
   const prompts = useStore((s) => s.prompts);
   const setPrompt = useStore((s) => s.setPrompt);
@@ -162,7 +170,11 @@ function PromptsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="prompts" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => navigate({ search: { tab: v } })}
+        className="w-full"
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="prompts" className="gap-1.5">
             <Wand2 className="h-3.5 w-3.5" /> AI Промты
