@@ -596,10 +596,14 @@ export interface MiratextResult {
 async function miratextFetch(action: string, params: Record<string, unknown>): Promise<unknown> {
   const apiKey = await getApiKey("MIRATEXT_API_KEY");
   if (!apiKey) throw new Error("Не задан MIRATEXT_API_KEY");
-  const res = await fetch(`${MIRATEXT_BASE}/${action}`, {
+  // Miratext ждёт ключ в query string (?key=...), тело — form-urlencoded, параметры в поле data (JSON).
+  const url = `${MIRATEXT_BASE}/${action}?key=${encodeURIComponent(apiKey)}`;
+  const form = new URLSearchParams();
+  form.set("data", JSON.stringify(params));
+  const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: apiKey, ...params }),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
   });
   if (!res.ok) throw new Error(`Miratext HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.json();
