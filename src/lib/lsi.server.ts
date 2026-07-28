@@ -450,16 +450,17 @@ export async function fetchSerpCandidates(params: {
     if (!rec.url || Number.isNaN(position) || position <= 0) return;
     if (position > params.depth) return;
     if (date && !snapshotDate) snapshotDate = date;
+    const resultUrl = rec.url;
     const domain = rec.domain || (() => {
       try {
-        return normDomain(new URL(rec.url!).hostname);
+        return normDomain(new URL(resultUrl).hostname);
       } catch {
         return "";
       }
     })();
     if (!domain) return;
     items.push({
-      url: rec.url,
+      url: resultUrl,
       domain,
       position,
       snippet_title: rec.snippet_title,
@@ -486,6 +487,7 @@ export async function fetchSerpCandidates(params: {
   // Enrich diagnostic in raw for debugging when items are empty.
   const diag = {
     requestBody: body,
+    regionAttempts: attempts,
     responseShape: Array.isArray(r) ? "array" : r && typeof r === "object" ? Object.keys(r as object).slice(0, 10) : typeof r,
     keywordsInResult: keywordsResult.length,
     snapshotsPerKeyword: keywordsResult.map((k) => ({
