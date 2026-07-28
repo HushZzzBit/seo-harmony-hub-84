@@ -773,3 +773,147 @@ function ApiKeyCard({
   );
 }
 
+
+// ---------------------------------------------------------------------------
+// LSI / Topvisor settings (moved from «Требования и примеры текстов»).
+// External connection settings live alongside API keys.
+// ---------------------------------------------------------------------------
+
+function LsiSettingsPanel() {
+  const getS = useServerFn(getLsiSettings);
+  const setS = useServerFn(setLsiSettings);
+  const [scope, setScope] = useState<string>(GLOBAL_KEY);
+  const [settings, setSettings] = useState<Awaited<ReturnType<typeof getLsiSettings>> | null>(null);
+  const [blDraft, setBlDraft] = useState("");
+  const overriddenFolders = useMemo(() => new Set<string>(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getS({ data: { folder: scope } as never })
+      .then((s) => {
+        if (cancelled) return;
+        setSettings(s);
+        setBlDraft(s.blacklist_domains.join(", "));
+      })
+      .catch((e) => toast.error((e as Error).message));
+    return () => { cancelled = true; };
+  }, [scope, getS]);
+
+  async function save(patch: Partial<NonNullable<typeof settings>>) {
+    const next = await setS({ data: { folder: scope, patch } as never });
+    setSettings(next);
+    setBlDraft(next.blacklist_domains.join(", "));
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <div className="text-sm font-medium">LSI и конкуренты — параметры подключения</div>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[11px] text-muted-foreground">Стрим:</span>
+            <FolderScopeSelect value={scope} onChange={setScope} marked={overriddenFolders} />
+          </div>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Настройки Topvisor-проекта для сбора конкурентов из SERP и последующего анализа через Miratext.
+          Ключи <code>TOPVISOR_USER_ID</code>, <code>TOPVISOR_API_KEY</code>, <code>MIRATEXT_API_KEY</code> задаются в карточках выше.
+          {scope !== GLOBAL_KEY && (
+            <span className="block mt-1">
+              Применяется к стриму <b>{scope}</b>. Пустые поля наследуются из глобальных.
+            </span>
+          )}
+        </div>
+
+        {!settings ? (
+          <div className="text-xs text-muted-foreground">Загрузка настроек…</div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <SettingsField label="Topvisor project_id">
+              <Input
+                value={settings.topvisor_project_id ?? ""}
+                onChange={(e) => setSettings({ ...settings, topvisor_project_id: e.target.value })}
+                onBlur={() => save({ topvisor_project_id: settings.topvisor_project_id })}
+                className="h-8 text-xs"
+              />
+            </SettingsField>
+            <SettingsField label="Поисковик (ПС)">
+              <Select
+                value={settings.search_engine}
+                onValueChange={(v) => { setSettings({ ...settings, search_engine: v }); save({ search_engine: v }); }}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="google">Google</SelectItem>
+                  <SelectItem value="yandex">Yandex</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingsField>
+            <SettingsField label="Глубина SERP">
+              <Select
+                value={String(settings.serp_depth)}
+                onValueChange={(v) => { setSettings({ ...settings, serp_depth: Number(v) }); save({ serp_depth: Number(v) }); }}
+              >
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">TOP-10</SelectItem>
+                  <SelectItem value="20">TOP-20</SelectItem>
+                  <SelectItem value="30">TOP-30</SelectItem>
+                </SelectContent>
+              </Select>
+            </SettingsField>
+            <SettingsField label="Кол-во конкурентов">
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={settings.competitor_count}
+                onChange={(e) => setSettings({ ...settings, competitor_count: Number(e.target.value) || 3 })}
+                onBlur={() => save({ competitor_count: settings.competitor_count })}
+                className="h-8 text-xs"
+              />
+            </SettingsField>
+            <SettingsField label="Домен проекта (исключить)">
+              <Input
+                value={settings.project_domain}
+                onChange={(e) => setSettings({ ...settings, project_domain: e.target.value })}
+                onBlur={() => save({ project_domain: settings.project_domain })}
+                className="h-8 text-xs"
+              />
+            </SettingsField>
+            <SettingsField label="Blacklist доменов (через запятую)" className="col-span-2">
+              <Input
+                value={blDraft}
+                onChange={(e) => setBlDraft(e.target.value)}
+                onBlur={() => {
+                  const list = blDraft.split(",").map((x) => x.trim()).filter(Boolean);
+                  setSettings({ ...settings, blacklist_domains: list });
+                  save({ blacklist_domains: list });
+                }}
+                className="h-8 text-xs"
+              />
+            </SettingsField>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SettingsField({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <div className="text-[11px] text-muted-foreground mb-1">{label}</div>
+      {children}
+    </div>
+  );
+}
