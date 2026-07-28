@@ -325,9 +325,7 @@ function PromptsPage() {
         </TabsContent>
 
         <TabsContent value="requirements" className="space-y-4">
-          <LsiPanel />
-          <WriterRequirementsPanel />
-          <QualityThresholdsPanel />
+          <RequirementsTab />
         </TabsContent>
 
         <TabsContent value="apikeys" className="space-y-4">
@@ -373,10 +371,9 @@ function FolderScopeSelect({
   );
 }
 
-function WriterRequirementsPanel() {
+function WriterRequirementsPanel({ scope }: { scope: string }) {
   const map = useStore((s) => s.writerRequirements);
   const setValue = useStore((s) => s.setWriterRequirements);
-  const [scope, setScope] = useState(GLOBAL_KEY);
 
   const effective = map[scope] ?? (scope !== GLOBAL_KEY ? map[GLOBAL_KEY] ?? "" : "");
   const [draft, setDraft] = useState(effective);
@@ -385,11 +382,6 @@ function WriterRequirementsPanel() {
     setScopeSync(scope);
     setDraft(effective);
   }
-
-  const overriddenFolders = useMemo(
-    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
-    [map],
-  );
 
   return (
     <Card>
@@ -402,7 +394,6 @@ function WriterRequirementsPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <FolderScopeSelect value={scope} onChange={setScope} marked={overriddenFolders} />
             <button
               type="button"
               onClick={() => { setDraft(""); setValue(scope, ""); toast.success("Требования очищены"); }}
@@ -431,16 +422,11 @@ function WriterRequirementsPanel() {
   );
 }
 
-function QualityThresholdsPanel() {
+function QualityThresholdsPanel({ scope }: { scope: string }) {
   const map = useStore((s) => s.qualityThresholds);
   const setQT = useStore((s) => s.setQualityThresholds);
   const resetQT = useStore((s) => s.resetQualityThresholds);
-  const [scope, setScope] = useState(GLOBAL_KEY);
 
-  const overridden = useMemo(
-    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
-    [map],
-  );
   const thresholds = map[scope] ?? map[GLOBAL_KEY];
 
   const num = (v: string) => {
@@ -461,7 +447,6 @@ function QualityThresholdsPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <FolderScopeSelect value={scope} onChange={setScope} marked={overridden} />
               <button
                 type="button"
                 onClick={() => { resetQT(scope); toast.success(scope === GLOBAL_KEY ? "Глобальные значения сброшены" : "Пороги стрима сброшены"); }}
@@ -531,6 +516,38 @@ function QualityThresholdsPanel() {
           <div>• Пороги применяются по стриму URL; если для стрима не задано — берутся глобальные.</div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function RequirementsTab() {
+  const [scope, setScope] = useState(GLOBAL_KEY);
+  const writerReqMap = useStore((s) => s.writerRequirements);
+  const qtMap = useStore((s) => s.qualityThresholds);
+
+  const marked = useMemo(() => {
+    const set = new Set<string>();
+    for (const k of Object.keys(writerReqMap)) if (k !== GLOBAL_KEY) set.add(k);
+    for (const k of Object.keys(qtMap)) if (k !== GLOBAL_KEY) set.add(k);
+    return set;
+  }, [writerReqMap, qtMap]);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-sm font-medium">Стрим / папка</div>
+            <div className="text-xs text-muted-foreground">
+              Глобальный переключатель стрима для всех настроек этого раздела.
+            </div>
+          </div>
+          <FolderScopeSelect value={scope} onChange={setScope} marked={marked} />
+        </CardContent>
+      </Card>
+
+      <WriterRequirementsPanel scope={scope} />
+      <QualityThresholdsPanel scope={scope} />
     </div>
   );
 }
