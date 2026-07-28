@@ -1053,7 +1053,7 @@ function ProviderTile({ provider, p, T }: { provider: QualityProvider; p?: Quali
       </div>
     );
   }
-  const metrics = providerMetrics(p);
+  const metrics = providerMetricsWith(T, p);
   return (
     <div className={`${tileBase} border-border bg-background`}>
       <div className="flex items-center justify-between">
