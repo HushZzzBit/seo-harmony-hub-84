@@ -52,6 +52,9 @@ export function LsiPanel() {
   const [settings, setSettings] = useState<Awaited<ReturnType<typeof getLsiSettings>> | null>(null);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
   const [blDraft, setBlDraft] = useState("");
+  const [folderFilter, setFolderFilter] = useState("all");
+  const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
+  const [search, setSearch] = useState("");
 
   async function reloadAll() {
     const [s, a] = await Promise.all([getS(), listA()]);
