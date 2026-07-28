@@ -188,8 +188,9 @@ export async function fetchSerpCandidates(params: {
   const past = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
-  // searcher_key: 0 = Google, 1 = Yandex (Topvisor mapping)
-  const searcherKey = params.searchEngine === "yandex" ? 1 : 0;
+  // Note: snapshots_2/history doesn't accept searcher_key/searchers here — the
+  // searcher is bound to project keywords. We filter results by search engine
+  // downstream if the project has multiple searchers enabled.
   const body: Record<string, unknown> = {
     project_id: params.projectId,
     date1: fmt(past),
@@ -200,9 +201,9 @@ export async function fetchSerpCandidates(params: {
     show_exists_dates: 0,
     show_ams: 0,
     filter_by_dynamic: 0,
-    searchers: [searcherKey],
     filters: [{ name: "id", operator: "IN", values: keywordIds }],
   };
+
 
 
   type SnapRec = {
