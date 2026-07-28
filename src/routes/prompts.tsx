@@ -15,9 +15,11 @@ import {
   previewPrompt,
 } from "@/lib/openai.functions";
 import { listApiKeys, setApiKey, deleteApiKey, type ApiKeyStatus } from "@/lib/apiKeys.functions";
+import { getLsiSettings, setLsiSettings } from "@/lib/lsi.functions";
 import { LsiPanel } from "@/components/LsiPanel";
 import { toast } from "sonner";
-import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Trash2, Wand2 } from "lucide-react";
+import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Sparkles, Trash2, Wand2 } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/prompts")({
