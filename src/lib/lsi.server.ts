@@ -788,44 +788,65 @@ export async function pullAllTopvisorQueries(): Promise<{ rows: PulledQueryRow[]
 }
 
 async function pullTopvisorProject(projectId: string, folderFallback: string | null): Promise<PulledQueryRow[]> {
-  // Groups map: id → name
-  const groupsRaw = (await topvisorFetch("/v2/json/get/keywords_2/groups", {
-    project_id: Number(projectId) || projectId,
-    fields: ["id", "name"],
-  }).catch(() => ({ result: [] }))) as { result?: Array<{ id: number | string; name?: string }> };
+  const pid = Number(projectId) || projectId;
+
+  // Groups map: id → name (tolerate absent / invalid endpoint)
   const groupNameById = new Map<string, string>();
-  for (const g of groupsRaw.result ?? []) {
-    if (g?.id != null) groupNameById.set(String(g.id), g.name ?? "");
+  try {
+    const groupsRaw = (await topvisorFetch("/v2/json/get/keywords_2/groups", {
+      project_id: pid,
+      fields: ["id", "name"],
+    })) as { result?: Array<{ id: number | string; name?: string }>; errors?: unknown };
+    for (const g of groupsRaw.result ?? []) {
+      if (g?.id != null) groupNameById.set(String(g.id), g.name ?? "");
+    }
+  } catch { /* groups optional */ }
+
+  // Keywords — try rich fields, fall back if API rejects any.
+  type Kw = {
+    id?: number | string;
+    name?: string;
+    target?: string;
+    group_id?: number | string;
+    group?: number | string;
+    volume?: number | string | Array<number | string> | Record<string, unknown>;
+    volumes?: unknown;
+  };
+  const tryFetch = async (fields: string[]): Promise<Kw[]> => {
+    const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
+      project_id: pid,
+      fields,
+    })) as { result?: Kw[]; errors?: unknown };
+    if (raw.errors) throw new Error(JSON.stringify(raw.errors).slice(0, 200));
+    return raw.result ?? [];
+  };
+
+  let list: Kw[] = [];
+  const attempts: string[] = [];
+  for (const fields of [
+    ["id", "name", "target", "group_id", "volume"],
+    ["id", "name", "target", "volume"],
+    ["id", "name", "target", "group_id"],
+    ["id", "name", "target"],
+  ]) {
+    try { list = await tryFetch(fields); break; }
+    catch (e) { attempts.push(`[${fields.join(",")}] ${(e as Error).message}`); }
+  }
+  if (!list.length && attempts.length === 4) {
+    throw new Error(`keywords: ${attempts.join(" | ")}`);
   }
 
-  // Keywords
-  const kwRaw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
-    project_id: Number(projectId) || projectId,
-    fields: ["id", "name", "target", "group_id", "volume"],
-  })) as {
-    result?: Array<{
-      id?: number | string;
-      name?: string;
-      target?: string;
-      group_id?: number | string;
-      volume?: number | string | Array<number | string> | Record<string, unknown>;
-    }>;
-    errors?: unknown;
-  };
-  if (kwRaw.errors) throw new Error(`keywords: ${JSON.stringify(kwRaw.errors).slice(0, 200)}`);
-
   const rows: PulledQueryRow[] = [];
-  for (const k of kwRaw.result ?? []) {
+  for (const k of list) {
     const phrase = String(k.name ?? "").trim();
     if (!phrase) continue;
     const url = k.target ? String(k.target).trim() : undefined;
-    const groupId = k.group_id != null ? String(k.group_id) : "";
-    const group = groupNameById.get(groupId) || "Без группы";
+    const groupId = k.group_id ?? k.group;
+    const group = groupId != null ? (groupNameById.get(String(groupId)) || "Без группы") : "Без группы";
     const folder = folderFromUrl(url) || folderFallback || "/";
 
-    // volume может прийти как число, строка, массив или объект — берём первое число
     let freq = 0;
-    const v = k.volume;
+    const v: unknown = k.volume ?? k.volumes;
     if (typeof v === "number") freq = v;
     else if (typeof v === "string") freq = Number(v.replace(/\s/g, "").replace(",", ".")) || 0;
     else if (Array.isArray(v)) {
@@ -834,7 +855,7 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
         if (n > freq) freq = n;
       }
     } else if (v && typeof v === "object") {
-      for (const it of Object.values(v)) {
+      for (const it of Object.values(v as Record<string, unknown>)) {
         const n = typeof it === "number" ? it : Number(String(it).replace(/\s/g, "")) || 0;
         if (n > freq) freq = n;
       }
