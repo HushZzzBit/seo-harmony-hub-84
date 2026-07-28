@@ -313,7 +313,7 @@ async function resolveRegionIndexes(projectId: string, searchEngine: string, fal
 
   // If Topvisor does not return project regions, probe common project-local indexes.
   // The snapshots endpoint itself confirms which index actually has saved SERP data.
-  if (!ordered.length) {
+  if (!regions.length) {
     for (let i = 1; i <= 10; i += 1) addUnique(i);
   }
 
