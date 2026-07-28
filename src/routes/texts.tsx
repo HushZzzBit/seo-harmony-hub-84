@@ -913,10 +913,10 @@ function useQualityRunner() {
 
 function QualityCell({ url }: { url: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
-  const thresholds = useStore((s) => s.qualityThresholds);
+  const folder = useStore((s) => s.urls[url]?.folder);
+  const T = useStore((s) => resolveThresholds(s.qualityThresholds, folder));
   if (!check) return <span className="text-xs text-muted-foreground">—</span>;
-  void thresholds; // re-render on threshold change
-  const overall = overallFromCheck(check);
+  const overall = overallFromCheckWith(T, check);
   const label = overallLabel[overall];
   const dot = overallDot[overall];
   return (
