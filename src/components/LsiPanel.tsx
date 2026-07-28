@@ -142,11 +142,23 @@ export function LsiPanel() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <div className="text-sm font-medium">LSI и конкуренты</div>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">Стрим:</span>
+              <Select value={settingsScope} onValueChange={setSettingsScope}>
+                <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default">Глобально (по умолчанию)</SelectItem>
+                  {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="text-xs text-muted-foreground">
             Автоматический сбор конкурентов из SERP (Topvisor) и анализ через Miratext.
             Требуются ключи <code>TOPVISOR_USER_ID</code>, <code>TOPVISOR_API_KEY</code>, <code>MIRATEXT_API_KEY</code> во вкладке API и Ключи.
+            {settingsScope !== "__default" && <span className="block mt-1">Настройки применяются к стриму <b>{settingsScope}</b>. Пустые поля наследуются из глобальных.</span>}
           </div>
+
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="Topvisor project_id">
