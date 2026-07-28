@@ -1008,14 +1008,14 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {(["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((prov) => {
           const p = check?.providers.find((x) => x.provider === prov);
-          return <ProviderTile key={prov} provider={prov} p={p} />;
+          return <ProviderTile key={prov} provider={prov} p={p} T={T} />;
         })}
       </div>
     </div>
   );
 }
 
-function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityProviderResult }) {
+function ProviderTile({ provider, p, T }: { provider: QualityProvider; p?: QualityProviderResult; T: import("@/lib/types").QualityThresholds }) {
   const label = providerLabel[provider];
   const tileBase = "rounded-md border p-2 text-xs h-full flex flex-col gap-1.5";
   if (!p) {
