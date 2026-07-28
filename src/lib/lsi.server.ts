@@ -26,37 +26,69 @@ const DEFAULT_SETTINGS: LsiGlobalSettings = {
   blacklist_domains: [],
 };
 
-export async function loadSettings(): Promise<LsiGlobalSettings> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("lsi_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-  if (!data) return DEFAULT_SETTINGS;
+export const GLOBAL_FOLDER = "__default";
+
+function normFolder(folder?: string | null): string | null {
+  const v = (folder ?? "").trim();
+  if (!v || v === GLOBAL_FOLDER) return null;
+  return v;
+}
+
+function rowToSettings(data: Record<string, unknown>): LsiGlobalSettings {
   return {
-    topvisor_project_id: data.topvisor_project_id ?? null,
-    topvisor_region_index: data.topvisor_region_index ?? null,
-    search_engine: data.search_engine ?? "google",
-    serp_depth: data.serp_depth ?? 10,
-    competitor_count: data.competitor_count ?? 3,
-    project_domain: data.project_domain ?? "ggsel.net",
-    blacklist_domains: (data.blacklist_domains as string[] | null) ?? [],
+    topvisor_project_id: (data.topvisor_project_id as string | null) ?? null,
+    topvisor_region_index: (data.topvisor_region_index as number | null) ?? null,
+    search_engine: (data.search_engine as string | null) ?? "google",
+    serp_depth: (data.serp_depth as number | null) ?? 10,
+    competitor_count: (data.competitor_count as number | null) ?? 3,
+    project_domain: (data.project_domain as string | null) ?? "ggsel.net",
+    blacklist_domains: ((data.blacklist_domains as string[] | null) ?? []),
   };
 }
 
-export async function saveSettings(patch: Partial<LsiGlobalSettings>): Promise<LsiGlobalSettings> {
+export async function loadSettings(folder?: string | null): Promise<LsiGlobalSettings> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const current = await loadSettings();
+  const f = normFolder(folder);
+
+  if (f !== null) {
+    const { data } = await supabaseAdmin
+      .from("lsi_settings")
+      .select("*")
+      .eq("folder", f)
+      .maybeSingle();
+    if (data) return rowToSettings(data as Record<string, unknown>);
+  }
+
+  const { data: g } = await supabaseAdmin
+    .from("lsi_settings")
+    .select("*")
+    .is("folder", null)
+    .maybeSingle();
+  if (g) return rowToSettings(g as Record<string, unknown>);
+  return DEFAULT_SETTINGS;
+}
+
+export async function saveSettings(
+  folder: string | null | undefined,
+  patch: Partial<LsiGlobalSettings>,
+): Promise<LsiGlobalSettings> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const f = normFolder(folder);
+  const current = await loadSettings(f);
   const next = { ...current, ...patch };
-  const { data: existing } = await supabaseAdmin.from("lsi_settings").select("id").limit(1).maybeSingle();
+
+  const base = supabaseAdmin.from("lsi_settings").select("id");
+  const { data: existing } = f === null
+    ? await base.is("folder", null).maybeSingle()
+    : await base.eq("folder", f).maybeSingle();
+
   if (existing?.id) {
     await supabaseAdmin
       .from("lsi_settings")
-      .update({ ...next, updated_at: new Date().toISOString() })
+      .update({ ...next, folder: f, updated_at: new Date().toISOString() })
       .eq("id", existing.id);
   } else {
-    await supabaseAdmin.from("lsi_settings").insert({ ...next });
+    await supabaseAdmin.from("lsi_settings").insert({ ...next, folder: f });
   }
   return next;
 }
