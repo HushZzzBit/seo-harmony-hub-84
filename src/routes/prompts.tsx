@@ -371,10 +371,9 @@ function FolderScopeSelect({
   );
 }
 
-function WriterRequirementsPanel() {
+function WriterRequirementsPanel({ scope }: { scope: string }) {
   const map = useStore((s) => s.writerRequirements);
   const setValue = useStore((s) => s.setWriterRequirements);
-  const [scope, setScope] = useState(GLOBAL_KEY);
 
   const effective = map[scope] ?? (scope !== GLOBAL_KEY ? map[GLOBAL_KEY] ?? "" : "");
   const [draft, setDraft] = useState(effective);
@@ -383,11 +382,6 @@ function WriterRequirementsPanel() {
     setScopeSync(scope);
     setDraft(effective);
   }
-
-  const overriddenFolders = useMemo(
-    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
-    [map],
-  );
 
   return (
     <Card>
@@ -400,7 +394,6 @@ function WriterRequirementsPanel() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <FolderScopeSelect value={scope} onChange={setScope} marked={overriddenFolders} />
             <button
               type="button"
               onClick={() => { setDraft(""); setValue(scope, ""); toast.success("Требования очищены"); }}
