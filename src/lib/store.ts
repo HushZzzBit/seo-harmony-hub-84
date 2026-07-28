@@ -138,8 +138,8 @@ export const useStore = create<State>()(
       groupState: {},
       prompts: {},
       qualityChecks: {},
-      qualityThresholds: JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)),
-      writerRequirements: "",
+      qualityThresholds: { [GLOBAL_FOLDER_KEY]: cloneDefaults() },
+      writerRequirements: {},
 
 
 
