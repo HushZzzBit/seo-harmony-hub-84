@@ -214,32 +214,66 @@ export function LsiPanel() {
       </Card>
 
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full min-w-[900px] text-xs">
-            <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left px-2 py-2">Папка / Группа</th>
-                <th className="text-left px-2 py-2">URL</th>
-                <th className="text-right px-2 py-2">Ключей</th>
-                <th className="text-left px-2 py-2">Статус</th>
-                <th className="text-left px-2 py-2">Обновлено</th>
-                <th className="text-right px-2 py-2">Действия</th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((g) => (
-                <GroupRow
-                  key={g.key}
-                  g={g}
-                  analysis={byGroup.get(g.key)}
-                  onChanged={reloadAll}
-                />
-              ))}
-              {groups.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">Нет групп. Импортируйте данные во вкладке Импорт.</td></tr>
-              )}
-            </tbody>
-          </table>
+        <CardContent className="p-3 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={folderFilter} onValueChange={setFolderFilter}>
+              <SelectTrigger className="h-8 text-xs w-[180px]"><SelectValue placeholder="Стрим (папка)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все стримы</SelectItem>
+                {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={prioFilter} onValueChange={(v) => setPrioFilter(v as "all" | Priority)}>
+              <SelectTrigger className="h-8 text-xs w-[160px]"><SelectValue placeholder="Приоритет" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Любой приоритет</SelectItem>
+                <SelectItem value="high">Высокий</SelectItem>
+                <SelectItem value="medium">Средний</SelectItem>
+                <SelectItem value="low">Низкий</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Поиск по группе / URL"
+              className="h-8 text-xs w-[240px]"
+            />
+            <div className="ml-auto text-[11px] text-muted-foreground">
+              Показано: {visibleGroups.length} из {groups.length}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-xs">
+              <thead className="bg-muted/40 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr>
+                  <th className="text-left px-2 py-2 w-24">Приоритет</th>
+                  <th className="text-left px-2 py-2">Папка / Группа</th>
+                  <th className="text-left px-2 py-2">URL</th>
+                  <th className="text-right px-2 py-2">Ключей</th>
+                  <th className="text-left px-2 py-2">План. мес.</th>
+                  <th className="text-left px-2 py-2">Статус</th>
+                  <th className="text-left px-2 py-2">Обновлено</th>
+                  <th className="text-right px-2 py-2">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleGroups.map((g) => (
+                  <GroupRow
+                    key={g.key}
+                    g={g}
+                    analysis={byGroup.get(g.key)}
+                    onChanged={reloadAll}
+                  />
+                ))}
+                {visibleGroups.length === 0 && (
+                  <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">
+                    {groups.length === 0 ? "Нет групп. Импортируйте данные во вкладке Импорт." : "Нет групп под текущие фильтры."}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>
