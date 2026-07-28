@@ -168,8 +168,9 @@ export const collectCompetitors = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sb = await admin();
     const { loadSettings, fetchSerpCandidates, pickCompetitors } = await import("./lsi.server");
-    const s = await loadSettings();
-    if (!s.topvisor_project_id) throw new Error("Не указан Topvisor project_id в настройках LSI");
+    const s = await loadSettings(data.folder ?? null);
+    if (!s.topvisor_project_id) throw new Error("Не указан Topvisor project_id в настройках LSI для стрима");
+
 
     const now = new Date().toISOString();
     const { data: inserted, error: insErr } = await sb
