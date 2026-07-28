@@ -37,34 +37,38 @@ function zoneByBands(v: number, warn: number, fail: number): Zone {
 
 export type MetricView = { label: string; value: string; zone: Zone };
 
-export function providerMetrics(p: QualityProviderResult): MetricView[] {
+export function providerMetricsWith(T: QualityThresholds, p: QualityProviderResult): MetricView[] {
   if (p.status !== "success") return [];
   const m: MetricView[] = [];
   if (p.provider === "text_ru") {
     if (p.uniquePercent !== undefined) {
       const u = p.uniquePercent;
-      const zone: Zone = u >= THRESHOLDS.unique.ok ? "ok" : u >= THRESHOLDS.unique.warn ? "warning" : "fail";
+      const zone: Zone = u >= T.unique.ok ? "ok" : u >= T.unique.warn ? "warning" : "fail";
       m.push({ label: "Уник.", value: `${u.toFixed(1)}%`, zone });
     }
     if (p.waterPercent !== undefined) {
-      m.push({ label: "Вода", value: `${p.waterPercent.toFixed(1)}%`, zone: zoneByBands(p.waterPercent, THRESHOLDS.water.warn, THRESHOLDS.water.fail) });
+      m.push({ label: "Вода", value: `${p.waterPercent.toFixed(1)}%`, zone: zoneByBands(p.waterPercent, T.water.warn, T.water.fail) });
     }
     if (p.spamPercent !== undefined) {
-      m.push({ label: "Заспам.", value: `${p.spamPercent.toFixed(1)}%`, zone: zoneByBands(p.spamPercent, THRESHOLDS.spam.warn, THRESHOLDS.spam.fail) });
+      m.push({ label: "Заспам.", value: `${p.spamPercent.toFixed(1)}%`, zone: zoneByBands(p.spamPercent, T.spam.warn, T.spam.fail) });
     }
   } else if (p.provider === "zerogpt" && p.aiPercent !== undefined) {
-    m.push({ label: "AI", value: `${p.aiPercent.toFixed(1)}%`, zone: zoneByBands(p.aiPercent, THRESHOLDS.ai.warn, THRESHOLDS.ai.fail) });
+    m.push({ label: "AI", value: `${p.aiPercent.toFixed(1)}%`, zone: zoneByBands(p.aiPercent, T.ai.warn, T.ai.fail) });
   } else if (p.provider === "turgenev" && p.turgenevScore !== undefined) {
     const s = p.turgenevScore;
-    const zone: Zone = s >= THRESHOLDS.turgenev.critical ? "critical" : s >= THRESHOLDS.turgenev.fail ? "fail" : s >= THRESHOLDS.turgenev.warn ? "warning" : "ok";
+    const zone: Zone = s >= T.turgenev.critical ? "critical" : s >= T.turgenev.fail ? "fail" : s >= T.turgenev.warn ? "warning" : "ok";
     m.push({ label: "Риск", value: s.toFixed(1), zone });
   }
   return m;
 }
 
+export function providerMetrics(p: QualityProviderResult): MetricView[] {
+  return providerMetricsWith(THRESHOLDS, p);
+}
+
 const rank: Record<Zone, number> = { ok: 0, unknown: 0, warning: 1, fail: 2, critical: 3 };
 
-export function overallFromCheck(check: TextQualityCheck): QualityOverall {
+export function overallFromCheckWith(T: QualityThresholds, check: TextQualityCheck): QualityOverall {
   const hasPending = check.providers.some((p) => p.status === "pending");
   if (hasPending && !check.completedAt) return "checking";
   let worst: Zone = "ok";
@@ -74,7 +78,7 @@ export function overallFromCheck(check: TextQualityCheck): QualityOverall {
     if (p.status === "failed") anyFailed = true;
     if (p.status !== "success") continue;
     anySuccess = true;
-    for (const m of providerMetrics(p)) {
+    for (const m of providerMetricsWith(T, p)) {
       if (rank[m.zone] > rank[worst]) worst = m.zone;
     }
   }
@@ -82,6 +86,10 @@ export function overallFromCheck(check: TextQualityCheck): QualityOverall {
   if (worst === "critical" || worst === "fail") return "fail";
   if (worst === "warning") return "warning";
   return "ok";
+}
+
+export function overallFromCheck(check: TextQualityCheck): QualityOverall {
+  return overallFromCheckWith(THRESHOLDS, check);
 }
 
 export const overallLabel: Record<QualityOverall, string> = {

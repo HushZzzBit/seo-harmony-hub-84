@@ -74,16 +74,18 @@ export interface ActiveRequirements {
 
 // -------- Settings --------
 
-export const getLsiSettings = createServerFn({ method: "GET" }).handler(async () => {
-  const { loadSettings } = await import("./lsi.server");
-  return loadSettings();
-});
+export const getLsiSettings = createServerFn({ method: "POST" })
+  .inputValidator((data: { folder?: string | null } | undefined) => data ?? {})
+  .handler(async ({ data }) => {
+    const { loadSettings } = await import("./lsi.server");
+    return loadSettings(data?.folder ?? null);
+  });
 
 export const setLsiSettings = createServerFn({ method: "POST" })
-  .inputValidator((data: Record<string, unknown>) => data)
+  .inputValidator((data: { folder?: string | null; patch: Record<string, unknown> }) => data)
   .handler(async ({ data }) => {
     const { saveSettings } = await import("./lsi.server");
-    return saveSettings(data as Parameters<typeof saveSettings>[0]);
+    return saveSettings(data.folder ?? null, data.patch as Parameters<typeof saveSettings>[1]);
   });
 
 // -------- Analyses / lookups --------
@@ -166,8 +168,9 @@ export const collectCompetitors = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sb = await admin();
     const { loadSettings, fetchSerpCandidates, pickCompetitors } = await import("./lsi.server");
-    const s = await loadSettings();
-    if (!s.topvisor_project_id) throw new Error("Не указан Topvisor project_id в настройках LSI");
+    const s = await loadSettings(data.folder ?? null);
+    if (!s.topvisor_project_id) throw new Error("Не указан Topvisor project_id в настройках LSI для стрима");
+
 
     const now = new Date().toISOString();
     const { data: inserted, error: insErr } = await sb

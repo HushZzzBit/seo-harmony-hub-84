@@ -36,6 +36,7 @@ export type Database = {
         Row: {
           blacklist_domains: string[]
           competitor_count: number
+          folder: string | null
           id: string
           project_domain: string
           search_engine: string
@@ -47,6 +48,7 @@ export type Database = {
         Insert: {
           blacklist_domains?: string[]
           competitor_count?: number
+          folder?: string | null
           id?: string
           project_domain?: string
           search_engine?: string
@@ -58,6 +60,7 @@ export type Database = {
         Update: {
           blacklist_domains?: string[]
           competitor_count?: number
+          folder?: string | null
           id?: string
           project_domain?: string
           search_engine?: string

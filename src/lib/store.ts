@@ -75,8 +75,10 @@ interface State {
   groupState: Record<string, GroupState>;
   prompts: Record<string, PromptTemplate>;
   qualityChecks: Record<string, TextQualityCheck>;
-  qualityThresholds: QualityThresholds;
-  writerRequirements: string;
+  /** Per-folder thresholds. Ключ '__default' — глобальные значения (используются как фолбэк). */
+  qualityThresholds: Record<string, QualityThresholds>;
+  /** Per-folder writer requirements. Ключ '__default' — глобальный текст. */
+  writerRequirements: Record<string, string>;
 
   upsertQueries: (rows: Query[]) => void;
   upsertUrls: (rows: UrlRow[]) => void;
@@ -90,10 +92,37 @@ interface State {
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
   resetPrompt: (folder: string) => void;
   setQualityCheck: (url: string, check: TextQualityCheck) => void;
-  setQualityThresholds: (patch: Partial<QualityThresholds>) => void;
-  resetQualityThresholds: () => void;
-  setWriterRequirements: (v: string) => void;
+  setQualityThresholds: (folder: string, patch: Partial<QualityThresholds>) => void;
+  resetQualityThresholds: (folder: string) => void;
+  setWriterRequirements: (folder: string, v: string) => void;
   clearAll: () => void;
+}
+
+export const GLOBAL_FOLDER_KEY = "__default";
+
+function cloneDefaults(): QualityThresholds {
+  return JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS));
+}
+
+/** Resolves per-folder thresholds with a global fallback. */
+export function resolveThresholds(
+  map: Record<string, QualityThresholds> | undefined,
+  folder: string | undefined | null,
+): QualityThresholds {
+  const f = (folder ?? "").trim();
+  if (f && map?.[f]) return map[f];
+  if (map?.[GLOBAL_FOLDER_KEY]) return map[GLOBAL_FOLDER_KEY];
+  return cloneDefaults();
+}
+
+/** Resolves per-folder writer requirements. */
+export function resolveWriterRequirements(
+  map: Record<string, string> | undefined,
+  folder: string | undefined | null,
+): string {
+  const f = (folder ?? "").trim();
+  if (f && map?.[f]) return map[f];
+  return map?.[GLOBAL_FOLDER_KEY] ?? "";
 }
 
 
@@ -109,8 +138,8 @@ export const useStore = create<State>()(
       groupState: {},
       prompts: {},
       qualityChecks: {},
-      qualityThresholds: JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)),
-      writerRequirements: "",
+      qualityThresholds: { [GLOBAL_FOLDER_KEY]: cloneDefaults() },
+      writerRequirements: {},
 
 
 
@@ -218,8 +247,10 @@ export const useStore = create<State>()(
       },
       setQualityCheck: (url, check) =>
         set({ qualityChecks: { ...get().qualityChecks, [url]: check } }),
-      setQualityThresholds: (patch) => {
-        const cur = get().qualityThresholds;
+      setQualityThresholds: (folder, patch) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = get().qualityThresholds ?? {};
+        const cur = map[key] ?? map[GLOBAL_FOLDER_KEY] ?? cloneDefaults();
         const next: QualityThresholds = {
           unique: { ...cur.unique, ...(patch.unique ?? {}) },
           water: { ...cur.water, ...(patch.water ?? {}) },
@@ -227,15 +258,29 @@ export const useStore = create<State>()(
           ai: { ...cur.ai, ...(patch.ai ?? {}) },
           turgenev: { ...cur.turgenev, ...(patch.turgenev ?? {}) },
         };
-        applyThresholds(next);
-        set({ qualityThresholds: next });
+        const nextMap = { ...map, [key]: next };
+        // mirror global thresholds into the mutable copy (used by legacy code paths)
+        if (key === GLOBAL_FOLDER_KEY) applyThresholds(next);
+        set({ qualityThresholds: nextMap });
       },
-      resetQualityThresholds: () => {
-        const next = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)) as QualityThresholds;
-        applyThresholds(next);
-        set({ qualityThresholds: next });
+      resetQualityThresholds: (folder) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = { ...(get().qualityThresholds ?? {}) };
+        if (key === GLOBAL_FOLDER_KEY) {
+          const def = cloneDefaults();
+          applyThresholds(def);
+          map[GLOBAL_FOLDER_KEY] = def;
+        } else {
+          delete map[key];
+        }
+        set({ qualityThresholds: map });
       },
-      setWriterRequirements: (v) => set({ writerRequirements: v }),
+      setWriterRequirements: (folder, v) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = { ...(get().writerRequirements ?? {}) };
+        if (v) map[key] = v; else delete map[key];
+        set({ writerRequirements: map });
+      },
       clearAll: () =>
         set({
           queries: [],
@@ -256,7 +301,17 @@ export const useStore = create<State>()(
         typeof window === "undefined" ? (undefined as unknown as Storage) : debouncedLocalStorage(),
       ),
       onRehydrateStorage: () => (state) => {
-        if (state?.qualityThresholds) applyThresholds(state.qualityThresholds);
+        if (!state) return;
+        // Migrate legacy shape: qualityThresholds was QualityThresholds, writerRequirements was string.
+        const qt = state.qualityThresholds as unknown;
+        if (qt && typeof qt === "object" && "unique" in (qt as Record<string, unknown>)) {
+          state.qualityThresholds = { [GLOBAL_FOLDER_KEY]: qt as QualityThresholds };
+        }
+        const wr = state.writerRequirements as unknown;
+        if (typeof wr === "string") {
+          state.writerRequirements = wr ? { [GLOBAL_FOLDER_KEY]: wr } : {};
+        }
+        applyThresholds(state.qualityThresholds?.[GLOBAL_FOLDER_KEY]);
       },
     },
   ),

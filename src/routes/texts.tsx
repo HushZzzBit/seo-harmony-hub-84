@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useStore } from "@/lib/store";
+import { useStore, resolveThresholds, resolveWriterRequirements } from "@/lib/store";
 import { groupSeasonality, MONTHS, recommendedMonth, priorityForGroup } from "@/lib/seo";
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2, Check, AlertTriangle, X, Pencil } from "lucide-react";
 import { VariableHint } from "@/components/VariableHint";
@@ -18,7 +18,7 @@ import { RoundCheckbox } from "@/components/RoundCheckbox";
 import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
 import { checkTextQuality } from "@/lib/quality.functions";
 import { getActiveRequirementsForGroup, type ActiveRequirements } from "@/lib/lsi.functions";
-import { overallDot, overallFromCheck, overallLabel, providerLabel, providerMetrics, zoneClass } from "@/lib/quality";
+import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, providerLabel, providerMetrics, providerMetricsWith, zoneClass } from "@/lib/quality";
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 
@@ -373,7 +373,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const urlText = useStore((s) => s.urls[url]?.text);
   const queries = useStore((s) => s.queries);
   const setText = useStore((s) => s.setText);
-  const writerRequirements = useStore((s) => s.writerRequirements);
+  const writerRequirements = useStore((s) => resolveWriterRequirements(s.writerRequirements, folder));
   const runQualityCheck = useQualityRunner();
   const [open, setOpen] = useState(false);
   const initial = t.text ?? urlText ?? "";
@@ -887,8 +887,8 @@ function useQualityRunner() {
         providers,
         runCount: runCount + 1,
       };
-      const { overallFromCheck } = await import("@/lib/quality");
-      next.overall = overallFromCheck(next);
+      const T = resolveThresholds(useStore.getState().qualityThresholds, useStore.getState().urls[url]?.folder);
+      next.overall = overallFromCheckWith(T, next);
       setQualityCheck(url, next);
     } catch (e) {
       setQualityCheck(url, {
@@ -913,10 +913,10 @@ function useQualityRunner() {
 
 function QualityCell({ url }: { url: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
-  const thresholds = useStore((s) => s.qualityThresholds);
+  const folder = useStore((s) => s.urls[url]?.folder);
+  const T = useStore((s) => resolveThresholds(s.qualityThresholds, folder));
   if (!check) return <span className="text-xs text-muted-foreground">—</span>;
-  void thresholds; // re-render on threshold change
-  const overall = overallFromCheck(check);
+  const overall = overallFromCheckWith(T, check);
   const label = overallLabel[overall];
   const dot = overallDot[overall];
   return (
@@ -937,14 +937,14 @@ function QualityCell({ url }: { url: string }) {
           )}
         </span>
         <div className="absolute z-50 top-full right-0 mt-1 w-72 hidden group-hover:block">
-          <QualityTooltip check={check} label={label} />
+          <QualityTooltip check={check} label={label} T={T} />
         </div>
       </div>
     </div>
   );
 }
 
-function QualityTooltip({ check, label }: { check: TextQualityCheck; label: string }) {
+function QualityTooltip({ check, label, T }: { check: TextQualityCheck; label: string; T: import("@/lib/types").QualityThresholds }) {
   return (
     <div className="rounded-md border border-border bg-popover text-popover-foreground shadow-lg p-3 text-xs space-y-2">
       <div className="font-medium">{label}</div>
@@ -959,7 +959,7 @@ function QualityTooltip({ check, label }: { check: TextQualityCheck; label: stri
               {p.status === "pending" && <Loader2 className="h-3 w-3 animate-spin" />}
               {p.status === "failed" && <span className="text-rose-500">ошибка</span>}
               {p.status === "skipped" && <span className="text-muted-foreground">—</span>}
-              {p.status === "success" && providerMetrics(p).map((m) => (
+              {p.status === "success" && providerMetricsWith(T, p).map((m) => (
                 <span key={m.label} className={`px-1.5 py-0.5 rounded border text-[10px] ${zoneClass[m.zone]}`}>
                   {m.label} {m.value}
                 </span>
@@ -975,12 +975,12 @@ function QualityTooltip({ check, label }: { check: TextQualityCheck; label: stri
 function QualityPanel({ url, currentValue }: { url: string; currentValue?: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
   const savedText = useStore((s) => s.texts[url]?.text);
+  const folder = useStore((s) => s.urls[url]?.folder);
+  const T = useStore((s) => resolveThresholds(s.qualityThresholds, folder));
   const text = currentValue ?? savedText;
   const run = useQualityRunner();
-  const thresholds = useStore((s) => s.qualityThresholds);
   if (!url) return null;
-  void thresholds;
-  const overall = check ? overallFromCheck(check) : undefined;
+  const overall = check ? overallFromCheckWith(T, check) : undefined;
   return (
     <div className="border-t bg-background px-5 py-3">
       <div className="flex items-center justify-between gap-3 mb-3">
@@ -1008,14 +1008,14 @@ function QualityPanel({ url, currentValue }: { url: string; currentValue?: strin
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-stretch">
         {(["text_ru", "zerogpt", "turgenev"] as QualityProvider[]).map((prov) => {
           const p = check?.providers.find((x) => x.provider === prov);
-          return <ProviderTile key={prov} provider={prov} p={p} />;
+          return <ProviderTile key={prov} provider={prov} p={p} T={T} />;
         })}
       </div>
     </div>
   );
 }
 
-function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityProviderResult }) {
+function ProviderTile({ provider, p, T }: { provider: QualityProvider; p?: QualityProviderResult; T: import("@/lib/types").QualityThresholds }) {
   const label = providerLabel[provider];
   const tileBase = "rounded-md border p-2 text-xs h-full flex flex-col gap-1.5";
   if (!p) {
@@ -1053,7 +1053,7 @@ function ProviderTile({ provider, p }: { provider: QualityProvider; p?: QualityP
       </div>
     );
   }
-  const metrics = providerMetrics(p);
+  const metrics = providerMetricsWith(T, p);
   return (
     <div className={`${tileBase} border-border bg-background`}>
       <div className="flex items-center justify-between">

@@ -58,8 +58,13 @@ export function LsiPanel() {
   const [limit, setLimit] = useState(20);
   const PAGE_SIZE = 20;
 
+  const [settingsScope, setSettingsScope] = useState<string>("__default");
+
   async function reloadAll() {
-    const [s, a] = await Promise.all([getS(), listA()]);
+    const [s, a] = await Promise.all([
+      getS({ data: { folder: settingsScope } as never }),
+      listA(),
+    ]);
     setSettings(s);
     setAnalyses(a);
     setBlDraft(s.blacklist_domains.join(", "));
@@ -67,7 +72,7 @@ export function LsiPanel() {
   useEffect(() => {
     reloadAll().catch((e) => toast.error((e as Error).message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [settingsScope]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
@@ -122,7 +127,7 @@ export function LsiPanel() {
   }, [analyses]);
 
   async function saveSettings(patch: Partial<NonNullable<typeof settings>>) {
-    const next = await setS({ data: patch as never });
+    const next = await setS({ data: { folder: settingsScope, patch } as never });
     setSettings(next);
   }
 
@@ -137,11 +142,23 @@ export function LsiPanel() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             <div className="text-sm font-medium">LSI и конкуренты</div>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground">Стрим:</span>
+              <Select value={settingsScope} onValueChange={setSettingsScope}>
+                <SelectTrigger className="h-8 text-xs w-[200px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default">Глобально (по умолчанию)</SelectItem>
+                  {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="text-xs text-muted-foreground">
             Автоматический сбор конкурентов из SERP (Topvisor) и анализ через Miratext.
             Требуются ключи <code>TOPVISOR_USER_ID</code>, <code>TOPVISOR_API_KEY</code>, <code>MIRATEXT_API_KEY</code> во вкладке API и Ключи.
+            {settingsScope !== "__default" && <span className="block mt-1">Настройки применяются к стриму <b>{settingsScope}</b>. Пустые поля наследуются из глобальных.</span>}
           </div>
+
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <Field label="Topvisor project_id">
