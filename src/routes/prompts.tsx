@@ -422,16 +422,11 @@ function WriterRequirementsPanel({ scope }: { scope: string }) {
   );
 }
 
-function QualityThresholdsPanel() {
+function QualityThresholdsPanel({ scope }: { scope: string }) {
   const map = useStore((s) => s.qualityThresholds);
   const setQT = useStore((s) => s.setQualityThresholds);
   const resetQT = useStore((s) => s.resetQualityThresholds);
-  const [scope, setScope] = useState(GLOBAL_KEY);
 
-  const overridden = useMemo(
-    () => new Set(Object.keys(map).filter((k) => k !== GLOBAL_KEY)),
-    [map],
-  );
   const thresholds = map[scope] ?? map[GLOBAL_KEY];
 
   const num = (v: string) => {
@@ -452,7 +447,6 @@ function QualityThresholdsPanel() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <FolderScopeSelect value={scope} onChange={setScope} marked={overridden} />
               <button
                 type="button"
                 onClick={() => { resetQT(scope); toast.success(scope === GLOBAL_KEY ? "Глобальные значения сброшены" : "Пороги стрима сброшены"); }}
