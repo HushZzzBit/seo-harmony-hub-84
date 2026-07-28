@@ -102,8 +102,11 @@ export async function fetchSerpCandidates(params: {
   const today = new Date();
   const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  // searcher_key: 0 = Google, 1 = Yandex (Topvisor convention)
+  const searcherKey = params.searchEngine?.toLowerCase() === "yandex" ? 1 : 0;
   const body: Record<string, unknown> = {
     project_id: params.projectId,
+    searcher_key: searcherKey,
     date1: fmt(past),
     date2: fmt(today),
     fields: ["url", "domain", "position", "snippet_title", "snippet_body"],
@@ -113,6 +116,7 @@ export async function fetchSerpCandidates(params: {
   };
   if (params.regionIndex != null) body.region_index = params.regionIndex;
   if (params.keywords.length) body.keywords = params.keywords.slice(0, 30);
+
 
   const raw = (await topvisorFetch("/v2/json/get/snapshots_2/history", body)) as {
     result?: {
