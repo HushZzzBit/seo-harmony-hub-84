@@ -135,7 +135,7 @@ async function fetchProjectKeywords(params: {
 }): Promise<Array<{ id: number; name: string; url?: string }>> {
   const body: Record<string, unknown> = {
     project_id: params.projectId,
-    fields: ["id", "name", "url"],
+    fields: ["id", "name", "target"],
   };
   const filters: Array<Record<string, unknown>> = [];
   if (params.names && params.names.length) {
@@ -143,11 +143,11 @@ async function fetchProjectKeywords(params: {
   }
   if (filters.length) body.filters = filters;
   const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", body)) as {
-    result?: Array<{ id: number; name: string; url?: string }>;
+    result?: Array<{ id: number; name: string; target?: string; url?: string }>;
     errors?: unknown;
   };
   if (raw.errors) throw new Error(`Topvisor keywords: ${JSON.stringify(raw.errors).slice(0, 300)}`);
-  let list = raw.result ?? [];
+  let list = (raw.result ?? []).map((k) => ({ id: k.id, name: k.name, url: k.target ?? k.url }));
   if (params.targetUrl) {
     const t = params.targetUrl.toLowerCase().replace(/\/+$/, "");
     const matches = list.filter((k) => (k.url ?? "").toLowerCase().replace(/\/+$/, "") === t);
@@ -155,6 +155,7 @@ async function fetchProjectKeywords(params: {
   }
   return list;
 }
+
 
 /** Fetches SERP snapshots for keywords in a Topvisor project.
  *  Uses "Снимки выдачи" (/snapshots_2/history) filtered by keyword IDs. */
