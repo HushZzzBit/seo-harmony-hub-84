@@ -294,7 +294,7 @@ function GroupRow({
   analysis,
   onChanged,
 }: {
-  g: { key: string; folder: string; group: string; url: string; keywords: string[] };
+  g: { key: string; folder: string; group: string; url: string; keywords: string[]; prio: Priority; planMonth: number; hasSeason: boolean };
   analysis: AnalysisRow | undefined;
   onChanged: () => Promise<void>;
 }) {
