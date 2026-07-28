@@ -113,6 +113,7 @@ export async function fetchSerpCandidates(params: {
     filters: [],
     orders: [],
     limit: Math.max(params.depth, 10),
+    region_lang: "ru",
   };
   if (params.regionIndex != null) body.region_key = params.regionIndex;
   if (params.keywords.length) body.keywords = params.keywords.slice(0, 30);
