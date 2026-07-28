@@ -887,8 +887,8 @@ function useQualityRunner() {
         providers,
         runCount: runCount + 1,
       };
-      const { overallFromCheck } = await import("@/lib/quality");
-      next.overall = overallFromCheck(next);
+      const T = resolveThresholds(useStore.getState().qualityThresholds, useStore.getState().urls[url]?.folder);
+      next.overall = overallFromCheckWith(T, next);
       setQualityCheck(url, next);
     } catch (e) {
       setQualityCheck(url, {
