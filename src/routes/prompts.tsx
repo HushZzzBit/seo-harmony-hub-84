@@ -1,5 +1,6 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,8 +14,10 @@ import {
   PROMPT_VARIABLES,
   previewPrompt,
 } from "@/lib/openai.functions";
+import { listApiKeys, setApiKey, deleteApiKey, type ApiKeyStatus } from "@/lib/apiKeys.functions";
 import { toast } from "sonner";
-import { RotateCcw, Save, Settings, Wand2 } from "lucide-react";
+import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Trash2, Wand2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/prompts")({
   ssr: false,
@@ -162,7 +165,11 @@ function PromptsPage() {
             <Wand2 className="h-3.5 w-3.5" /> AI Промты
           </TabsTrigger>
           <TabsTrigger value="requirements">Требования и примеры текстов</TabsTrigger>
+          <TabsTrigger value="apikeys" className="gap-1.5">
+            <KeyRound className="h-3.5 w-3.5" /> API и Ключи
+          </TabsTrigger>
         </TabsList>
+
 
         <TabsContent value="prompts" className="space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -306,6 +313,11 @@ function PromptsPage() {
           <WriterRequirementsPanel />
           <QualityThresholdsPanel />
         </TabsContent>
+
+        <TabsContent value="apikeys" className="space-y-4">
+          <ApiKeysPanel />
+        </TabsContent>
+
       </Tabs>
     </AppShell>
   );
@@ -483,3 +495,186 @@ function ThresholdCard({ title, hint, fields, footer }: { title: string; hint?: 
     </Card>
   );
 }
+
+const API_KEY_META: Record<string, { label: string; hint: string; docsUrl?: string; placeholder?: string }> = {
+  OPENAI_API_KEY: {
+    label: "OpenAI",
+    hint: "Используется для автогенерации мета-тегов.",
+    docsUrl: "https://platform.openai.com/api-keys",
+    placeholder: "sk-...",
+  },
+  TEXT_RU_USERKEY: {
+    label: "Text.ru",
+    hint: "Проверка уникальности, воды и заспамленности.",
+    docsUrl: "https://text.ru/api-check",
+  },
+  ZEROGPT_API_KEY: {
+    label: "ZeroGPT",
+    hint: "Определение AI-контента.",
+    docsUrl: "https://www.zerogpt.com/api",
+  },
+  TURGENEV_API_KEY: {
+    label: "Тургенев (Ашманов)",
+    hint: "Оценка риска переоптимизации.",
+    docsUrl: "https://turgenev.ashmanov.com/",
+  },
+};
+
+function ApiKeysPanel() {
+  const listFn = useServerFn(listApiKeys);
+  const setFn = useServerFn(setApiKey);
+  const delFn = useServerFn(deleteApiKey);
+  const [items, setItems] = useState<ApiKeyStatus[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const res = await listFn();
+      setItems(res);
+    } catch (e) {
+      toast.error(`Не удалось загрузить: ${(e as Error).message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="p-4 space-y-1">
+          <div className="text-sm font-medium">API-ключи проекта</div>
+          <div className="text-xs text-muted-foreground">
+            Значения хранятся на сервере и подставляются автоматически. Ключ, сохранённый здесь,
+            имеет приоритет над переменной окружения — можно быстро заменить без деплоя.
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {(items ?? []).map((item) => (
+          <ApiKeyCard
+            key={item.name}
+            item={item}
+            meta={API_KEY_META[item.name] ?? { label: item.name, hint: "" }}
+            onSave={async (value) => {
+              await setFn({ data: { name: item.name, value } });
+              toast.success(`${API_KEY_META[item.name]?.label ?? item.name} — сохранён`);
+              await reload();
+            }}
+            onDelete={async () => {
+              await delFn({ data: { name: item.name } });
+              toast.success(`${API_KEY_META[item.name]?.label ?? item.name} — удалён из БД`);
+              await reload();
+            }}
+          />
+        ))}
+        {items === null && (
+          <div className="text-xs text-muted-foreground">{loading ? "Загрузка…" : ""}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ApiKeyCard({
+  item,
+  meta,
+  onSave,
+  onDelete,
+}: {
+  item: ApiKeyStatus;
+  meta: { label: string; hint: string; docsUrl?: string; placeholder?: string };
+  onSave: (value: string) => Promise<void>;
+  onDelete: () => Promise<void>;
+}) {
+  const [draft, setDraft] = useState("");
+  const [show, setShow] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const badge = item.hasValue
+    ? item.source === "db"
+      ? { text: "Сохранён (БД)", cls: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" }
+      : { text: "Из окружения", cls: "bg-sky-500/15 text-sky-600 border-sky-500/30" }
+    : { text: "Не задан", cls: "bg-rose-500/15 text-rose-600 border-rose-500/30" };
+
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-medium">{meta.label}</div>
+            <div className="text-[11px] text-muted-foreground leading-snug">{meta.hint}</div>
+            <div className="text-[11px] text-muted-foreground font-mono mt-1">{item.name}</div>
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${badge.cls}`}>{badge.text}</span>
+        </div>
+
+        <div className="text-[11px] text-muted-foreground">
+          Текущий: <span className="font-mono">{item.preview ?? "—"}</span>
+          {item.updatedAt && ` · обновлён ${new Date(item.updatedAt).toLocaleString()}`}
+        </div>
+
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Input
+              type={show ? "text" : "password"}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={meta.placeholder ?? "Вставьте новый ключ…"}
+              className="h-9 pr-9 text-xs font-mono"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={() => setShow((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+            >
+              {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          <button
+            type="button"
+            disabled={!draft.trim() || busy}
+            onClick={async () => {
+              setBusy(true);
+              try { await onSave(draft.trim()); setDraft(""); }
+              catch (e) { toast.error((e as Error).message); }
+              finally { setBusy(false); }
+            }}
+            className="h-9 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40 inline-flex items-center gap-1"
+          >
+            <Save className="h-3.5 w-3.5" /> Сохранить
+          </button>
+          {item.source === "db" && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm(`Удалить сохранённый ${meta.label}?`)) return;
+                setBusy(true);
+                try { await onDelete(); }
+                catch (e) { toast.error((e as Error).message); }
+                finally { setBusy(false); }
+              }}
+              className="h-9 px-2 text-xs rounded-md border border-border hover:bg-accent inline-flex items-center gap-1"
+              title="Удалить из БД (останется значение из окружения, если есть)"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+
+        {meta.docsUrl && (
+          <a href={meta.docsUrl} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline">
+            Где взять ключ →
+          </a>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
