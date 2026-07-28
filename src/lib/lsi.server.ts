@@ -95,7 +95,7 @@ export async function saveSettings(
 
 // ---------- Topvisor ----------
 
-async function topvisorFetch(path: string, body: unknown): Promise<unknown> {
+export async function topvisorFetch(path: string, body: unknown): Promise<unknown> {
   const userId = await getApiKey("TOPVISOR_USER_ID");
   const apiKey = await getApiKey("TOPVISOR_API_KEY");
   if (!userId) throw new Error("Не задан TOPVISOR_USER_ID");
@@ -727,4 +727,193 @@ export function buildItemsFromMiratext(
     });
   }
   return items;
+}
+
+// ============================================================================
+// Data pull: Topvisor project → normalized queries for the app
+// ============================================================================
+
+export interface PulledQueryRow {
+  phrase: string;
+  folder: string;
+  group: string;
+  url?: string;
+  frequency: number;
+}
+
+function folderFromUrl(url?: string | null): string {
+  if (!url) return "";
+  try {
+    const u = /^https?:\/\//i.test(url) ? new URL(url) : new URL("https://x" + (url.startsWith("/") ? url : "/" + url));
+    const seg = u.pathname.split("/").filter(Boolean)[0];
+    return seg ? `/${seg}/` : "/";
+  } catch {
+    return "";
+  }
+}
+
+/** Pulls all keywords from every configured Topvisor project (all lsi_settings rows). */
+export async function pullAllTopvisorQueries(): Promise<{ rows: PulledQueryRow[]; projects: string[]; errors: string[] }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: settings } = await supabaseAdmin.from("lsi_settings").select("*");
+  const rowsAll: PulledQueryRow[] = [];
+  const projects: string[] = [];
+  const errors: string[] = [];
+  const seenProjects = new Set<string>();
+
+  for (const s of (settings ?? []) as Array<Record<string, unknown>>) {
+    const pid = (s.topvisor_project_id as string | null) ?? null;
+    if (!pid || seenProjects.has(pid)) continue;
+    seenProjects.add(pid);
+    projects.push(pid);
+    const folderFallback = (s.folder as string | null) ?? null;
+    try {
+      const rows = await pullTopvisorProject(pid, folderFallback);
+      rowsAll.push(...rows);
+    } catch (e) {
+      errors.push(`Проект ${pid}: ${(e as Error).message}`);
+    }
+  }
+
+  // Deduplicate by phrase+url across projects
+  const seen = new Set<string>();
+  const dedup: PulledQueryRow[] = [];
+  for (const r of rowsAll) {
+    const key = `${r.phrase.toLowerCase()}|${(r.url ?? "").toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    dedup.push(r);
+  }
+  return { rows: dedup, projects, errors };
+}
+
+async function pullTopvisorProject(projectId: string, folderFallback: string | null): Promise<PulledQueryRow[]> {
+  // Groups map: id → name
+  const groupsRaw = (await topvisorFetch("/v2/json/get/keywords_2/groups", {
+    project_id: Number(projectId) || projectId,
+    fields: ["id", "name"],
+  }).catch(() => ({ result: [] }))) as { result?: Array<{ id: number | string; name?: string }> };
+  const groupNameById = new Map<string, string>();
+  for (const g of groupsRaw.result ?? []) {
+    if (g?.id != null) groupNameById.set(String(g.id), g.name ?? "");
+  }
+
+  // Keywords
+  const kwRaw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
+    project_id: Number(projectId) || projectId,
+    fields: ["id", "name", "target", "group_id", "volume"],
+  })) as {
+    result?: Array<{
+      id?: number | string;
+      name?: string;
+      target?: string;
+      group_id?: number | string;
+      volume?: number | string | Array<number | string> | Record<string, unknown>;
+    }>;
+    errors?: unknown;
+  };
+  if (kwRaw.errors) throw new Error(`keywords: ${JSON.stringify(kwRaw.errors).slice(0, 200)}`);
+
+  const rows: PulledQueryRow[] = [];
+  for (const k of kwRaw.result ?? []) {
+    const phrase = String(k.name ?? "").trim();
+    if (!phrase) continue;
+    const url = k.target ? String(k.target).trim() : undefined;
+    const groupId = k.group_id != null ? String(k.group_id) : "";
+    const group = groupNameById.get(groupId) || "Без группы";
+    const folder = folderFromUrl(url) || folderFallback || "/";
+
+    // volume может прийти как число, строка, массив или объект — берём первое число
+    let freq = 0;
+    const v = k.volume;
+    if (typeof v === "number") freq = v;
+    else if (typeof v === "string") freq = Number(v.replace(/\s/g, "").replace(",", ".")) || 0;
+    else if (Array.isArray(v)) {
+      for (const it of v) {
+        const n = typeof it === "number" ? it : Number(String(it).replace(/\s/g, "")) || 0;
+        if (n > freq) freq = n;
+      }
+    } else if (v && typeof v === "object") {
+      for (const it of Object.values(v)) {
+        const n = typeof it === "number" ? it : Number(String(it).replace(/\s/g, "")) || 0;
+        if (n > freq) freq = n;
+      }
+    }
+
+    rows.push({ phrase, folder, group, url, frequency: freq });
+  }
+  return rows;
+}
+
+// ============================================================================
+// XmlRiver Wordstat seasonality
+// ============================================================================
+
+export interface XmlriverParams {
+  phrases: string[];
+  device?: "phone" | "desktop" | "tablet";
+  regions?: string;   // Yandex geo id, e.g. "225" (Россия), "213" (Москва)
+  groupBy?: "day" | "week" | "month";
+  dateFrom?: string;  // ISO YYYY-MM-DD
+  dateTo?: string;
+}
+
+interface XmlriverPoint {
+  startTimestamp: number;
+  absoluteValue: string;
+  value: string;
+  text: string;
+}
+
+/** Возвращает `phrase → number[12]` (сумма absoluteValue по месяцам). */
+export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
+  map: Record<string, number[]>;
+  raw: Record<string, XmlriverPoint[]>;
+  errors: string[];
+}> {
+  const user = (await getApiKey("XMLRIVER_USER")) || "14608";
+  const key = (await getApiKey("XMLRIVER_KEY")) || "6bf7bb23bff40a3372aa75c900109215ebea353f";
+
+  const map: Record<string, number[]> = {};
+  const raw: Record<string, XmlriverPoint[]> = {};
+  const errors: string[] = [];
+
+  const params = new URLSearchParams();
+  params.set("user", user);
+  params.set("key", key);
+  if (p.device) params.set("device", p.device);
+  if (p.regions) params.set("regions", p.regions);
+  if (p.groupBy) params.set("groupBy", p.groupBy);
+  if (p.dateFrom) params.set("dateFrom", p.dateFrom);
+  if (p.dateTo) params.set("dateTo", p.dateTo);
+
+  // sequential to avoid overloading the API
+  for (const phrase of p.phrases) {
+    try {
+      const q = new URLSearchParams(params);
+      q.set("query", phrase);
+      const res = await fetch(`http://xmlriver.com/wordstat/new/json?${q.toString()}`);
+      if (!res.ok) { errors.push(`${phrase}: HTTP ${res.status}`); continue; }
+      const j = (await res.json()) as {
+        graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[] } } };
+        error?: string;
+        code?: number;
+      };
+      if (j.error) { errors.push(`${phrase}: ${j.error}`); continue; }
+      const points = j.graph?.images?.timeSeries?.rawValues ?? [];
+      raw[phrase] = points;
+      const months = new Array(12).fill(0) as number[];
+      for (const pt of points) {
+        const d = new Date(pt.startTimestamp);
+        const m = d.getUTCMonth();
+        const n = Number(String(pt.absoluteValue).replace(/\s/g, "")) || 0;
+        months[m] += n;
+      }
+      map[phrase.toLowerCase().trim()] = months;
+    } catch (e) {
+      errors.push(`${phrase}: ${(e as Error).message}`);
+    }
+  }
+
+  return { map, raw, errors };
 }
