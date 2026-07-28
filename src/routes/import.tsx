@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useStore } from "@/lib/store";
-import { downloadCsv, toCsv } from "@/lib/csv";
+import { downloadCsv, toCsv, readMatrix, parseSeasonality } from "@/lib/csv";
 import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
 import { Settings } from "lucide-react";
@@ -287,6 +287,42 @@ function ImportPage() {
             <Button onClick={handleSeasonality} disabled={seasoning || !uniqPhrases.length}>
               {seasoning ? "Считаем…" : "Обновить сезонность"}
             </Button>
+          </div>
+
+          <div className="border-t pt-4">
+            <Label className="text-xs mb-1 block">Ручная загрузка файла сезонности (CSV/XLSX)</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  try {
+                    const m = await readMatrix(f);
+                    const map = parseSeasonality(m);
+                    const n = Object.keys(map).length;
+                    if (!n) {
+                      toast.error("В файле не найдено фраз/месячных колонок");
+                    } else {
+                      applySeasonality(map);
+                      add(`Ручная сезонность: применено ${n} фраз из ${f.name}`);
+                      toast.success(`Применена сезонность к ${n} фразам`);
+                    }
+                  } catch (err) {
+                    const msg = err instanceof Error ? err.message : String(err);
+                    add(`Ошибка чтения файла: ${msg}`);
+                    toast.error(msg);
+                  } finally {
+                    e.target.value = "";
+                  }
+                }}
+                className="max-w-md"
+              />
+              <div className="text-xs text-muted-foreground">
+                Формат: первая колонка — фраза, остальные — даты (месяцы). Значения усредняются по месяцу.
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
