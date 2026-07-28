@@ -247,8 +247,10 @@ export const useStore = create<State>()(
       },
       setQualityCheck: (url, check) =>
         set({ qualityChecks: { ...get().qualityChecks, [url]: check } }),
-      setQualityThresholds: (patch) => {
-        const cur = get().qualityThresholds;
+      setQualityThresholds: (folder, patch) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = get().qualityThresholds ?? {};
+        const cur = map[key] ?? map[GLOBAL_FOLDER_KEY] ?? cloneDefaults();
         const next: QualityThresholds = {
           unique: { ...cur.unique, ...(patch.unique ?? {}) },
           water: { ...cur.water, ...(patch.water ?? {}) },
@@ -256,15 +258,29 @@ export const useStore = create<State>()(
           ai: { ...cur.ai, ...(patch.ai ?? {}) },
           turgenev: { ...cur.turgenev, ...(patch.turgenev ?? {}) },
         };
-        applyThresholds(next);
-        set({ qualityThresholds: next });
+        const nextMap = { ...map, [key]: next };
+        // mirror global thresholds into the mutable copy (used by legacy code paths)
+        if (key === GLOBAL_FOLDER_KEY) applyThresholds(next);
+        set({ qualityThresholds: nextMap });
       },
-      resetQualityThresholds: () => {
-        const next = JSON.parse(JSON.stringify(DEFAULT_THRESHOLDS)) as QualityThresholds;
-        applyThresholds(next);
-        set({ qualityThresholds: next });
+      resetQualityThresholds: (folder) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = { ...(get().qualityThresholds ?? {}) };
+        if (key === GLOBAL_FOLDER_KEY) {
+          const def = cloneDefaults();
+          applyThresholds(def);
+          map[GLOBAL_FOLDER_KEY] = def;
+        } else {
+          delete map[key];
+        }
+        set({ qualityThresholds: map });
       },
-      setWriterRequirements: (v) => set({ writerRequirements: v }),
+      setWriterRequirements: (folder, v) => {
+        const key = folder || GLOBAL_FOLDER_KEY;
+        const map = { ...(get().writerRequirements ?? {}) };
+        if (v) map[key] = v; else delete map[key];
+        set({ writerRequirements: map });
+      },
       clearAll: () =>
         set({
           queries: [],
