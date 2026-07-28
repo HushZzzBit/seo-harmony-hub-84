@@ -382,12 +382,15 @@ export const upsertItem = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const sb = await admin();
     if (data.id) {
-      await sb.from("text_requirement_item").update({ ...data.patch, updated_at: new Date().toISOString() }).eq("id", data.id);
+      await sb
+        .from("text_requirement_item")
+        .update({ ...data.patch, updated_at: new Date().toISOString() } as never)
+        .eq("id", data.id);
       return { id: data.id };
     }
     const { data: inserted } = await sb
       .from("text_requirement_item")
-      .insert({ analysis_id: data.analysisId, is_manual: true, ...data.patch })
+      .insert({ analysis_id: data.analysisId, is_manual: true, ...data.patch } as never)
       .select("id")
       .single();
     return { id: inserted?.id };
