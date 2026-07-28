@@ -975,12 +975,12 @@ function QualityTooltip({ check, label, T }: { check: TextQualityCheck; label: s
 function QualityPanel({ url, currentValue }: { url: string; currentValue?: string }) {
   const check = useStore((s) => s.qualityChecks[url]);
   const savedText = useStore((s) => s.texts[url]?.text);
+  const folder = useStore((s) => s.urls[url]?.folder);
+  const T = useStore((s) => resolveThresholds(s.qualityThresholds, folder));
   const text = currentValue ?? savedText;
   const run = useQualityRunner();
-  const thresholds = useStore((s) => s.qualityThresholds);
   if (!url) return null;
-  void thresholds;
-  const overall = check ? overallFromCheck(check) : undefined;
+  const overall = check ? overallFromCheckWith(T, check) : undefined;
   return (
     <div className="border-t bg-background px-5 py-3">
       <div className="flex items-center justify-between gap-3 mb-3">
