@@ -98,8 +98,14 @@ export async function fetchSerpCandidates(params: {
   depth: number;
   keywords: string[];
 }): Promise<{ items: TopvisorSerpItem[]; raw: unknown; snapshotDate?: string }> {
+  // Topvisor requires date1/date2 window. Use last 30 days.
+  const today = new Date();
+  const past = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
   const body: Record<string, unknown> = {
     project_id: params.projectId,
+    date1: fmt(past),
+    date2: fmt(today),
     fields: ["url", "domain", "position", "snippet_title", "snippet_body"],
     filters: [],
     orders: [],
