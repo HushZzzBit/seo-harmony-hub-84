@@ -25,6 +25,16 @@ import { Eye, EyeOff, KeyRound, RotateCcw, Save, Settings, Sparkles, Trash2, Wan
 
 export const Route = createFileRoute("/prompts")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "SEO GGSEL — настройки" },
+      { name: "description", content: "Настройки SEO GGSEL: AI-промты, требования к текстам, API-ключи и внешние подключения." },
+      { property: "og:title", content: "SEO GGSEL — настройки" },
+      { property: "og:description", content: "AI-промты, требования к текстам, API-ключи и внешние подключения." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   validateSearch: z.object({
     tab: z.enum(["prompts", "requirements", "apikeys"]).optional(),
   }),
