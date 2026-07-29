@@ -248,22 +248,29 @@ function ImportPage() {
 
       {/* --- Сезонность xmlriver --- */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Сезонность (xmlriver Wordstat)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Сезонность (xmlriver Wordstat New)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
+          <div className="text-xs text-muted-foreground">
+            Поля соответствуют параметрам API <code>xmlriver.com/wordstat/new/json</code>:{" "}
+            <code>user</code>, <code>key</code> — из «Настройки → API и Ключи»;{" "}
+            <code>pagetype=history</code>; <code>query</code> — фраза из подтянутых данных Топвизора.
+            Ниже задаются <code>device</code>, <code>regions</code>, <code>period</code>, <code>start</code>, <code>end</code>.
+            Ошибки API пишутся в журнал ниже.
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div>
-              <Label className="text-xs mb-1 block">Устройство</Label>
+              <Label className="text-xs mb-1 block">device (устройство)</Label>
               <Select value={device} onValueChange={(v) => setDevice(v as typeof device)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="phone">Смартфон</SelectItem>
-                  <SelectItem value="tablet">Планшет</SelectItem>
-                  <SelectItem value="desktop">Десктоп</SelectItem>
+                  <SelectItem value="phone">phone (смартфон)</SelectItem>
+                  <SelectItem value="tablet">tablet (планшет)</SelectItem>
+                  <SelectItem value="desktop">desktop (десктоп)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Регион (Яндекс geo id)</Label>
+              <Label className="text-xs mb-1 block">regions (Яндекс geo id)</Label>
               <Select value={regions} onValueChange={setRegions}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent className="max-h-72">
@@ -274,30 +281,30 @@ function ImportPage() {
               </Select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Группировка</Label>
+              <Label className="text-xs mb-1 block">period (группировка)</Label>
               <Select value={groupBy} onValueChange={(v) => setGroupBy(v as typeof groupBy)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="month">По месяцам</SelectItem>
-                  <SelectItem value="week">По неделям</SelectItem>
-                  <SelectItem value="day">По дням</SelectItem>
+                  <SelectItem value="month">month</SelectItem>
+                  <SelectItem value="week">week</SelectItem>
+                  <SelectItem value="day">day</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Дата от</Label>
+              <Label className="text-xs mb-1 block">start (дд.мм.гггг)</Label>
               <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Дата до</Label>
+              <Label className="text-xs mb-1 block">end (дд.мм.гггг)</Label>
               <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
             </div>
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
               Уникальных фраз для расчёта: <b>{uniqPhrases.length}</b>.
-              XmlRiver возвращает данные из «новой» динамики Wordstat — если период слишком широкий,
-              API может отдать урезанный набор точек; недостающие месяцы останутся с 0.
+              Для <code>period=month</code> период должен быть минимум 3 месяца и укладываться в завершённые месяцы —
+              иначе XMLRiver вернёт урезанный набор точек и пустые месяцы останутся с 0.
             </div>
             <Button onClick={handleSeasonality} disabled={seasoning || !uniqPhrases.length}>
               {seasoning ? "Считаем…" : "Обновить сезонность"}
