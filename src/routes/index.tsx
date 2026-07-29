@@ -19,6 +19,7 @@ import { metaStatusColor, metaStatusLabel } from "@/lib/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessMetricsTab, UrlAnalyticsTab } from "@/components/DashboardDataLensTabs";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 export const Route = createFileRoute("/")({
   ssr: false,
