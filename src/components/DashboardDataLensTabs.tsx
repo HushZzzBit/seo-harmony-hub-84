@@ -214,8 +214,9 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
 export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
   const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
-  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group), [allCategories, folderGroups, group]);
-  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group), [allStartUrls, folderGroups, group]);
+  const ownership = useUrlOwnershipMap();
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const urls = useStore((s) => s.urls);
