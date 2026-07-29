@@ -214,9 +214,6 @@ function MetaPage() {
             <h1 className="text-2xl font-semibold">Meta Tags</h1>
             <VariableHint />
           </div>
-          <p className="text-sm text-muted-foreground">
-            Инлайн-редактирование с подсветкой ключевых слов
-          </p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Input
