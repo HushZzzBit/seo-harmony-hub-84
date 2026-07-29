@@ -216,9 +216,7 @@ function ImportPage() {
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Импорт / Экспорт</h1>
-        <p className="text-sm text-muted-foreground">
-          Загрузка данных из Топвизора и сезонности из Яндекс.Вордстат (xmlriver), экспорт CSV для CMS
-        </p>
+        <p className="text-sm text-muted-foreground">Подтягивание данных из Топвизора и XMLRiver, экспорт CSV для CMS.</p>
       </div>
 
       {/* --- Топвизор pull --- */}
@@ -226,15 +224,12 @@ function ImportPage() {
         <CardHeader><CardTitle>Данные Топвизора</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground max-w-2xl">
-            Подтягивает все фразы из проектов Топвизора, настроенных в разделе «Настройки → API и Ключи»
-            (глобальный и/или пер-стрим project_id). Папка берётся из поля group_folder_path,
-            группа — из group_name, как в ручной выгрузке Топвизора.
-            Частотность, релевантные URL и позиции Google/Яндекс обновляются из API; сезонность обновляется отдельно кнопкой ниже.
+            Фразы, папка, группа, частотность, релевантные URL и позиции — из API Топвизора. Сезонность — кнопкой ниже.
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
               <Link to="/prompts" search={{ tab: "apikeys" }}>
-                <Settings className="h-4 w-4 mr-1.5" /> Настройки проекта
+                <Settings className="h-4 w-4 mr-1.5" /> Настройки
               </Link>
             </Button>
             <Button onClick={handlePull} disabled={pulling}>
@@ -246,14 +241,10 @@ function ImportPage() {
 
       {/* --- Сезонность xmlriver --- */}
       <Card className="mb-6">
-        <CardHeader><CardTitle>Сезонность (xmlriver Wordstat New)</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Сезонность (XMLRiver Wordstat)</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="text-xs text-muted-foreground">
-            Поля соответствуют параметрам API <code>xmlriver.com/wordstat/new/json</code>:{" "}
-            <code>user</code>, <code>key</code> — из «Настройки → API и Ключи»;{" "}
-            <code>pagetype=history</code>; <code>query</code> — фраза из подтянутых данных Топвизора.
-            Ниже задаются <code>device</code>, <code>regions</code>, <code>period</code>, <code>start</code>, <code>end</code>.
-            Ошибки API пишутся в журнал ниже.
+            Помесячная динамика запросов. Ошибки API попадают в журнал ниже.
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <div>
@@ -300,9 +291,7 @@ function ImportPage() {
           </div>
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground">
-              Уникальных фраз для расчёта: <b>{uniqPhrases.length}</b>.
-              Для <code>period=month</code> период должен быть минимум 3 месяца и укладываться в завершённые месяцы —
-              иначе XMLRiver вернёт урезанный набор точек и пустые месяцы останутся с 0.
+              Уникальных фраз: <b>{uniqPhrases.length}</b>. Для <code>month</code> берите период ≥ 3 завершённых месяцев.
             </div>
             <Button onClick={handleSeasonality} disabled={seasoning || !uniqPhrases.length}>
               {seasoning ? "Считаем…" : "Обновить сезонность"}
@@ -340,7 +329,7 @@ function ImportPage() {
                 className="max-w-md"
               />
               <div className="text-xs text-muted-foreground">
-                Формат: первая колонка — фраза, остальные — даты (месяцы). Значения усредняются по месяцу.
+                Первая колонка — фраза, далее — месяцы.
               </div>
             </div>
           </div>
@@ -360,10 +349,7 @@ function ImportPage() {
         <CardHeader><CardTitle>Экспорт CSV для CMS</CardTitle></CardHeader>
         <CardContent className="flex items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground">
-            Поля: url, title (=H1), seo_title (=Title), seo_desc, seo_text (HTML).
-            Один файл: строка на каждый URL со статусом <b>«В файле CSV»</b> (мета и/или текст).
-            URL записывается без «https://ggsel.net». Сейчас к выгрузке: <b>{exportUrls.length}</b>.
-            После скачивания статусы «В файле CSV» → «Готово».
+            URL со статусом <b>«В файле CSV»</b>. После скачивания статус → «Готово». К выгрузке: <b>{exportUrls.length}</b>.
           </div>
           <Button onClick={exportCms} disabled={!exportUrls.length}>
             Скачать CSV ({exportUrls.length})
