@@ -169,6 +169,8 @@ export const useStore = create<State>()(
                 group: r.group,
                 url: r.url,
                 frequency: r.frequency || prev.frequency,
+                googlePosition: r.googlePosition ?? prev.googlePosition,
+                yandexPosition: r.yandexPosition ?? prev.yandexPosition,
               };
               updated++;
             }
@@ -180,6 +182,8 @@ export const useStore = create<State>()(
               group: r.group,
               url: r.url,
               frequency: r.frequency,
+              googlePosition: r.googlePosition,
+              yandexPosition: r.yandexPosition,
               seasonality: new Array(12).fill(0),
             });
             added++;
