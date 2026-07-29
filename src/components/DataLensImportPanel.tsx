@@ -72,7 +72,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
     }));
   }, [queries]);
 
-  async function handleUpload(type: DataLensType, form: FormValues, file: File) {
+  async function handleUpload(type: DataLensType, file: File) {
     setLoading(true);
     try {
       const records = await readRecords(file);
@@ -83,11 +83,11 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const res = await saveFn({
         data: {
           type,
-          stream: form.stream || null,
-          period_start: form.period_start || null,
-          period_end: form.period_end || null,
+          stream: null,
+          period_start: null,
+          period_end: null,
           file_name: file.name,
-          comment: form.comment || null,
+          comment: null,
           seo_urls: seoUrls,
           ...payload,
         },
