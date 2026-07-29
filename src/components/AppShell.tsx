@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { BarChart3, FileText, Tags, Upload, Wand2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import logoAsset from "@/assets/seo-ggsel-logo.png.asset.json";
+import { useOwnershipSync } from "@/hooks/use-ownership-sync";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
@@ -15,6 +16,7 @@ const STORAGE_KEY = "seo-ggsel-sidebar-collapsed";
 
 export function AppShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
+  useOwnershipSync();
 
   useEffect(() => {
     try {

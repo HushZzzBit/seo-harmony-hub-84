@@ -152,41 +152,32 @@ function useFolderGroups(stream: string | null): Set<string> | null {
 }
 
 /**
- * Build a normalized-URL → { folder, group } map from Topvisor queries and urls.
- * Used to re-attribute DataLens rows whose stored matched_group_id is wrong
- * (e.g. `group_conflict` cases like Google Drive misassigned to Google AI).
+ * Единый реестр владения URL, поддерживаемый useOwnershipSync().
+ * DataLens → Topvisor group; при отсутствии — legacy matched_group_id.
  */
 function useUrlOwnershipMap(): Map<string, { folder: string | null; group: string | null }> {
-  const queries = useStore((s) => s.queries);
-  const urls = useStore((s) => s.urls);
+  const ownership = useStore((s) => s.ownership);
   return useMemo(() => {
     const m = new Map<string, { folder: string | null; group: string | null }>();
-    const put = (rawUrl: string | undefined | null, folder: string | null, group: string | null) => {
-      const n = normalizeUrl(rawUrl ?? null);
-      if (!n) return;
-      const prev = m.get(n);
-      // Prefer entries that carry a group over ones without.
-      if (!prev || (!prev.group && group)) m.set(n, { folder, group });
-    };
-    for (const u of Object.values(urls)) {
-      put(u?.url, u?.folder ?? null, u?.group ?? null);
-    }
-    for (const q of queries) {
-      put(q.url, q.folder ?? null, q.group ?? null);
-    }
+    for (const [k, v] of Object.entries(ownership ?? {})) m.set(k, v);
     return m;
-  }, [queries, urls]);
+  }, [ownership]);
 }
 
-function rowOwnership<T extends { matched_group_id: string | null; normalized_url: string | null }>(
-  r: T,
-  ownership: Map<string, { folder: string | null; group: string | null }>,
-): { folder: string | null; group: string | null } {
-  const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
-  return {
-    folder: own?.folder ?? null,
-    group: own?.group ?? r.matched_group_id ?? null,
-  };
+/** Множество нормализованных URL, присутствующих в Topvisor (для intersect). */
+function useTopvisorUrlSet(): Set<string> {
+  const queries = useStore((s) => s.queries);
+  return useMemo(() => {
+    const s = new Set<string>();
+    const add = (u: string | null | undefined) => {
+      const n = normalizeUrl(u ?? null);
+      if (n) s.add(n);
+    };
+    for (const q of queries) {
+      add(q.url); add(q.targetUrl); add(q.relevantGoogle); add(q.relevantYandex);
+    }
+    return s;
+  }, [queries]);
 }
 
 function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null; match_status?: string }>(
@@ -195,14 +186,13 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
   group: string | null | undefined,
   ownership: Map<string, { folder: string | null; group: string | null }>,
 ): T[] {
-  // Rule: for business metrics DataLens is the source of truth. Topvisor URL
-  // ownership only corrects loose `matched_by_name` (name-token fallback).
-  // Exact URL matches and `matched_by_base_category` are trusted as-is.
+  // Единый источник владения: сначала ownership registry, затем legacy fallback.
   const effectiveGroup = (r: T): string | null => {
-    const trust = r.match_status && r.match_status !== "matched_by_name" && r.match_status !== "ambiguous_slug" && r.match_status !== "unmatched";
-    if (trust && r.matched_group_id) return r.matched_group_id;
     const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
-    return own?.group ?? r.matched_group_id ?? null;
+    if (own?.group) return own.group;
+    // Legacy: доверяем только жёстким матчам.
+    const trust = r.match_status && r.match_status !== "matched_by_name" && r.match_status !== "matched_by_slug" && r.match_status !== "ambiguous_slug" && r.match_status !== "unmatched";
+    return trust ? r.matched_group_id : null;
   };
   if (group) return rows.filter((r) => effectiveGroup(r) === group);
   if (folderGroups) return rows.filter((r) => {
@@ -313,6 +303,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
   const ownership = useUrlOwnershipMap();
+  const topvisorUrls = useTopvisorUrlSet();
   const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
   const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
   const queries = useStore((s) => s.queries);
@@ -343,10 +334,10 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       qByUrl.set(q.url, arr);
     }
 
-    // Union of normalized URLs from both sources
+    // Показываем только URL, встречающиеся в Topvisor (пересечение).
     const keys = new Set<string>();
-    for (const k of urlByNorm.keys()) keys.add(k);
-    for (const k of catByUrl.keys()) keys.add(k);
+    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k)) keys.add(k);
+    for (const k of catByUrl.keys()) if (topvisorUrls.has(k)) keys.add(k);
 
     return Array.from(keys).map((norm) => {
       const u = urlByNorm.get(norm);
@@ -390,7 +381,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         matched_group_id: matchedGroup,
       };
     });
-  }, [startUrls, categories, queries, urls, metaEdits, texts]);
+  }, [startUrls, categories, queries, urls, metaEdits, texts, topvisorUrls]);
 
   const filtered = useMemo(() => {
     let r = rows;
