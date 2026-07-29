@@ -742,6 +742,9 @@ export interface PulledQueryRow {
   folder: string;
   group: string;
   url?: string;
+  targetUrl?: string;
+  relevantGoogle?: string;
+  relevantYandex?: string;
   frequency: number;
   googlePosition?: number;
   yandexPosition?: number;
@@ -1044,15 +1047,18 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     throw new Error(`keywords: ${attempts.join(" | ")}`);
   }
 
-  // Relevant URLs from last SERP snapshot; priority > target when present/different.
-  const relevantByKw = new Map<string, string>();
+  const relevantByKwGoogle = new Map<string, string>();
+  const relevantByKwYandex = new Map<string, string>();
   const googlePositionByKw = new Map<string, number>();
   const yandexPositionByKw = new Map<string, number>();
   for (const se of ["google", "yandex"] as const) {
     try {
       const m = await fetchPositionSnapshotMap(projectId, se);
       for (const [kwId, snap] of m.entries()) {
-        if (snap.url && !relevantByKw.has(kwId)) relevantByKw.set(kwId, snap.url);
+        if (snap.url) {
+          if (se === "google") relevantByKwGoogle.set(kwId, snap.url);
+          else relevantByKwYandex.set(kwId, snap.url);
+        }
         if (snap.position != null) {
           if (se === "google") googlePositionByKw.set(kwId, snap.position);
           else yandexPositionByKw.set(kwId, snap.position);
@@ -1071,24 +1077,30 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     const phrase = String(k.name ?? "").trim();
     if (!phrase) continue;
     const target = k.target ? String(k.target).trim() : undefined;
-    const relevant = k.id != null ? relevantByKw.get(String(k.id)) : undefined;
-    // Priority: relevant (if present) > target
+    const kwId = k.id != null ? String(k.id) : "";
+    const relevantGoogle = kwId ? relevantByKwGoogle.get(kwId) : undefined;
+    const relevantYandex = kwId ? relevantByKwYandex.get(kwId) : undefined;
+    const relevant = relevantGoogle || relevantYandex;
+    // Priority for main url: relevant (any) > target
     const url = (relevant && relevant.trim()) || target || undefined;
     const groupId = k.group_id ?? k.group;
     const groupIdStr = groupId != null ? String(groupId) : null;
     const groupFromApi = typeof k.group_name === "string" ? k.group_name.trim() : "";
     const group = groupFromApi || (groupIdStr ? (groupNameById.get(groupIdStr) || "Без группы") : "Без группы");
-    // Приоритет папки: group_folder_path — точный аналог столбца "Папка" в ручной выгрузке Topvisor.
-    // URL используем только как последний фолбэк, чтобы не смешивать /catalog/... с рабочими стримами.
     const folderFromApi = typeof k.group_folder_path === "string" ? k.group_folder_path.trim() : "";
     const folder = folderFromApi || folderFallback || folderFromUrl(url) || "/";
 
-    const kwId = k.id != null ? String(k.id) : "";
     const freq = (kwId ? frequencyByKw.get(kwId) : undefined) ?? readTopvisorFrequency(k.volume ?? k.volumes);
     const googlePosition = kwId ? googlePositionByKw.get(kwId) : undefined;
     const yandexPosition = kwId ? yandexPositionByKw.get(kwId) : undefined;
 
-    rows.push({ phrase, folder, group, url, frequency: freq, googlePosition, yandexPosition });
+    rows.push({
+      phrase, folder, group, url,
+      targetUrl: target,
+      relevantGoogle,
+      relevantYandex,
+      frequency: freq, googlePosition, yandexPosition,
+    });
   }
   return rows;
 }

@@ -37,6 +37,79 @@ interface StartUrlMetric {
 const sum = (arr: (number | null | undefined)[]) =>
   arr.reduce((a: number, b) => a + (typeof b === "number" && Number.isFinite(b) ? b : 0), 0);
 
+const STATUS_LABEL: Record<string, string> = {
+  matched_by_relevant_g: "По релевантной (Google)",
+  matched_by_relevant_y: "По релевантной (Яндекс)",
+  matched_by_target: "По целевой ссылке",
+  matched_by_name: "По названию (fallback)",
+  matched_by_slug: "По slug",
+  group_conflict: "Конфликт групп",
+  ambiguous_slug: "Неоднозначный slug",
+  unmatched: "Не сопоставлено",
+};
+
+function MatchingSummary({
+  rows,
+}: {
+  rows: Array<{ match_status: string; matched_group_id: string | null; normalized_url: string | null; gmv?: number | null }>;
+}) {
+  const byStatus = new Map<string, number>();
+  const byOwner = new Map<string, { count: number; gmv: number }>();
+  const conflicts: Array<{ url: string; group: string | null }> = [];
+  for (const r of rows) {
+    byStatus.set(r.match_status, (byStatus.get(r.match_status) ?? 0) + 1);
+    const owner = r.matched_group_id ?? "—";
+    const prev = byOwner.get(owner) ?? { count: 0, gmv: 0 };
+    prev.count += 1;
+    prev.gmv += Number.isFinite(r.gmv ?? NaN) ? Number(r.gmv) : 0;
+    byOwner.set(owner, prev);
+    if (r.match_status === "group_conflict" || r.match_status === "ambiguous_slug") {
+      conflicts.push({ url: r.normalized_url ?? "—", group: r.matched_group_id });
+    }
+  }
+  const sortedOwners = Array.from(byOwner.entries()).sort((a, b) => b[1].gmv - a[1].gmv).slice(0, 8);
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <Card>
+        <CardHeader className="p-3 pb-1"><CardTitle className="text-xs">URL матчинг</CardTitle></CardHeader>
+        <CardContent className="p-3 pt-1 space-y-1 text-xs">
+          {Array.from(byStatus.entries()).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+            <div key={s} className="flex justify-between gap-2">
+              <span className={s.startsWith("matched") ? "" : "text-destructive"}>{STATUS_LABEL[s] ?? s}</span>
+              <span className="tabular-nums">{n}</span>
+            </div>
+          ))}
+          {byStatus.size === 0 && <div className="text-muted-foreground">Нет данных</div>}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="p-3 pb-1"><CardTitle className="text-xs">Owner Group (TOP-8 по GMV)</CardTitle></CardHeader>
+        <CardContent className="p-3 pt-1 space-y-1 text-xs">
+          {sortedOwners.map(([g, v]) => (
+            <div key={g} className="flex justify-between gap-2">
+              <span className="truncate">{g}</span>
+              <span className="tabular-nums text-muted-foreground">{v.count} · {new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(v.gmv)}</span>
+            </div>
+          ))}
+          {sortedOwners.length === 0 && <div className="text-muted-foreground">Нет данных</div>}
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="p-3 pb-1"><CardTitle className="text-xs">Конфликты ({conflicts.length})</CardTitle></CardHeader>
+        <CardContent className="p-3 pt-1 space-y-1 text-xs max-h-40 overflow-auto">
+          {conflicts.slice(0, 30).map((c, i) => (
+            <div key={i} className="truncate" title={c.url}>
+              <span className="text-destructive">•</span> {c.url}{" "}
+              <span className="text-muted-foreground">{c.group ?? ""}</span>
+            </div>
+          ))}
+          {conflicts.length === 0 && <div className="text-muted-foreground">Конфликтов нет</div>}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function useDataLens(stream: string | null) {
   const fn = useServerFn(getDataLensMetrics);
   const [data, setData] = useState<{ categories: CategoryMetric[]; startUrls: StartUrlMetric[] }>({
@@ -138,6 +211,12 @@ export function BusinessMetricsTab({ stream }: { stream: string | null }) {
         <Kpi label="GMV без мета" value={fmtNum(gmvNoMeta)} tone="destructive" />
         <Kpi label="GMV без текста" value={fmtNum(gmvNoText)} tone="destructive" />
       </div>
+      <MatchingSummary
+        rows={[
+          ...startUrls.map((u) => ({ match_status: u.match_status, matched_group_id: u.matched_group_id, normalized_url: u.normalized_url, gmv: u.gmv })),
+          ...categories.map((c) => ({ match_status: c.match_status, matched_group_id: c.matched_group_id, normalized_url: c.normalized_url, gmv: c.gmv })),
+        ]}
+      />
     </div>
   );
 }

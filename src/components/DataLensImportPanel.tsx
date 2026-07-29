@@ -44,6 +44,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
 
   const [imports, setImports] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sePriority, setSePriority] = useState<"any" | "google" | "yandex">("any");
 
   const refresh = async () => {
     try {
@@ -58,18 +59,37 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const seoUrls = useMemo(() => {
-    const map = new Map<string, { folder: string | null; group: string | null }>();
+  const { seoUrls, nameHints } = useMemo(() => {
+    // Multi-source URL entries: relevant_g / relevant_y / target — с приоритетом по типам.
+    const dedup = new Map<string, { url: string; normalized: string | null; folder: string | null; group: string | null; source: "relevant_g" | "relevant_y" | "target" }>();
+    const add = (u: string | undefined, folder: string | null, group: string | null, source: "relevant_g" | "relevant_y" | "target") => {
+      if (!u) return;
+      const key = `${source}::${u}`;
+      if (dedup.has(key)) return;
+      dedup.set(key, { url: u, normalized: normalizeUrl(u), folder, group, source });
+    };
+    // Name hints: токены названий групп/папок для fallback-матчинга по имени в URL.
+    const stop = new Set(["and", "for", "the", "com", "net", "org", "www", "все", "для", "или"]);
+    const hintMap = new Map<string, { token: string; folder: string | null; group: string | null }>();
+    const addHint = (name: string, folder: string | null, group: string | null) => {
+      const tokens = name.toLowerCase().split(/[^a-zа-я0-9]+/i).filter((t) => t.length >= 3 && !stop.has(t));
+      for (const t of tokens) {
+        const key = `${t}::${folder}::${group}`;
+        if (!hintMap.has(key)) hintMap.set(key, { token: t, folder, group });
+      }
+    };
     for (const q of queries) {
-      if (!q.url) continue;
-      if (!map.has(q.url)) map.set(q.url, { folder: q.folder ?? null, group: q.group ?? null });
+      add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
+      add(q.relevantYandex, q.folder ?? null, q.group ?? null, "relevant_y");
+      add(q.targetUrl, q.folder ?? null, q.group ?? null, "target");
+      // Основной url — на случай, если target/relevant не сохранились отдельно.
+      if (q.url && !q.targetUrl && !q.relevantGoogle && !q.relevantYandex) {
+        add(q.url, q.folder ?? null, q.group ?? null, "target");
+      }
+      if (q.group) addHint(q.group, q.folder ?? null, q.group ?? null);
+      if (q.folder) addHint(q.folder, q.folder ?? null, q.group ?? null);
     }
-    return Array.from(map.entries()).map(([url, v]) => ({
-      url,
-      normalized: normalizeUrl(url),
-      folder: v.folder,
-      group: v.group,
-    }));
+    return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()) };
   }, [queries]);
 
   async function handleUpload(type: DataLensType, file: File) {
@@ -89,6 +109,8 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
           file_name: file.name,
           comment: null,
           seo_urls: seoUrls,
+          name_hints: nameHints,
+          se_priority: sePriority,
           ...payload,
         },
       });
@@ -121,6 +143,26 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="p-3 flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-muted-foreground">Приоритет ПС при матчинге релевантных URL:</span>
+          {(["any", "google", "yandex"] as const).map((v) => (
+            <label key={v} className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="se-priority"
+                checked={sePriority === v}
+                onChange={() => setSePriority(v)}
+              />
+              {v === "any" ? "Обе ПС" : v === "google" ? "Google" : "Яндекс"}
+            </label>
+          ))}
+          <span className="ml-auto text-muted-foreground">
+            Источников URL: {seoUrls.length} · токенов имён: {nameHints.length}
+          </span>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <UploadCard
           title="DataLens Categories"

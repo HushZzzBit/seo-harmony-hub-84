@@ -8,6 +8,12 @@ export interface Query {
   folder: string;
   group: string;
   url?: string;
+  /** Целевая ссылка Topvisor (столбец target ключа). */
+  targetUrl?: string;
+  /** Релевантный URL из последнего снимка Google. */
+  relevantGoogle?: string;
+  /** Релевантный URL из последнего снимка Yandex. */
+  relevantYandex?: string;
   frequency: number;
   googlePosition?: number;
   yandexPosition?: number;
