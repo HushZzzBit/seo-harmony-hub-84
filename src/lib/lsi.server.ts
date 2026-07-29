@@ -1019,14 +1019,14 @@ function normalizeXmlriverPeriod(p: XmlriverParams): { start?: string; end?: str
   const lastCompletedMonth = lastDayOfMonth(addMonths(today, -1));
   const requestedEnd = p.dateTo ? new Date(p.dateTo) : lastCompletedMonth;
   const safeRequestedEnd = Number.isNaN(requestedEnd.getTime()) ? lastCompletedMonth : requestedEnd;
-  const cappedEnd = safeRequestedEnd > lastCompletedMonth ? lastCompletedMonth : safeRequestedEnd;
+  const cappedEnd = safeRequestedEnd.getTime() > lastCompletedMonth.getTime() ? lastCompletedMonth : safeRequestedEnd;
   const endDate = lastDayOfMonth(cappedEnd);
 
   const requestedStart = p.dateFrom ? new Date(p.dateFrom) : addMonths(endDate, -11);
   const safeRequestedStart = Number.isNaN(requestedStart.getTime()) ? addMonths(endDate, -11) : requestedStart;
   let startDate = firstDayOfMonth(safeRequestedStart);
   const minStart = addMonths(endDate, -2);
-  if (startDate > minStart) startDate = minStart;
+  if (startDate.getTime() > minStart.getTime()) startDate = minStart;
 
   return { start: xmlriverDate(isoDate(startDate)), end: xmlriverDate(isoDate(endDate)) };
 }
