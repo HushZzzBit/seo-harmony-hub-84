@@ -391,10 +391,17 @@ function ImportPage() {
 
       {log.length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-sm">Журнал</CardTitle></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm">Журнал ({log.length})</CardTitle>
+            <Button variant="ghost" size="sm" onClick={() => setLog([])}>Очистить</Button>
+          </CardHeader>
           <CardContent>
-            <ul className="text-xs font-mono space-y-1">
-              {log.map((l, i) => <li key={i}>{l}</li>)}
+            <ul className="text-xs font-mono space-y-1 max-h-80 overflow-auto pr-2">
+              {log.map((l, i) => (
+                <li key={i} className={/ошибк|Error|HTTP \d|некорректн|не вернул/i.test(l) ? "text-destructive" : ""}>
+                  {l}
+                </li>
+              ))}
             </ul>
           </CardContent>
         </Card>
