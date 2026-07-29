@@ -74,13 +74,14 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       dedup.set(key, { url: u, normalized: normalizeUrl(u), folder, group, source });
     };
     const stop = new Set(["and", "for", "the", "com", "net", "org", "www", "все", "для", "или"]);
-    const hintMap = new Map<string, { token: string; folder: string | null; group: string | null }>();
+    const hintMap = new Map<string, { tokens: string[]; folder: string | null; group: string | null }>();
     const addHint = (name: string, folder: string | null, group: string | null) => {
-      const tokens = name.toLowerCase().split(/[^a-zа-я0-9]+/i).filter((t) => t.length >= 3 && !stop.has(t));
-      for (const t of tokens) {
-        const key = `${t}::${folder}::${group}`;
-        if (!hintMap.has(key)) hintMap.set(key, { token: t, folder, group });
-      }
+      const tokens = Array.from(new Set(
+        name.toLowerCase().split(/[^a-zа-я0-9]+/i).filter((t) => t.length >= 3 && !stop.has(t)),
+      ));
+      if (!tokens.length) return;
+      const key = `${tokens.join("+")}::${folder}::${group}`;
+      if (!hintMap.has(key)) hintMap.set(key, { tokens, folder, group });
     };
     for (const q of queries) {
       add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
