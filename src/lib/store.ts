@@ -79,6 +79,8 @@ interface State {
   qualityThresholds: Record<string, QualityThresholds>;
   /** Per-folder writer requirements. Ключ '__default' — глобальный текст. */
   writerRequirements: Record<string, string>;
+  /** Единый реестр владения URL: normalized_url → {folder, group}. */
+  ownership: Record<string, { folder: string | null; group: string | null }>;
 
   upsertQueries: (rows: Query[]) => void;
   mergeQueriesFromPull: (rows: Array<Omit<Query, "id" | "seasonality">>) => { added: number; updated: number };
@@ -96,6 +98,7 @@ interface State {
   setQualityThresholds: (folder: string, patch: Partial<QualityThresholds>) => void;
   resetQualityThresholds: (folder: string) => void;
   setWriterRequirements: (folder: string, v: string) => void;
+  setOwnership: (map: Record<string, { folder: string | null; group: string | null }>) => void;
   clearAll: () => void;
 }
 
@@ -141,6 +144,7 @@ export const useStore = create<State>()(
       qualityChecks: {},
       qualityThresholds: { [GLOBAL_FOLDER_KEY]: cloneDefaults() },
       writerRequirements: {},
+      ownership: {},
 
 
 
@@ -331,6 +335,7 @@ export const useStore = create<State>()(
         if (v) map[key] = v; else delete map[key];
         set({ writerRequirements: map });
       },
+      setOwnership: (map) => set({ ownership: map }),
       clearAll: () =>
         set({
           queries: [],
