@@ -34,7 +34,7 @@ interface ImportRow {
   status: string;
 }
 
-const STREAMS = ["Gaming", "Non-gaming", "Новинки"];
+
 
 export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) {
   const queries = useStore((s) => s.queries);
