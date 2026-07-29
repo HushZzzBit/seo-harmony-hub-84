@@ -312,12 +312,13 @@ export function parseNetpeak(matrix: string[][]): UrlRow[] {
 /* Export helpers (unchanged)                                          */
 /* ------------------------------------------------------------------ */
 
-export function toCsv(rows: Record<string, unknown>[]): string {
-  return Papa.unparse(rows);
+export function toCsv(rows: Record<string, unknown>[], columns?: string[]): string {
+  return columns ? Papa.unparse({ fields: columns, data: rows }) : Papa.unparse(rows);
 }
 
-export function downloadCsv(filename: string, csv: string) {
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+export function downloadCsv(filename: string, csv: string, opts: { bom?: boolean } = {}) {
+  const prefix = opts.bom ? "\uFEFF" : "";
+  const blob = new Blob([prefix + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
