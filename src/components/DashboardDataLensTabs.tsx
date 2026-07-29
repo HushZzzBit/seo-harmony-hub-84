@@ -303,6 +303,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
   const ownership = useUrlOwnershipMap();
+  const topvisorUrls = useTopvisorUrlSet();
   const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
   const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
   const queries = useStore((s) => s.queries);
