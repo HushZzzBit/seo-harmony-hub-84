@@ -211,6 +211,12 @@ export function BusinessMetricsTab({ stream }: { stream: string | null }) {
         <Kpi label="GMV без мета" value={fmtNum(gmvNoMeta)} tone="destructive" />
         <Kpi label="GMV без текста" value={fmtNum(gmvNoText)} tone="destructive" />
       </div>
+      <MatchingSummary
+        rows={[
+          ...startUrls.map((u) => ({ match_status: u.match_status, matched_group_id: u.matched_group_id, normalized_url: u.normalized_url, gmv: u.gmv })),
+          ...categories.map((c) => ({ match_status: c.match_status, matched_group_id: c.matched_group_id, normalized_url: c.normalized_url, gmv: c.gmv })),
+        ]}
+      />
     </div>
   );
 }
