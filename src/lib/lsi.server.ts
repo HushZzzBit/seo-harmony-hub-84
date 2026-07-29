@@ -175,6 +175,11 @@ function text(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function topvisorSearcherKey(searchEngine: string): number {
+  const se = (searchEngine || "").toLowerCase();
+  return se.startsWith("yandex") || se === "y" ? 0 : 1;
+}
+
 type SnapRec = {
   url?: string;
   domain?: string;
@@ -204,9 +209,8 @@ async function resolveRegionIndexes(projectId: string, searchEngine: string, fal
     searcherKey?: number | string;
     searcher_name?: string;
   };
-  const se = (searchEngine || "").toLowerCase();
-  const wantKey = se.startsWith("yandex") || se === "y" ? 1 : 0;
-  const wantName = wantKey === 1 ? /яндекс|yandex/i : /google|гугл/i;
+  const wantKey = topvisorSearcherKey(searchEngine);
+  const wantName = wantKey === 0 ? /яндекс|yandex/i : /google|гугл/i;
 
   let regions: Region[] = [];
   let lastErr: unknown = null;
@@ -739,6 +743,8 @@ export interface PulledQueryRow {
   group: string;
   url?: string;
   frequency: number;
+  googlePosition?: number;
+  yandexPosition?: number;
 }
 
 function folderFromUrl(url?: string | null): string {
@@ -798,8 +804,39 @@ export async function pullAllTopvisorQueries(): Promise<{ rows: PulledQueryRow[]
   return { rows: dedup, projects, errors };
 }
 
-async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+type PositionSnapshot = { url?: string; position?: number };
+type PositionKw = {
+  id?: number | string;
+  positionsData?: Record<string, { relevant_url?: string; position?: number | string }>;
+};
+
+function normalizePositionKeywords(raw: {
+  result?: PositionKw[] | { keywords?: PositionKw[] } | Record<string, PositionKw>;
+}): PositionKw[] {
+  const r = raw.result;
+  if (Array.isArray(r)) return r;
+  if (r && typeof r === "object") {
+    if (Array.isArray((r as { keywords?: PositionKw[] }).keywords)) {
+      return (r as { keywords: PositionKw[] }).keywords;
+    }
+    return Object.values(r as Record<string, PositionKw>);
+  }
+  return [];
+}
+
+function readTopvisorNextOffset(raw: unknown, offset: number, chunkLength: number, limit: number): number | null {
+  const root = asRecord(raw);
+  const result = asRecord(root?.result);
+  const direct = num(root?.nextOffset ?? root?.next_offset ?? result?.nextOffset ?? result?.next_offset);
+  if (direct != null && direct > offset) return direct;
+  const total = num(root?.total ?? result?.total);
+  const fallback = offset + chunkLength;
+  if (chunkLength >= limit && (total == null || fallback < total)) return fallback;
+  return null;
+}
+
+async function fetchPositionSnapshotMap(projectId: string, searchEngine: string): Promise<Map<string, PositionSnapshot>> {
+  const map = new Map<string, PositionSnapshot>();
   const pid = Number(projectId) || projectId;
   let regionIndexes: number[] = [];
   try {
@@ -813,34 +850,127 @@ async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Pro
 
   for (const regionIndex of regionIndexes.slice(0, 5)) {
     try {
-      const raw = (await topvisorFetch("/v2/json/get/positions_2/history", {
-        project_id: pid,
-        regions_indexes: [regionIndex],
-        date1: fmt(past),
-        date2: fmt(today),
-        count_dates: 1,
-        type_range: 7,
-        show_headers: 0,
-        show_visitors: 0,
-        positions_fields: ["relevant_url", "position"],
-      })) as { result?: { keywords?: Array<{ id?: number | string; positionsData?: Record<string, { relevant_url?: string; position?: number | string }> }> }; errors?: unknown };
-      if (raw.errors) continue;
-      const kws = raw.result?.keywords ?? [];
-      for (const kw of kws) {
-        if (kw.id == null) continue;
-        const id = String(kw.id);
-        if (map.has(id)) continue;
-        let best: { date: string; url: string } | null = null;
-        for (const [k, v] of Object.entries(kw.positionsData ?? {})) {
-          const url = v?.relevant_url;
-          if (!url) continue;
-          const date = k.split(":")[0] ?? "";
-          if (!best || date > best.date) best = { date, url };
+      let offset = 0;
+      const limit = 1000;
+      for (let guard = 0; guard < 30; guard += 1) {
+        const raw = (await topvisorFetch("/v2/json/get/positions_2/history", {
+          project_id: pid,
+          regions_indexes: [regionIndex],
+          date1: fmt(past),
+          date2: fmt(today),
+          count_dates: 1,
+          type_range: 7,
+          fields: ["id"],
+          show_headers: 0,
+          show_visitors: 0,
+          positions_fields: ["relevant_url", "position"],
+          limit,
+          offset,
+        })) as { result?: PositionKw[] | { keywords?: PositionKw[] } | Record<string, PositionKw>; errors?: unknown };
+        if (raw.errors) break;
+        const kws = normalizePositionKeywords(raw);
+        if (!kws.length) break;
+        for (const kw of kws) {
+          if (kw.id == null) continue;
+          const id = String(kw.id);
+          if (map.has(id)) continue;
+          let best: { date: string; url?: string; position?: number } | null = null;
+          for (const [k, v] of Object.entries(kw.positionsData ?? {})) {
+            const url = typeof v?.relevant_url === "string" ? v.relevant_url.trim() : undefined;
+            const position = v?.position != null ? Number(v.position) : undefined;
+            if (!url && (position == null || !Number.isFinite(position) || position <= 0)) continue;
+            const date = k.split(":")[0] ?? "";
+            if (!best || date > best.date) {
+              best = {
+                date,
+                url: url || undefined,
+                position: position != null && Number.isFinite(position) && position > 0 ? position : undefined,
+              };
+            }
+          }
+          if (best?.url || best?.position) map.set(id, { url: best.url, position: best.position });
         }
-        if (best?.url) map.set(id, best.url);
+        const nextOffset = readTopvisorNextOffset(raw, offset, kws.length, limit);
+        if (nextOffset == null) break;
+        offset = nextOffset;
       }
     } catch {
       // try next region
+    }
+  }
+  return map;
+}
+
+async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Promise<Map<string, string>> {
+  const snapshots = await fetchPositionSnapshotMap(projectId, searchEngine);
+  const map = new Map<string, string>();
+  for (const [id, snap] of snapshots.entries()) {
+    if (snap.url) map.set(id, snap.url);
+  }
+  return map;
+}
+
+function readTopvisorFrequency(value: unknown): number {
+  let freq = 0;
+  const visit = (v: unknown) => {
+    if (typeof v === "number") {
+      if (Number.isFinite(v) && v > freq) freq = v;
+    } else if (typeof v === "string") {
+      const n = Number(v.replace(/\s/g, "").replace(",", "."));
+      if (Number.isFinite(n) && n > freq) freq = n;
+    } else if (Array.isArray(v)) {
+      v.forEach(visit);
+    } else if (v && typeof v === "object") {
+      Object.values(v as Record<string, unknown>).forEach(visit);
+    }
+  };
+  visit(value);
+  return freq;
+}
+
+async function fetchFrequencyMap(projectId: string): Promise<Map<string, number>> {
+  const pid = Number(projectId) || projectId;
+  const regionKeys = [213, 225]; // Москва, затем Россия — оба часто используются в Wordstat/Topvisor.
+  const searcherKey = topvisorSearcherKey("yandex");
+  const typePriority = [3, 2, 1, 0]; // !W, "W", W variants; берём первый доступный ненулевой.
+  const map = new Map<string, number>();
+
+  for (const type of typePriority) {
+    for (const regionKey of regionKeys) {
+      const field = `volume:${regionKey}:${searcherKey}:${type}`;
+      let offset = 0;
+      const limit = 1000;
+      let gotAny = false;
+      try {
+        for (let guard = 0; guard < 30; guard += 1) {
+          const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
+            project_id: pid,
+            fields: ["id", field],
+            limit,
+            offset,
+          })) as {
+            result?: Array<Record<string, unknown>> | { keywords?: Array<Record<string, unknown>> };
+            errors?: unknown;
+          };
+          if (raw.errors) throw new Error(JSON.stringify(raw.errors).slice(0, 200));
+          const chunk = Array.isArray(raw.result) ? raw.result : raw.result?.keywords ?? [];
+          if (!chunk.length) break;
+          gotAny = true;
+          for (const row of chunk) {
+            const id = row.id != null ? String(row.id) : "";
+            if (!id || map.has(id)) continue;
+            const value = row[field] ?? row.volume;
+            const freq = readTopvisorFrequency(value);
+            if (freq > 0) map.set(id, freq);
+          }
+          const nextOffset = readTopvisorNextOffset(raw, offset, chunk.length, limit);
+          if (nextOffset == null) break;
+          offset = nextOffset;
+        }
+        if (gotAny && map.size > 0) return map;
+      } catch {
+        // try next qualifier combination
+      }
     }
   }
   return map;
@@ -886,14 +1016,13 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
         fields,
         limit,
         offset,
-      })) as { result?: Kw[]; errors?: unknown; nextOffset?: number; total?: number };
+      })) as { result?: Kw[] | { keywords?: Kw[] }; errors?: unknown };
       if (raw.errors) throw new Error(JSON.stringify(raw.errors).slice(0, 200));
-      const chunk = raw.result ?? [];
+      const chunk = Array.isArray(raw.result) ? raw.result : raw.result?.keywords ?? [];
       out.push(...chunk);
       if (!chunk.length) break;
-      const nextOffset = typeof raw.nextOffset === "number" ? raw.nextOffset : null;
-      if (nextOffset == null || nextOffset <= offset) break;
-      if (typeof raw.total === "number" && nextOffset >= raw.total) break;
+      const nextOffset = readTopvisorNextOffset(raw, offset, chunk.length, limit);
+      if (nextOffset == null) break;
       offset = nextOffset;
     }
     return out;
@@ -917,12 +1046,25 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
 
   // Relevant URLs from last SERP snapshot; priority > target when present/different.
   const relevantByKw = new Map<string, string>();
-  for (const se of ["google", "yandex"]) {
+  const googlePositionByKw = new Map<string, number>();
+  const yandexPositionByKw = new Map<string, number>();
+  for (const se of ["google", "yandex"] as const) {
     try {
-      const m = await fetchRelevantUrlMap(projectId, se);
-      for (const [k, v] of m.entries()) if (!relevantByKw.has(k)) relevantByKw.set(k, v);
+      const m = await fetchPositionSnapshotMap(projectId, se);
+      for (const [kwId, snap] of m.entries()) {
+        if (snap.url && !relevantByKw.has(kwId)) relevantByKw.set(kwId, snap.url);
+        if (snap.position != null) {
+          if (se === "google") googlePositionByKw.set(kwId, snap.position);
+          else yandexPositionByKw.set(kwId, snap.position);
+        }
+      }
     } catch { /* noop */ }
   }
+
+  let frequencyByKw = new Map<string, number>();
+  try {
+    frequencyByKw = await fetchFrequencyMap(projectId);
+  } catch { /* frequency is optional */ }
 
   const rows: PulledQueryRow[] = [];
   for (const k of list) {
@@ -941,23 +1083,12 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     const folderFromApi = typeof k.group_folder_path === "string" ? k.group_folder_path.trim() : "";
     const folder = folderFromApi || folderFallback || folderFromUrl(url) || "/";
 
-    let freq = 0;
-    const v: unknown = k.volume ?? k.volumes;
-    if (typeof v === "number") freq = v;
-    else if (typeof v === "string") freq = Number(v.replace(/\s/g, "").replace(",", ".")) || 0;
-    else if (Array.isArray(v)) {
-      for (const it of v) {
-        const n = typeof it === "number" ? it : Number(String(it).replace(/\s/g, "")) || 0;
-        if (n > freq) freq = n;
-      }
-    } else if (v && typeof v === "object") {
-      for (const it of Object.values(v as Record<string, unknown>)) {
-        const n = typeof it === "number" ? it : Number(String(it).replace(/\s/g, "")) || 0;
-        if (n > freq) freq = n;
-      }
-    }
+    const kwId = k.id != null ? String(k.id) : "";
+    const freq = (kwId ? frequencyByKw.get(kwId) : undefined) ?? readTopvisorFrequency(k.volume ?? k.volumes);
+    const googlePosition = kwId ? googlePositionByKw.get(kwId) : undefined;
+    const yandexPosition = kwId ? yandexPositionByKw.get(kwId) : undefined;
 
-    rows.push({ phrase, folder, group, url, frequency: freq });
+    rows.push({ phrase, folder, group, url, frequency: freq, googlePosition, yandexPosition });
   }
   return rows;
 }
