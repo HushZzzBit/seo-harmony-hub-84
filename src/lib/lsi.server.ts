@@ -1229,39 +1229,46 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
   if (start) params.set("start", start);
   if (end) params.set("end", end);
 
-  // sequential to avoid overloading the API
-  for (const phrase of p.phrases) {
-    try {
-      const q = new URLSearchParams(params);
-      q.set("query", phrase);
-      const res = await fetch(`https://xmlriver.com/wordstat/new/json?${q.toString()}`);
-      if (!res.ok) { errors.push(`${phrase}: HTTP ${res.status}`); continue; }
-      const j = (await res.json()) as {
-        graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[]; preparedValues?: { absolute?: XmlriverPoint[] } } } };
-        tableData?: XmlriverPoint[] | unknown;
-        error?: string;
-        code?: number;
-        noData?: boolean;
-        isQueryInvalid?: boolean;
-      };
-      if (j.error) { errors.push(`${phrase}: ${j.error}`); continue; }
-      if (j.isQueryInvalid) { errors.push(`${phrase}: некорректный запрос для Wordstat`); continue; }
-      const points = xmlriverPoints(j);
-      if (!points.length || j.noData) { errors.push(`${phrase}: XMLRiver не вернул динамику`); continue; }
-      raw[phrase] = points;
-      const months = new Array(12).fill(0) as number[];
-      for (const pt of points) {
-        const m = xmlriverPointMonth(pt);
-        if (m == null) continue;
-        const n = xmlriverPointValue(pt);
-        months[m] += n;
+  // Параллельная обработка с ограниченной конкуренцией — иначе Worker не успевает за отведённое время
+  const CONCURRENCY = 8;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < p.phrases.length) {
+      const idx = cursor++;
+      const phrase = p.phrases[idx];
+      try {
+        const q = new URLSearchParams(params);
+        q.set("query", phrase);
+        const res = await fetch(`https://xmlriver.com/wordstat/new/json?${q.toString()}`);
+        if (!res.ok) { errors.push(`${phrase}: HTTP ${res.status}`); continue; }
+        const j = (await res.json()) as {
+          graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[]; preparedValues?: { absolute?: XmlriverPoint[] } } } };
+          tableData?: XmlriverPoint[] | unknown;
+          error?: string;
+          code?: number;
+          noData?: boolean;
+          isQueryInvalid?: boolean;
+        };
+        if (j.error) { errors.push(`${phrase}: ${j.error}`); continue; }
+        if (j.isQueryInvalid) { errors.push(`${phrase}: некорректный запрос для Wordstat`); continue; }
+        const points = xmlriverPoints(j);
+        if (!points.length || j.noData) { errors.push(`${phrase}: XMLRiver не вернул динамику`); continue; }
+        raw[phrase] = points;
+        const months = new Array(12).fill(0) as number[];
+        for (const pt of points) {
+          const m = xmlriverPointMonth(pt);
+          if (m == null) continue;
+          const n = xmlriverPointValue(pt);
+          months[m] += n;
+        }
+        // Нулевая сезонность — валидный кейс (у фразы нет спроса), применяем как есть без ошибки
+        map[phrase.toLowerCase().trim()] = months;
+      } catch (e) {
+        errors.push(`${phrase}: ${(e as Error).message}`);
       }
-      // Нулевая сезонность — валидный кейс (у фразы нет спроса), применяем как есть без ошибки
-      map[phrase.toLowerCase().trim()] = months;
-    } catch (e) {
-      errors.push(`${phrase}: ${(e as Error).message}`);
     }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, p.phrases.length) }, worker));
 
   return { map, raw, errors };
 }
