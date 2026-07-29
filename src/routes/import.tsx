@@ -134,18 +134,7 @@ function ImportPage() {
       if (res.errors.length) res.errors.forEach((e) => add(`Ошибка: ${e}`));
 
       if (res.rows.length) {
-        toast.success(`Подтянуто ${res.rows.length} фраз (+${added}, ~${updated}). Запускаю сезонность…`);
-        const phrases = Array.from(new Set(res.rows.map((r) => r.phrase).filter(Boolean)));
-        try {
-          const { ok } = await collectSeasonality(phrases);
-          if (ok > 0) toast.success(`Сезонность применена к ${ok}/${phrases.length} фразам`);
-          else toast.error("XMLRiver не вернул сезонность — детали в журнале");
-          add(`Сезонность применена: ${ok} фраз (регион ${regions}, ${device}, ${groupBy})`);
-        } catch (e) {
-          const m = e instanceof Error ? e.message : String(e);
-          add(`Ошибка сезонности: ${m}`);
-          toast.error(`Сезонность: ${m}`);
-        }
+        toast.success(`Подтянуто ${res.rows.length} фраз (+${added}, ~${updated}). Сезонность обновляется вручную кнопкой ниже.`);
       } else {
         toast.error(`Топвизор вернул 0 фраз${res.errors[0] ? ` — ${res.errors[0]}` : ""}`);
       }
@@ -240,7 +229,7 @@ function ImportPage() {
             Подтягивает все фразы из проектов Топвизора, настроенных в разделе «Настройки → API и Ключи»
             (глобальный и/или пер-стрим project_id). Папка берётся из поля group_folder_path,
             группа — из group_name, как в ручной выгрузке Топвизора.
-            Частотность, релевантные URL и позиции Google/Яндекс обновляются из API; сезонность сохраняется до отдельной загрузки.
+            Частотность, релевантные URL и позиции Google/Яндекс обновляются из API; сезонность обновляется отдельно кнопкой ниже.
           </div>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline" size="sm">
