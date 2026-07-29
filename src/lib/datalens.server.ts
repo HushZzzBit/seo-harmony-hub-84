@@ -173,7 +173,7 @@ export async function saveImport(input: SaveImportInput) {
   try {
     if (input.type === "categories" && input.categories?.length) {
       const rows = input.categories.map((r) => {
-        const m = matchOne(r.normalized_url, idx);
+        const m = matchOne(r.normalized_url, idx, sePriority);
         if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
         else matched++;
         return { import_id: importId, ...r, ...m };
@@ -186,7 +186,7 @@ export async function saveImport(input: SaveImportInput) {
     }
     if (input.type === "start_url" && input.start_urls?.length) {
       const rows = input.start_urls.map((r) => {
-        const m = matchOne(r.normalized_url, idx);
+        const m = matchOne(r.normalized_url, idx, sePriority);
         if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
         else matched++;
         return { import_id: importId, ...r, ...m };
