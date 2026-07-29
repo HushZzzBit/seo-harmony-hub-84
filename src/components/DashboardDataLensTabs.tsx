@@ -150,25 +150,73 @@ function useFolderGroups(stream: string | null): Set<string> | null {
   }, [queries, stream]);
 }
 
-function filterByFolder<T extends { matched_group_id: string | null }>(
+/**
+ * Build a normalized-URL → { folder, group } map from Topvisor queries and urls.
+ * Used to re-attribute DataLens rows whose stored matched_group_id is wrong
+ * (e.g. `group_conflict` cases like Google Drive misassigned to Google AI).
+ */
+function useUrlOwnershipMap(): Map<string, { folder: string | null; group: string | null }> {
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  return useMemo(() => {
+    const m = new Map<string, { folder: string | null; group: string | null }>();
+    const put = (rawUrl: string | undefined | null, folder: string | null, group: string | null) => {
+      const n = normalizeUrl(rawUrl ?? null);
+      if (!n) return;
+      const prev = m.get(n);
+      // Prefer entries that carry a group over ones without.
+      if (!prev || (!prev.group && group)) m.set(n, { folder, group });
+    };
+    for (const u of Object.values(urls)) {
+      put(u?.url, u?.folder ?? null, u?.group ?? null);
+    }
+    for (const q of queries) {
+      put(q.url, q.folder ?? null, q.group ?? null);
+    }
+    return m;
+  }, [queries, urls]);
+}
+
+function rowOwnership<T extends { matched_group_id: string | null; normalized_url: string | null }>(
+  r: T,
+  ownership: Map<string, { folder: string | null; group: string | null }>,
+): { folder: string | null; group: string | null } {
+  const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
+  return {
+    folder: own?.folder ?? null,
+    group: own?.group ?? r.matched_group_id ?? null,
+  };
+}
+
+function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null }>(
   rows: T[],
   folderGroups: Set<string> | null,
-  group?: string | null,
+  group: string | null | undefined,
+  ownership: Map<string, { folder: string | null; group: string | null }>,
 ): T[] {
-  // If a specific group is picked, trust matched_group_id directly.
-  // This keeps rows visible even when Topvisor queries for that group are
-  // not currently loaded (e.g. re-pull hasn't happened yet), which
-  // otherwise would drop valid matches like "Corel".
-  if (group) return rows.filter((r) => r.matched_group_id === group);
-  if (folderGroups) return rows.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
+  if (group) {
+    return rows.filter((r) => {
+      const own = rowOwnership(r, ownership);
+      return own.group === group || r.matched_group_id === group;
+    });
+  }
+  if (folderGroups) {
+    return rows.filter((r) => {
+      const own = rowOwnership(r, ownership);
+      const g = own.group ?? r.matched_group_id;
+      return g != null && folderGroups.has(g);
+    });
+  }
   return rows;
 }
+
 
 export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
   const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
-  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group), [allCategories, folderGroups, group]);
-  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group), [allStartUrls, folderGroups, group]);
+  const ownership = useUrlOwnershipMap();
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const urls = useStore((s) => s.urls);
@@ -261,8 +309,9 @@ export function BusinessMetricsTab({ stream, group }: { stream: string | null; g
 export function UrlAnalyticsTab({ stream, group }: { stream: string | null; group?: string | null }) {
   const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
-  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group), [allStartUrls, folderGroups, group]);
-  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group), [allCategories, folderGroups, group]);
+  const ownership = useUrlOwnershipMap();
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
   const queries = useStore((s) => s.queries);
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
