@@ -1,12 +1,30 @@
 // Thin server-fn wrappers for DataLens. Handlers live in .server.ts.
 import { createServerFn } from "@tanstack/react-start";
-import type { SaveImportInput } from "./datalens.server";
+import type {
+  CreateImportInput,
+  AppendChunkInput,
+  FinalizeImportInput,
+} from "./datalens.server";
 
-export const saveDataLensImport = createServerFn({ method: "POST" })
-  .inputValidator((data: SaveImportInput) => data)
+export const createDataLensImport = createServerFn({ method: "POST" })
+  .inputValidator((data: CreateImportInput) => data)
   .handler(async ({ data }) => {
-    const { saveImport } = await import("./datalens.server");
-    return saveImport(data);
+    const { createImport } = await import("./datalens.server");
+    return createImport(data);
+  });
+
+export const appendDataLensRows = createServerFn({ method: "POST" })
+  .inputValidator((data: AppendChunkInput) => data)
+  .handler(async ({ data }) => {
+    const { appendRows } = await import("./datalens.server");
+    return appendRows(data);
+  });
+
+export const finalizeDataLensImport = createServerFn({ method: "POST" })
+  .inputValidator((data: FinalizeImportInput) => data)
+  .handler(async ({ data }) => {
+    const { finalizeImport } = await import("./datalens.server");
+    return finalizeImport(data);
   });
 
 export const listDataLensImports = createServerFn({ method: "GET" }).handler(async () => {

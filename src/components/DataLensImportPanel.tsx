@@ -12,10 +12,13 @@ import {
   type DataLensType,
 } from "@/lib/datalens";
 import {
-  saveDataLensImport,
+  createDataLensImport,
+  appendDataLensRows,
+  finalizeDataLensImport,
   listDataLensImports,
   deleteDataLensImport,
 } from "@/lib/datalens.functions";
+import { buildMatchIndex, matchOne, type SePriority } from "@/lib/datalens-match";
 import { useStore } from "@/lib/store";
 import { normalizeUrl } from "@/lib/datalens";
 import { Trash2 } from "lucide-react";
@@ -34,17 +37,20 @@ interface ImportRow {
   status: string;
 }
 
-
+const CHUNK_SIZE = 400;
 
 export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) {
   const queries = useStore((s) => s.queries);
-  const saveFn = useServerFn(saveDataLensImport);
+  const createFn = useServerFn(createDataLensImport);
+  const appendFn = useServerFn(appendDataLensRows);
+  const finalizeFn = useServerFn(finalizeDataLensImport);
   const listFn = useServerFn(listDataLensImports);
   const delFn = useServerFn(deleteDataLensImport);
 
   const [imports, setImports] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sePriority, setSePriority] = useState<"any" | "google" | "yandex">("any");
+  const [progress, setProgress] = useState<string | null>(null);
+  const [sePriority, setSePriority] = useState<SePriority>("any");
 
   const refresh = async () => {
     try {
@@ -60,7 +66,6 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
   }, []);
 
   const { seoUrls, nameHints } = useMemo(() => {
-    // Multi-source URL entries: relevant_g / relevant_y / target — с приоритетом по типам.
     const dedup = new Map<string, { url: string; normalized: string | null; folder: string | null; group: string | null; source: "relevant_g" | "relevant_y" | "target" }>();
     const add = (u: string | undefined, folder: string | null, group: string | null, source: "relevant_g" | "relevant_y" | "target") => {
       if (!u) return;
@@ -68,7 +73,6 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       if (dedup.has(key)) return;
       dedup.set(key, { url: u, normalized: normalizeUrl(u), folder, group, source });
     };
-    // Name hints: токены названий групп/папок для fallback-матчинга по имени в URL.
     const stop = new Set(["and", "for", "the", "com", "net", "org", "www", "все", "для", "или"]);
     const hintMap = new Map<string, { token: string; folder: string | null; group: string | null }>();
     const addHint = (name: string, folder: string | null, group: string | null) => {
@@ -82,7 +86,6 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
       add(q.relevantYandex, q.folder ?? null, q.group ?? null, "relevant_y");
       add(q.targetUrl, q.folder ?? null, q.group ?? null, "target");
-      // Основной url — на случай, если target/relevant не сохранились отдельно.
       if (q.url && !q.targetUrl && !q.relevantGoogle && !q.relevantYandex) {
         add(q.url, q.folder ?? null, q.group ?? null, "target");
       }
@@ -94,38 +97,49 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
 
   async function handleUpload(type: DataLensType, file: File) {
     setLoading(true);
+    setProgress("Читаем файл…");
     try {
       const records = await readRecords(file);
-      const payload =
-        type === "categories"
-          ? { categories: parseCategoryRows(records) }
-          : { start_urls: parseStartUrlRows(records) };
-      const res = await saveFn({
-        data: {
-          type,
-          stream: null,
-          period_start: null,
-          period_end: null,
-          file_name: file.name,
-          comment: null,
-          seo_urls: seoUrls,
-          name_hints: nameHints,
-          se_priority: sePriority,
-          ...payload,
-        },
+      const parsed = type === "categories" ? parseCategoryRows(records) : parseStartUrlRows(records);
+      const rows_total = parsed.length;
+      if (!rows_total) throw new Error("Файл не содержит распознаваемых строк");
+
+      // Match on the client — pure logic, no server memory pressure.
+      setProgress(`Матчинг ${rows_total} строк…`);
+      const idx = buildMatchIndex(seoUrls, nameHints);
+      let matched = 0;
+      let unmatched = 0;
+      const enriched = parsed.map((r) => {
+        const m = matchOne(r.normalized_url, idx, sePriority);
+        if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
+        else matched++;
+        return { ...r, ...m };
       });
-      toast.success(
-        `Импорт готов: всего ${res.rows_total}, сматчено ${res.rows_matched}, без матча ${res.rows_unmatched}`,
-      );
-      onLog?.(
-        `DataLens ${type}: ${file.name} — всего ${res.rows_total}, сматчено ${res.rows_matched}, без матча ${res.rows_unmatched}`,
-      );
+
+      // Create import, then stream chunks. On any failure — mark import failed.
+      const { importId } = await createFn({ data: { type, file_name: file.name, rows_total } });
+      try {
+        for (let i = 0; i < enriched.length; i += CHUNK_SIZE) {
+          const chunk = enriched.slice(i, i + CHUNK_SIZE);
+          await appendFn({ data: { importId, type, rows: chunk as never } });
+          setProgress(`Загружено ${Math.min(i + CHUNK_SIZE, enriched.length)} / ${enriched.length}…`);
+        }
+        await finalizeFn({ data: { importId, rows_matched: matched, rows_unmatched: unmatched, status: "ready" } });
+      } catch (chunkErr) {
+        const em = chunkErr instanceof Error ? chunkErr.message : String(chunkErr);
+        await finalizeFn({ data: { importId, rows_matched: matched, rows_unmatched: unmatched, status: "failed", error_message: em } }).catch(() => {});
+        throw chunkErr;
+      }
+
+      toast.success(`Импорт готов: всего ${rows_total}, сматчено ${matched}, без матча ${unmatched}`);
+      onLog?.(`DataLens ${type}: ${file.name} — всего ${rows_total}, сматчено ${matched}, без матча ${unmatched}`);
       await refresh();
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       toast.error(m);
       onLog?.(`Ошибка DataLens ${type}: ${m}`);
     } finally {
+      setProgress(null);
       setLoading(false);
     }
   }
@@ -140,6 +154,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       toast.error(e instanceof Error ? e.message : String(e));
     }
   }
+
 
   return (
     <div className="space-y-6">
@@ -179,6 +194,11 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
           onUpload={handleUpload}
         />
       </div>
+
+      {progress && (
+        <div className="text-xs text-muted-foreground px-1">{progress}</div>
+      )}
+
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
