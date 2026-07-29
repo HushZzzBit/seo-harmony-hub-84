@@ -10,7 +10,8 @@ export interface UrlMatchInput {
 }
 
 export interface NameHint {
-  token: string;
+  /** All tokens from the folder/group name MUST be present in the URL. */
+  tokens: string[];
   folder: string | null;
   group: string | null;
 }
