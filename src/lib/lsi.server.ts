@@ -849,36 +849,20 @@ async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Pro
 async function pullTopvisorProject(projectId: string, folderFallback: string | null): Promise<PulledQueryRow[]> {
   const pid = Number(projectId) || projectId;
 
-  // Groups map: id → {name, parent_id}. Topvisor "Папка" in экспорте = корневая группа иерархии.
-  const groupById = new Map<string, { name: string; parent: string | null }>();
+  // Groups map: id → name. The export column "Папка" is not derived from group hierarchy;
+  // Topvisor exposes it on keywords as group_folder_path.
+  const groupNameById = new Map<string, string>();
   try {
     const groupsRaw = (await topvisorFetch("/v2/json/get/keywords_2/groups", {
       project_id: pid,
-      fields: ["id", "name", "parent_id"],
-    })) as { result?: Array<{ id: number | string; name?: string; parent_id?: number | string | null }>; errors?: unknown };
+      fields: ["id", "name"],
+    })) as { result?: Array<{ id: number | string; name?: string }>; errors?: unknown };
     for (const g of groupsRaw.result ?? []) {
       if (g?.id != null) {
-        const parent = g.parent_id != null && String(g.parent_id) !== "0" ? String(g.parent_id) : null;
-        groupById.set(String(g.id), { name: g.name ?? "", parent });
+        groupNameById.set(String(g.id), g.name ?? "");
       }
     }
   } catch { /* groups optional */ }
-
-  const rootFolderOf = (gid: string | null | undefined): string | null => {
-    if (!gid) return null;
-    let cur: string | null = String(gid);
-    const seen = new Set<string>();
-    while (cur && !seen.has(cur)) {
-      seen.add(cur);
-      const g = groupById.get(cur);
-      if (!g) return null;
-      if (!g.parent) return g.name || null;
-      cur = g.parent;
-    }
-    return null;
-  };
-  const groupNameById = new Map<string, string>();
-  for (const [id, g] of groupById.entries()) groupNameById.set(id, g.name);
 
   // Keywords — try rich fields, fall back if API rejects any.
   type Kw = {
@@ -887,30 +871,47 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     target?: string;
     group_id?: number | string;
     group?: number | string;
+    group_name?: string;
+    group_folder_path?: string;
     volume?: number | string | Array<number | string> | Record<string, unknown>;
     volumes?: unknown;
   };
   const tryFetch = async (fields: string[]): Promise<Kw[]> => {
-    const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
-      project_id: pid,
-      fields,
-    })) as { result?: Kw[]; errors?: unknown };
-    if (raw.errors) throw new Error(JSON.stringify(raw.errors).slice(0, 200));
-    return raw.result ?? [];
+    const out: Kw[] = [];
+    let offset = 0;
+    const limit = 1000;
+    for (let guard = 0; guard < 30; guard += 1) {
+      const raw = (await topvisorFetch("/v2/json/get/keywords_2/keywords", {
+        project_id: pid,
+        fields,
+        limit,
+        offset,
+      })) as { result?: Kw[]; errors?: unknown; nextOffset?: number; total?: number };
+      if (raw.errors) throw new Error(JSON.stringify(raw.errors).slice(0, 200));
+      const chunk = raw.result ?? [];
+      out.push(...chunk);
+      if (!chunk.length) break;
+      const nextOffset = typeof raw.nextOffset === "number" ? raw.nextOffset : null;
+      if (nextOffset == null || nextOffset <= offset) break;
+      if (typeof raw.total === "number" && nextOffset >= raw.total) break;
+      offset = nextOffset;
+    }
+    return out;
   };
 
   let list: Kw[] = [];
   const attempts: string[] = [];
   for (const fields of [
-    ["id", "name", "target", "group_id", "volume"],
-    ["id", "name", "target", "volume"],
+    ["id", "name", "target", "group_id", "group_name", "group_folder_path"],
+    ["id", "name", "target", "group_name", "group_folder_path"],
+    ["id", "name", "target", "group_id", "group_name"],
     ["id", "name", "target", "group_id"],
     ["id", "name", "target"],
   ]) {
     try { list = await tryFetch(fields); break; }
     catch (e) { attempts.push(`[${fields.join(",")}] ${(e as Error).message}`); }
   }
-  if (!list.length && attempts.length === 4) {
+  if (!list.length && attempts.length === 5) {
     throw new Error(`keywords: ${attempts.join(" | ")}`);
   }
 
@@ -933,9 +934,12 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     const url = (relevant && relevant.trim()) || target || undefined;
     const groupId = k.group_id ?? k.group;
     const groupIdStr = groupId != null ? String(groupId) : null;
-    const group = groupIdStr ? (groupNameById.get(groupIdStr) || "Без группы") : "Без группы";
-    // Приоритет папки: корневая группа Топвизора (столбец "Папка" в экспорте) > папка из URL > fallback.
-    const folder = rootFolderOf(groupIdStr) || folderFromUrl(url) || folderFallback || "/";
+    const groupFromApi = typeof k.group_name === "string" ? k.group_name.trim() : "";
+    const group = groupFromApi || (groupIdStr ? (groupNameById.get(groupIdStr) || "Без группы") : "Без группы");
+    // Приоритет папки: group_folder_path — точный аналог столбца "Папка" в ручной выгрузке Topvisor.
+    // URL используем только как последний фолбэк, чтобы не смешивать /catalog/... с рабочими стримами.
+    const folderFromApi = typeof k.group_folder_path === "string" ? k.group_folder_path.trim() : "";
+    const folder = folderFromApi || folderFallback || folderFromUrl(url) || "/";
 
     let freq = 0;
     const v: unknown = k.volume ?? k.volumes;
