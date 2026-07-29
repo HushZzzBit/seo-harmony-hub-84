@@ -156,7 +156,7 @@ function TextsPage() {
             <h1 className="text-2xl font-semibold">SEO Texts</h1>
             <VariableHint />
           </div>
-          <p className="text-sm text-muted-foreground">Планирование и написание текстов</p>
+          
         </div>
         <div className="flex gap-2 flex-wrap">
           <Input placeholder="Поиск" value={search} onChange={(e) => setSearch(e.target.value)} className="w-40 md:w-48 h-9" />
