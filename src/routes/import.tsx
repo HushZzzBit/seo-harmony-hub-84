@@ -22,6 +22,16 @@ import { pullTopvisorQueries, pullXmlriverSeasonalityFn } from "@/lib/lsi.functi
 
 export const Route = createFileRoute("/import")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "SEO GGSEL — импорт и экспорт" },
+      { name: "description", content: "Импорт данных Topvisor, расчет сезонности XMLRiver и единый экспорт CSV для SEO GGSEL." },
+      { property: "og:title", content: "SEO GGSEL — импорт и экспорт" },
+      { property: "og:description", content: "Импорт данных Topvisor, расчет сезонности XMLRiver и единый экспорт CSV для SEO GGSEL." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: () => <ClientOnly fallback={null}><ImportPage /></ClientOnly>,
 });
 
@@ -89,7 +99,11 @@ function ImportPage() {
         Object.assign(totalMap, res.map);
         ok += Object.keys(res.map).length;
         done += batch.length;
-        add(`Сезонность: ${done}/${phrases.length} (успех ${ok})`);
+        if (res.errors.length) {
+          res.errors.slice(0, 5).forEach((e) => add(`XMLRiver: ${e}`));
+          if (res.errors.length > 5) add(`XMLRiver: ещё ${res.errors.length - 5} ошибок в пачке`);
+        }
+        add(`Сезонность: ${done}/${phrases.length} (успех ${ok}, ошибок ${res.errors.length})`);
       }
       applySeasonality(totalMap);
       return { ok };
@@ -116,7 +130,8 @@ function ImportPage() {
         const phrases = Array.from(new Set(res.rows.map((r) => r.phrase).filter(Boolean)));
         try {
           const { ok } = await collectSeasonality(phrases);
-          toast.success(`Сезонность применена к ${ok}/${phrases.length} фразам`);
+          if (ok > 0) toast.success(`Сезонность применена к ${ok}/${phrases.length} фразам`);
+          else toast.error("XMLRiver не вернул сезонность — детали в журнале");
           add(`Сезонность применена: ${ok} фраз (регион ${regions}, ${device}, ${groupBy})`);
         } catch (e) {
           const m = e instanceof Error ? e.message : String(e);
@@ -148,7 +163,8 @@ function ImportPage() {
     }
     try {
       const { ok } = await collectSeasonality(uniqPhrases);
-      toast.success(`Сезонность применена к ${ok} фразам`);
+      if (ok > 0) toast.success(`Сезонность применена к ${ok} фразам`);
+      else toast.error("XMLRiver не вернул сезонность — детали в журнале");
       add(`Сезонность применена: ${ok} фраз (регион ${regions}, ${device}, ${groupBy})`);
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
