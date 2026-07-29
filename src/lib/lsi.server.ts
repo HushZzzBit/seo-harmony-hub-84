@@ -742,6 +742,9 @@ export interface PulledQueryRow {
   folder: string;
   group: string;
   url?: string;
+  targetUrl?: string;
+  relevantGoogle?: string;
+  relevantYandex?: string;
   frequency: number;
   googlePosition?: number;
   yandexPosition?: number;
