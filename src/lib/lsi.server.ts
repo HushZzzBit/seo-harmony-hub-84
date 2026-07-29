@@ -932,8 +932,10 @@ async function pullTopvisorProject(projectId: string, folderFallback: string | n
     // Priority: relevant (if present) > target
     const url = (relevant && relevant.trim()) || target || undefined;
     const groupId = k.group_id ?? k.group;
-    const group = groupId != null ? (groupNameById.get(String(groupId)) || "Без группы") : "Без группы";
-    const folder = folderFromUrl(url) || folderFallback || "/";
+    const groupIdStr = groupId != null ? String(groupId) : null;
+    const group = groupIdStr ? (groupNameById.get(groupIdStr) || "Без группы") : "Без группы";
+    // Приоритет папки: корневая группа Топвизора (столбец "Папка" в экспорте) > папка из URL > fallback.
+    const folder = rootFolderOf(groupIdStr) || folderFromUrl(url) || folderFallback || "/";
 
     let freq = 0;
     const v: unknown = k.volume ?? k.volumes;
