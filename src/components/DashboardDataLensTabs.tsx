@@ -271,10 +271,13 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   const [onlyNoText, setOnlyNoText] = useState(false);
   const [outsideTop10, setOutsideTop10] = useState(false);
 
-  // Aggregate: one row per normalized URL merging both DataLens sources.
+  // Aggregate: one row per normalized URL, merging Start URL + Categories.
+  // Categories match by their own Category URL, so category-only rows are shown too.
   const rows = useMemo(() => {
     const catByUrl = new Map<string, CategoryMetric>();
     for (const c of categories) if (c.normalized_url) catByUrl.set(c.normalized_url, c);
+    const urlByNorm = new Map<string, StartUrlMetric>();
+    for (const u of startUrls) if (u.normalized_url) urlByNorm.set(u.normalized_url, u);
 
     // Build queries index by matched SEO url
     const qByUrl = new Map<string, Query[]>();
@@ -285,9 +288,17 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       qByUrl.set(q.url, arr);
     }
 
-    return startUrls.map((u) => {
-      const cat = u.normalized_url ? catByUrl.get(u.normalized_url) : undefined;
-      const matched = u.matched_url_id ?? null;
+    // Union of normalized URLs from both sources
+    const keys = new Set<string>();
+    for (const k of urlByNorm.keys()) keys.add(k);
+    for (const k of catByUrl.keys()) keys.add(k);
+
+    return Array.from(keys).map((norm) => {
+      const u = urlByNorm.get(norm);
+      const cat = catByUrl.get(norm);
+      const matched = u?.matched_url_id ?? cat?.matched_url_id ?? null;
+      const matchedGroup = u?.matched_group_id ?? cat?.matched_group_id ?? null;
+      const matchStatus = u?.match_status ?? cat?.match_status ?? "unmatched";
       const qs = matched ? qByUrl.get(matched) ?? [] : [];
       const gp = qs.filter((q) => (q.googlePosition ?? 0) > 0).map((q) => q.googlePosition!);
       const yp = qs.filter((q) => (q.yandexPosition ?? 0) > 0).map((q) => q.yandexPosition!);
@@ -302,14 +313,14 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         matched ? texts[matched]?.updatedAt ?? 0 : 0,
       );
       return {
-        url: u.url ?? u.normalized_url ?? "",
+        url: u?.url ?? cat?.category_url ?? norm,
         folder,
         group,
-        gmv: (u.gmv ?? 0) + (cat?.gmv ?? 0),
+        gmv: (u?.gmv ?? 0) + (cat?.gmv ?? 0),
         goods: cat?.active_goods ?? null,
         sellers: cat?.sellers ?? null,
-        visits: u.visits ?? 0,
-        orders: u.orders ?? 0,
+        visits: u?.visits ?? 0,
+        orders: u?.orders ?? 0,
         avgY: avg(yp),
         avgG: avg(gp),
         top3Y: pctIn(yp, 3),
@@ -320,7 +331,8 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         textStatus,
         updatedAt,
         hasKeys: qs.length > 0,
-        match_status: u.match_status,
+        match_status: matchStatus,
+        matched_group_id: matchedGroup,
       };
     });
   }, [startUrls, categories, queries, urls, metaEdits, texts]);
