@@ -32,6 +32,229 @@ export type Database = {
         }
         Relationships: []
       }
+      datalens_category_metric: {
+        Row: {
+          active_goods: number | null
+          base_category: string | null
+          base_id: string | null
+          category_id: string | null
+          category_name: string | null
+          category_url: string | null
+          created_at: string
+          first_child: string | null
+          gmv: number | null
+          goods_in_base: number | null
+          id: string
+          import_id: string
+          level: number | null
+          match_status: string
+          matched_group_id: string | null
+          matched_url_id: string | null
+          normalized_url: string | null
+          second_child: string | null
+          sellers: number | null
+          sellers_in_base: number | null
+          third_child: string | null
+        }
+        Insert: {
+          active_goods?: number | null
+          base_category?: string | null
+          base_id?: string | null
+          category_id?: string | null
+          category_name?: string | null
+          category_url?: string | null
+          created_at?: string
+          first_child?: string | null
+          gmv?: number | null
+          goods_in_base?: number | null
+          id?: string
+          import_id: string
+          level?: number | null
+          match_status?: string
+          matched_group_id?: string | null
+          matched_url_id?: string | null
+          normalized_url?: string | null
+          second_child?: string | null
+          sellers?: number | null
+          sellers_in_base?: number | null
+          third_child?: string | null
+        }
+        Update: {
+          active_goods?: number | null
+          base_category?: string | null
+          base_id?: string | null
+          category_id?: string | null
+          category_name?: string | null
+          category_url?: string | null
+          created_at?: string
+          first_child?: string | null
+          gmv?: number | null
+          goods_in_base?: number | null
+          id?: string
+          import_id?: string
+          level?: number | null
+          match_status?: string
+          matched_group_id?: string | null
+          matched_url_id?: string | null
+          normalized_url?: string | null
+          second_child?: string | null
+          sellers?: number | null
+          sellers_in_base?: number | null
+          third_child?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datalens_category_metric_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "datalens_import"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      datalens_import: {
+        Row: {
+          comment: string | null
+          error_log: Json | null
+          file_name: string | null
+          id: string
+          period_end: string | null
+          period_start: string | null
+          rows_matched: number
+          rows_total: number
+          rows_unmatched: number
+          status: string
+          stream: string | null
+          type: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          comment?: string | null
+          error_log?: Json | null
+          file_name?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          rows_matched?: number
+          rows_total?: number
+          rows_unmatched?: number
+          status?: string
+          stream?: string | null
+          type: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          comment?: string | null
+          error_log?: Json | null
+          file_name?: string | null
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          rows_matched?: number
+          rows_total?: number
+          rows_unmatched?: number
+          status?: string
+          stream?: string | null
+          type?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      datalens_start_url_metric: {
+        Row: {
+          aov: number | null
+          arppu: number | null
+          arpu: number | null
+          average_visit_sec: number | null
+          bounce_rate: number | null
+          created_at: string
+          gmv: number | null
+          google_traffic_percent: number | null
+          id: string
+          import_id: string
+          match_status: string
+          matched_group_id: string | null
+          matched_url_id: string | null
+          new_users_percent: number | null
+          normalized_url: string | null
+          orders: number | null
+          page_depth: number | null
+          page_name: string | null
+          page_type: string | null
+          url: string | null
+          users: number | null
+          visit_to_click_buy: number | null
+          visit_to_order: number | null
+          visits: number | null
+          yandex_traffic_percent: number | null
+        }
+        Insert: {
+          aov?: number | null
+          arppu?: number | null
+          arpu?: number | null
+          average_visit_sec?: number | null
+          bounce_rate?: number | null
+          created_at?: string
+          gmv?: number | null
+          google_traffic_percent?: number | null
+          id?: string
+          import_id: string
+          match_status?: string
+          matched_group_id?: string | null
+          matched_url_id?: string | null
+          new_users_percent?: number | null
+          normalized_url?: string | null
+          orders?: number | null
+          page_depth?: number | null
+          page_name?: string | null
+          page_type?: string | null
+          url?: string | null
+          users?: number | null
+          visit_to_click_buy?: number | null
+          visit_to_order?: number | null
+          visits?: number | null
+          yandex_traffic_percent?: number | null
+        }
+        Update: {
+          aov?: number | null
+          arppu?: number | null
+          arpu?: number | null
+          average_visit_sec?: number | null
+          bounce_rate?: number | null
+          created_at?: string
+          gmv?: number | null
+          google_traffic_percent?: number | null
+          id?: string
+          import_id?: string
+          match_status?: string
+          matched_group_id?: string | null
+          matched_url_id?: string | null
+          new_users_percent?: number | null
+          normalized_url?: string | null
+          orders?: number | null
+          page_depth?: number | null
+          page_name?: string | null
+          page_type?: string | null
+          url?: string | null
+          users?: number | null
+          visit_to_click_buy?: number | null
+          visit_to_order?: number | null
+          visits?: number | null
+          yandex_traffic_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "datalens_start_url_metric_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "datalens_import"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lsi_settings: {
         Row: {
           blacklist_domains: string[]
