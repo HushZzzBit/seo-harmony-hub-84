@@ -1256,7 +1256,7 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
         const n = xmlriverPointValue(pt);
         months[m] += n;
       }
-      if (!months.some((v) => v > 0)) { errors.push(`${phrase}: XMLRiver вернул только нулевые значения`); continue; }
+      // Нулевая сезонность — валидный кейс (у фразы нет спроса), применяем как есть без ошибки
       map[phrase.toLowerCase().trim()] = months;
     } catch (e) {
       errors.push(`${phrase}: ${(e as Error).message}`);
