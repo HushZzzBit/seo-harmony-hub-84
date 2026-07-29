@@ -996,6 +996,41 @@ function xmlriverDate(value?: string): string | undefined {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function firstDayOfMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+function lastDayOfMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+}
+
+function addMonths(d: Date, delta: number): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, 1));
+}
+
+function normalizeXmlriverPeriod(p: XmlriverParams): { start?: string; end?: string } {
+  if (p.groupBy !== "month") return { start: xmlriverDate(p.dateFrom), end: xmlriverDate(p.dateTo) };
+
+  const today = new Date();
+  const lastCompletedMonth = lastDayOfMonth(addMonths(today, -1));
+  const requestedEnd = p.dateTo ? new Date(p.dateTo) : lastCompletedMonth;
+  const safeRequestedEnd = Number.isNaN(requestedEnd.getTime()) ? lastCompletedMonth : requestedEnd;
+  const cappedEnd = safeRequestedEnd > lastCompletedMonth ? lastCompletedMonth : safeRequestedEnd;
+  const endDate = lastDayOfMonth(cappedEnd);
+
+  const requestedStart = p.dateFrom ? new Date(p.dateFrom) : addMonths(endDate, -11);
+  const safeRequestedStart = Number.isNaN(requestedStart.getTime()) ? addMonths(endDate, -11) : requestedStart;
+  let startDate = firstDayOfMonth(safeRequestedStart);
+  const minStart = addMonths(endDate, -2);
+  if (startDate > minStart) startDate = minStart;
+
+  return { start: xmlriverDate(isoDate(startDate)), end: xmlriverDate(isoDate(endDate)) };
+}
+
 function xmlriverPointMonth(point: XmlriverPoint): number | null {
   if (typeof point.month === "number") {
     if (point.month >= 0 && point.month <= 11) return point.month;
@@ -1055,8 +1090,7 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
   if (p.device) params.set("device", p.device);
   if (p.regions) params.set("regions", p.regions);
   if (p.groupBy) params.set("period", p.groupBy);
-  const start = xmlriverDate(p.dateFrom);
-  const end = xmlriverDate(p.dateTo);
+  const { start, end } = normalizeXmlriverPeriod(p);
   if (start) params.set("start", start);
   if (end) params.set("end", end);
 
