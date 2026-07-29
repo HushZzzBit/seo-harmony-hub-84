@@ -17,6 +17,8 @@ import { avg, groupSeasonality, MONTHS, pct, peakMonth, priorityForGroup, recomm
 import type { Status } from "@/lib/types";
 import { metaStatusColor, metaStatusLabel } from "@/lib/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BusinessMetricsTab, UrlAnalyticsTab } from "@/components/DashboardDataLensTabs";
 
 export const Route = createFileRoute("/")({
   ssr: false,
