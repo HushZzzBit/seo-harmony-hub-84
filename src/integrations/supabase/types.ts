@@ -525,6 +525,36 @@ export type Database = {
           },
         ]
       }
+      url_ownership: {
+        Row: {
+          confidence: number
+          folder: string | null
+          group: string | null
+          hit_count: number
+          normalized_url: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number
+          folder?: string | null
+          group?: string | null
+          hit_count?: number
+          normalized_url: string
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number
+          folder?: string | null
+          group?: string | null
+          hit_count?: number
+          normalized_url?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
