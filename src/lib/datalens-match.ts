@@ -79,12 +79,17 @@ export function matchOne(norm: string | null, idx: MatchIndex, sePriority: SePri
   if (tgt && tgt.length) return pickFromEntries(tgt, "matched_by_target");
   if (idx.hints.length) {
     const tokens = new Set(tokenize(norm));
-    const hits = idx.hints.filter((h) => tokens.has(h.token));
+    // A hint matches ONLY when ALL of its tokens are present in the URL —
+    // this avoids false positives like "drive-beyond-horizons" being
+    // attributed to Google Drive because of a single shared token.
+    const hits = idx.hints.filter((h) => h.tokens.length > 0 && h.tokens.every((t) => tokens.has(t)));
     if (hits.length) {
       const uniqueGroups = new Set(hits.map((h) => `${h.folder}::${h.group}`));
+      // Prefer the most specific hint (longest token list) when several match.
+      const best = hits.slice().sort((a, b) => b.tokens.length - a.tokens.length)[0];
       return {
         matched_url_id: null,
-        matched_group_id: hits[0].group,
+        matched_group_id: best.group,
         match_status: uniqueGroups.size > 1 ? "group_conflict" : "matched_by_name",
       };
     }
