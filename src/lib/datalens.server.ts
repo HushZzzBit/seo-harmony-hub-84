@@ -80,7 +80,12 @@ export interface FinalizeImportInput {
 
 export async function finalizeImport(input: FinalizeImportInput) {
   const status = input.status ?? "ready";
-  const patch: Record<string, unknown> = {
+  const patch: {
+    rows_matched: number;
+    rows_unmatched: number;
+    status: string;
+    error_log?: { message: string };
+  } = {
     rows_matched: input.rows_matched,
     rows_unmatched: input.rows_unmatched,
     status,
@@ -92,6 +97,7 @@ export async function finalizeImport(input: FinalizeImportInput) {
   if (error) throw new Error(error.message);
   return { ok: true };
 }
+
 
 
 export async function listImports(): Promise<ImportRow[]> {
