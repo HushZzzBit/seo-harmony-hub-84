@@ -309,8 +309,9 @@ export function BusinessMetricsTab({ stream, group }: { stream: string | null; g
 export function UrlAnalyticsTab({ stream, group }: { stream: string | null; group?: string | null }) {
   const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
-  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group), [allStartUrls, folderGroups, group]);
-  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group), [allCategories, folderGroups, group]);
+  const ownership = useUrlOwnershipMap();
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
   const queries = useStore((s) => s.queries);
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
