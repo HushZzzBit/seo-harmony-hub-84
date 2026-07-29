@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
 import { Settings } from "lucide-react";
 import { pullTopvisorQueries, pullXmlriverSeasonalityFn } from "@/lib/lsi.functions";
+import { DataLensImportPanel } from "@/components/DataLensImportPanel";
 
 export const Route = createFileRoute("/import")({
   ssr: false,
@@ -354,6 +355,14 @@ function ImportPage() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* --- DataLens импорты --- */}
+      <Card className="mb-6">
+        <CardHeader><CardTitle>DataLens: Categories и Start URL</CardTitle></CardHeader>
+        <CardContent>
+          <DataLensImportPanel onLog={add} />
         </CardContent>
       </Card>
 
