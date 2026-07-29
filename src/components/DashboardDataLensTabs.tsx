@@ -155,10 +155,13 @@ function filterByFolder<T extends { matched_group_id: string | null }>(
   folderGroups: Set<string> | null,
   group?: string | null,
 ): T[] {
-  let out = rows;
-  if (folderGroups) out = out.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
-  if (group) out = out.filter((r) => r.matched_group_id === group);
-  return out;
+  // If a specific group is picked, trust matched_group_id directly.
+  // This keeps rows visible even when Topvisor queries for that group are
+  // not currently loaded (e.g. re-pull hasn't happened yet), which
+  // otherwise would drop valid matches like "Corel".
+  if (group) return rows.filter((r) => r.matched_group_id === group);
+  if (folderGroups) return rows.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
+  return rows;
 }
 
 export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
