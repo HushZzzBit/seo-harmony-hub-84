@@ -65,7 +65,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { seoUrls, nameHints } = useMemo(() => {
+  const { seoUrls, nameHints, groupByName } = useMemo(() => {
     const dedup = new Map<string, { url: string; normalized: string | null; folder: string | null; group: string | null; source: "relevant_g" | "relevant_y" | "target" }>();
     const add = (u: string | undefined, folder: string | null, group: string | null, source: "relevant_g" | "relevant_y" | "target") => {
       if (!u) return;
@@ -83,6 +83,9 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const key = `${tokens.join("+")}::${folder}::${group}`;
       if (!hintMap.has(key)) hintMap.set(key, { tokens, folder, group });
     };
+    // Direct group-name → {folder, group} lookup for DataLens `Base category`.
+    const gbn = new Map<string, { folder: string | null; group: string }>();
+    const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
     for (const q of queries) {
       add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
       add(q.relevantYandex, q.folder ?? null, q.group ?? null, "relevant_y");
@@ -90,10 +93,14 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       if (q.url && !q.targetUrl && !q.relevantGoogle && !q.relevantYandex) {
         add(q.url, q.folder ?? null, q.group ?? null, "target");
       }
-      if (q.group) addHint(q.group, q.folder ?? null, q.group ?? null);
+      if (q.group) {
+        addHint(q.group, q.folder ?? null, q.group ?? null);
+        const key = normName(q.group);
+        if (!gbn.has(key)) gbn.set(key, { folder: q.folder ?? null, group: q.group });
+      }
       if (q.folder) addHint(q.folder, q.folder ?? null, q.group ?? null);
     }
-    return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()) };
+    return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()), groupByName: gbn };
   }, [queries]);
 
   async function handleUpload(type: DataLensType, file: File) {
@@ -110,8 +117,20 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const idx = buildMatchIndex(seoUrls, nameHints);
       let matched = 0;
       let unmatched = 0;
+      const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
       const enriched = parsed.map((r) => {
-        const m = matchOne(r.normalized_url, idx, sePriority);
+        let m = matchOne(r.normalized_url, idx, sePriority);
+        // For Categories: authoritative match by `Base category` name → Topvisor group.
+        // Applies always (even to overrule wrong `matched_by_name`/`group_conflict`).
+        if (type === "categories") {
+          const bc = (r as { base_category?: string | null }).base_category;
+          if (bc) {
+            const hit = groupByName.get(normName(bc));
+            if (hit) {
+              m = { matched_url_id: m.matched_url_id, matched_group_id: hit.group, match_status: "matched_by_base_category" };
+            }
+          }
+        }
         if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
         else matched++;
         return { ...r, ...m };

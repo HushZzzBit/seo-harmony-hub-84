@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
   matched_by_relevant_g: "По релевантной (Google)",
   matched_by_relevant_y: "По релевантной (Яндекс)",
   matched_by_target: "По целевой ссылке",
+  matched_by_base_category: "По Base category",
   matched_by_name: "По названию (fallback)",
   matched_by_slug: "По slug",
   group_conflict: "Конфликт групп",
@@ -188,29 +189,26 @@ function rowOwnership<T extends { matched_group_id: string | null; normalized_ur
   };
 }
 
-function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null }>(
+function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null; match_status?: string }>(
   rows: T[],
   folderGroups: Set<string> | null,
   group: string | null | undefined,
   ownership: Map<string, { folder: string | null; group: string | null }>,
 ): T[] {
-  if (group) {
-    return rows.filter((r) => {
-      const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
-      // If Topvisor knows this URL, trust it exclusively — don't fall back
-      // to matched_group_id (which can be a wrong `matched_by_name` hit like
-      // "drive-beyond-horizons" landing on Google Drive).
-      if (own) return own.group === group;
-      return r.matched_group_id === group;
-    });
-  }
-  if (folderGroups) {
-    return rows.filter((r) => {
-      const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
-      const g = own ? own.group : r.matched_group_id;
-      return g != null && folderGroups.has(g);
-    });
-  }
+  // Rule: for business metrics DataLens is the source of truth. Topvisor URL
+  // ownership only corrects loose `matched_by_name` (name-token fallback).
+  // Exact URL matches and `matched_by_base_category` are trusted as-is.
+  const effectiveGroup = (r: T): string | null => {
+    const trust = r.match_status && r.match_status !== "matched_by_name" && r.match_status !== "ambiguous_slug" && r.match_status !== "unmatched";
+    if (trust && r.matched_group_id) return r.matched_group_id;
+    const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
+    return own?.group ?? r.matched_group_id ?? null;
+  };
+  if (group) return rows.filter((r) => effectiveGroup(r) === group);
+  if (folderGroups) return rows.filter((r) => {
+    const g = effectiveGroup(r);
+    return g != null && folderGroups.has(g);
+  });
   return rows;
 }
 
