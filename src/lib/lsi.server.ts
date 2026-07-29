@@ -849,17 +849,36 @@ async function fetchRelevantUrlMap(projectId: string, searchEngine: string): Pro
 async function pullTopvisorProject(projectId: string, folderFallback: string | null): Promise<PulledQueryRow[]> {
   const pid = Number(projectId) || projectId;
 
-  // Groups map: id → name (tolerate absent / invalid endpoint)
-  const groupNameById = new Map<string, string>();
+  // Groups map: id → {name, parent_id}. Topvisor "Папка" in экспорте = корневая группа иерархии.
+  const groupById = new Map<string, { name: string; parent: string | null }>();
   try {
     const groupsRaw = (await topvisorFetch("/v2/json/get/keywords_2/groups", {
       project_id: pid,
-      fields: ["id", "name"],
-    })) as { result?: Array<{ id: number | string; name?: string }>; errors?: unknown };
+      fields: ["id", "name", "parent_id"],
+    })) as { result?: Array<{ id: number | string; name?: string; parent_id?: number | string | null }>; errors?: unknown };
     for (const g of groupsRaw.result ?? []) {
-      if (g?.id != null) groupNameById.set(String(g.id), g.name ?? "");
+      if (g?.id != null) {
+        const parent = g.parent_id != null && String(g.parent_id) !== "0" ? String(g.parent_id) : null;
+        groupById.set(String(g.id), { name: g.name ?? "", parent });
+      }
     }
   } catch { /* groups optional */ }
+
+  const rootFolderOf = (gid: string | null | undefined): string | null => {
+    if (!gid) return null;
+    let cur: string | null = String(gid);
+    const seen = new Set<string>();
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      const g = groupById.get(cur);
+      if (!g) return null;
+      if (!g.parent) return g.name || null;
+      cur = g.parent;
+    }
+    return null;
+  };
+  const groupNameById = new Map<string, string>();
+  for (const [id, g] of groupById.entries()) groupNameById.set(id, g.name);
 
   // Keywords — try rich fields, fall back if API rejects any.
   type Kw = {
