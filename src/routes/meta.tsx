@@ -62,18 +62,18 @@ function MetaPage() {
   const setMetaEdit = useStore((s) => s.setMetaEdit);
   const setMetaEditsBulk = useStore((s) => s.setMetaEditsBulk);
   const prompts = useStore((s) => s.prompts);
-  const [folder, setFolder] = useState<string>("all");
-  const [group, setGroup] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [folder, setFolder] = usePersistentState<string>("meta.folder", "all");
+  const [group, setGroup] = usePersistentState<string>("meta.group", "all");
+  const [search, setSearch] = usePersistentState<string>("meta.search", "");
   const deferredSearch = useDeferredValue(search);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("priority");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [statusFilter, setStatusFilter] = usePersistentState<string>("meta.status", "all");
+  const [priorityFilter, setPriorityFilter] = usePersistentState<string>("meta.priority", "all");
+  const [sortKey, setSortKey] = usePersistentState<SortKey>("meta.sortKey", "priority");
+  const [sortDir, setSortDir] = usePersistentState<SortDir>("meta.sortDir", "asc");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
-  const [viewMode, setViewMode] = useState<"compact" | "expanded">("compact");
+  const [viewMode, setViewMode] = usePersistentState<"compact" | "expanded">("meta.view", "compact");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const toggleExpanded = useCallback((url: string) => {
     setExpanded((prev) => {
