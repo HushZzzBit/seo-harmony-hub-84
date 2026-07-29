@@ -93,16 +93,24 @@ function ImportPage() {
       const totalMap: Record<string, number[]> = {};
       for (let i = 0; i < phrases.length; i += batchSize) {
         const batch = phrases.slice(i, i + batchSize);
-        const res = await seasonFn({
-          data: { phrases: batch, device, regions, groupBy, dateFrom, dateTo },
-        });
-        Object.assign(totalMap, res.map);
-        ok += Object.keys(res.map).length;
-        done += batch.length;
-        if (res.errors.length) {
-          res.errors.forEach((e) => add(`XMLRiver: ${e}`));
+        try {
+          const res = await seasonFn({
+            data: { phrases: batch, device, regions, groupBy, dateFrom, dateTo },
+          });
+          Object.assign(totalMap, res.map);
+          ok += Object.keys(res.map).length;
+          if (res.errors.length) {
+            res.errors.slice(0, 10).forEach((e) => add(`XMLRiver: ${e}`));
+            if (res.errors.length > 10) add(`XMLRiver: ещё ${res.errors.length - 10} ошибок в этом батче`);
+          }
+        } catch (e) {
+          const m = e instanceof Error ? e.message : String(e);
+          add(`Батч ${i}-${i + batch.length}: ${m}`);
         }
-        add(`Сезонность: ${done}/${phrases.length} (успех ${ok}, ошибок ${res.errors.length})`);
+        done += batch.length;
+        add(`Сезонность: ${done}/${phrases.length} (успех ${ok})`);
+        // промежуточно применяем, чтобы данные копились в сторе даже при обрыве
+        if (Object.keys(totalMap).length) applySeasonality(totalMap);
       }
       applySeasonality(totalMap);
       return { ok };
