@@ -253,11 +253,15 @@ export function BusinessMetricsTab({ stream }: { stream: string | null }) {
 }
 
 export function UrlAnalyticsTab({ stream }: { stream: string | null }) {
-  const { startUrls, categories, loading } = useDataLens(stream);
+  const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
+  const folderGroups = useFolderGroups(stream);
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups), [allStartUrls, folderGroups]);
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups), [allCategories, folderGroups]);
   const queries = useStore((s) => s.queries);
   const urls = useStore((s) => s.urls);
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
+
 
   const [sortBy, setSortBy] = useState<"gmv" | "visits" | "orders" | "top10g">("gmv");
   const [onlyNoMeta, setOnlyNoMeta] = useState(false);
