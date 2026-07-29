@@ -153,16 +153,19 @@ function useFolderGroups(stream: string | null): Set<string> | null {
 function filterByFolder<T extends { matched_group_id: string | null }>(
   rows: T[],
   folderGroups: Set<string> | null,
+  group?: string | null,
 ): T[] {
-  if (!folderGroups) return rows;
-  return rows.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
+  let out = rows;
+  if (folderGroups) out = out.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
+  if (group) out = out.filter((r) => r.matched_group_id === group);
+  return out;
 }
 
-export function BusinessMetricsTab({ stream }: { stream: string | null }) {
+export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
   const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
-  const categories = useMemo(() => filterByFolder(allCategories, folderGroups), [allCategories, folderGroups]);
-  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups), [allStartUrls, folderGroups]);
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group), [allCategories, folderGroups, group]);
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group), [allStartUrls, folderGroups, group]);
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const urls = useStore((s) => s.urls);
