@@ -89,8 +89,8 @@ function TextsPage() {
     }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values()).filter((r) => {
-      if (folder !== "all" && r.folder !== folder) return false;
-      if (category !== "all" && r.group !== category) return false;
+      if (folder !== "all" && !r.qs.some((q) => q.folder === folder)) return false;
+      if (category !== "all" && !r.qs.some((q) => q.group === category)) return false;
       if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
