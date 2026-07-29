@@ -101,7 +101,7 @@ function Dashboard() {
     <AppShell>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Общее состояние проекта</p>
+        
       </div>
 
       {grouped.size === 0 ? (
