@@ -19,6 +19,7 @@ import { metaStatusColor, metaStatusLabel } from "@/lib/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessMetricsTab, UrlAnalyticsTab } from "@/components/DashboardDataLensTabs";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -61,9 +62,10 @@ function Dashboard() {
     () => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)),
     [grouped],
   );
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [selectedFolder, setSelectedFolder] = usePersistentState<string>("dash.folder", "");
   const activeFolder = folders.includes(selectedFolder) ? selectedFolder : folders[0] ?? "";
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = usePersistentState<string | null>("dash.group", null);
+  const [dashTab, setDashTab] = usePersistentState<string>("dash.tab", "seo");
 
   const folderQs = grouped.get(activeFolder) ?? [];
   const scopeQs = useMemo(
@@ -144,7 +146,7 @@ function Dashboard() {
             </div>
           </Section>
 
-          <Tabs defaultValue="seo" className="space-y-4">
+          <Tabs value={dashTab} onValueChange={setDashTab} className="space-y-4">
             <TabsList>
               <TabsTrigger value="seo">SEO</TabsTrigger>
               <TabsTrigger value="business">Бизнес-метрики</TabsTrigger>

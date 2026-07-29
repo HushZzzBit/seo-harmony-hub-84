@@ -31,6 +31,7 @@ import {
   type LsiItemType,
   type VersionRow,
 } from "@/lib/lsi.functions";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 
 const STATUS_LABEL: Record<string, string> = {
@@ -47,9 +48,9 @@ export function LsiPanel() {
   const queries = useStore((s) => s.queries);
   const listA = useServerFn(listAnalyses);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
-  const [folderFilter, setFolderFilter] = useState("all");
-  const [prioFilter, setPrioFilter] = useState<"all" | Priority>("all");
-  const [search, setSearch] = useState("");
+  const [folderFilter, setFolderFilter] = usePersistentState<string>("lsi.folder", "all");
+  const [prioFilter, setPrioFilter] = usePersistentState<"all" | Priority>("lsi.prio", "all");
+  const [search, setSearch] = usePersistentState<string>("lsi.search", "");
   const [limit, setLimit] = useState(20);
   const PAGE_SIZE = 20;
 
