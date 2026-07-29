@@ -143,6 +143,26 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
 
   return (
     <div className="space-y-6">
+      <Card>
+        <CardContent className="p-3 flex flex-wrap items-center gap-3 text-xs">
+          <span className="text-muted-foreground">Приоритет ПС при матчинге релевантных URL:</span>
+          {(["any", "google", "yandex"] as const).map((v) => (
+            <label key={v} className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="se-priority"
+                checked={sePriority === v}
+                onChange={() => setSePriority(v)}
+              />
+              {v === "any" ? "Обе ПС" : v === "google" ? "Google" : "Яндекс"}
+            </label>
+          ))}
+          <span className="ml-auto text-muted-foreground">
+            Источников URL: {seoUrls.length} · токенов имён: {nameHints.length}
+          </span>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <UploadCard
           title="DataLens Categories"
