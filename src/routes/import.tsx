@@ -100,8 +100,7 @@ function ImportPage() {
         ok += Object.keys(res.map).length;
         done += batch.length;
         if (res.errors.length) {
-          res.errors.slice(0, 5).forEach((e) => add(`XMLRiver: ${e}`));
-          if (res.errors.length > 5) add(`XMLRiver: ещё ${res.errors.length - 5} ошибок в пачке`);
+          res.errors.forEach((e) => add(`XMLRiver: ${e}`));
         }
         add(`Сезонность: ${done}/${phrases.length} (успех ${ok}, ошибок ${res.errors.length})`);
       }
