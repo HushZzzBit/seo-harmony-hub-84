@@ -140,8 +140,29 @@ export function useDataLens(stream: string | null) {
   return { ...data, loading };
 }
 
+function useFolderGroups(stream: string | null): Set<string> | null {
+  const queries = useStore((s) => s.queries);
+  return useMemo(() => {
+    if (!stream) return null;
+    const s = new Set<string>();
+    for (const q of queries) if (q.folder === stream && q.group) s.add(q.group);
+    return s;
+  }, [queries, stream]);
+}
+
+function filterByFolder<T extends { matched_group_id: string | null }>(
+  rows: T[],
+  folderGroups: Set<string> | null,
+): T[] {
+  if (!folderGroups) return rows;
+  return rows.filter((r) => r.matched_group_id != null && folderGroups.has(r.matched_group_id));
+}
+
 export function BusinessMetricsTab({ stream }: { stream: string | null }) {
-  const { categories, startUrls, loading } = useDataLens(stream);
+  const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null);
+  const folderGroups = useFolderGroups(stream);
+  const categories = useMemo(() => filterByFolder(allCategories, folderGroups), [allCategories, folderGroups]);
+  const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups), [allStartUrls, folderGroups]);
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const urls = useStore((s) => s.urls);
@@ -185,15 +206,25 @@ export function BusinessMetricsTab({ stream }: { stream: string | null }) {
   if (loading) {
     return <div className="text-sm text-muted-foreground">Загружаем данные DataLens…</div>;
   }
-  if (!categories.length && !startUrls.length) {
+  if (!allCategories.length && !allStartUrls.length) {
     return (
       <Card>
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
-          Нет данных DataLens{stream ? ` для стрима «${stream}»` : ""}. Загрузите файлы в разделе Импорт/Экспорт.
+          Нет данных DataLens. Загрузите файлы в разделе Импорт/Экспорт.
         </CardContent>
       </Card>
     );
   }
+  if (!categories.length && !startUrls.length) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          В последнем импорте DataLens нет строк, сматченных к стриму «{stream}». Проверьте маппинг URL в Topvisor или загрузите свежий выгруз.
+        </CardContent>
+      </Card>
+    );
+  }
+
 
   return (
     <div className="space-y-4">
