@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { metaFor } from "@/lib/seo";
 import { Settings } from "lucide-react";
 import { pullTopvisorQueries, pullXmlriverSeasonalityFn } from "@/lib/lsi.functions";
+import { DataLensImportPanel } from "@/components/DataLensImportPanel";
 
 export const Route = createFileRoute("/import")({
   ssr: false,
