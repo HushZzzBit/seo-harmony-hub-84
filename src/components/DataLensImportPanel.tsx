@@ -121,7 +121,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       try {
         for (let i = 0; i < enriched.length; i += CHUNK_SIZE) {
           const chunk = enriched.slice(i, i + CHUNK_SIZE);
-          await appendFn({ data: { importId, type, rows: chunk } });
+          await appendFn({ data: { importId, type, rows: chunk as never } });
           setProgress(`Загружено ${Math.min(i + CHUNK_SIZE, enriched.length)} / ${enriched.length}…`);
         }
         await finalizeFn({ data: { importId, rows_matched: matched, rows_unmatched: unmatched, status: "ready" } });
