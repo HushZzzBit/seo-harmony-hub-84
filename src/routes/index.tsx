@@ -145,6 +145,19 @@ function Dashboard() {
             </div>
           </Section>
 
+          <DashboardTabs />
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+function DashboardTabsInner({ children }: { children: (tab: string, setTab: (v: string) => void) => React.ReactNode }) {
+  return <>{children("", () => {})}</>;
+}
+
+function _unused() { return null; }
+{/*
           <Tabs defaultValue="seo" className="space-y-4">
             <TabsList>
               <TabsTrigger value="seo">SEO</TabsTrigger>
