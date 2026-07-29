@@ -133,6 +133,8 @@ export interface SaveImportInput {
   file_name: string | null;
   comment: string | null;
   seo_urls: UrlMatchInput[];
+  name_hints?: NameHint[];
+  se_priority?: SePriority;
   categories?: CategoryRow[];
   start_urls?: StartUrlRow[];
 }
@@ -143,7 +145,8 @@ export async function saveImport(input: SaveImportInput) {
       ? input.categories?.length ?? 0
       : input.start_urls?.length ?? 0;
 
-  const idx = buildMatchIndex(input.seo_urls);
+  const idx = buildMatchIndex(input.seo_urls, input.name_hints ?? []);
+  const sePriority: SePriority = input.se_priority ?? "any";
   let matched = 0;
   let unmatched = 0;
 
