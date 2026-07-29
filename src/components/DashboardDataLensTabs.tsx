@@ -334,10 +334,10 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       qByUrl.set(q.url, arr);
     }
 
-    // Union of normalized URLs from both sources
+    // Показываем только URL, встречающиеся в Topvisor (пересечение).
     const keys = new Set<string>();
-    for (const k of urlByNorm.keys()) keys.add(k);
-    for (const k of catByUrl.keys()) keys.add(k);
+    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k)) keys.add(k);
+    for (const k of catByUrl.keys()) if (topvisorUrls.has(k)) keys.add(k);
 
     return Array.from(keys).map((norm) => {
       const u = urlByNorm.get(norm);
@@ -381,7 +381,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         matched_group_id: matchedGroup,
       };
     });
-  }, [startUrls, categories, queries, urls, metaEdits, texts]);
+  }, [startUrls, categories, queries, urls, metaEdits, texts, topvisorUrls]);
 
   const filtered = useMemo(() => {
     let r = rows;
