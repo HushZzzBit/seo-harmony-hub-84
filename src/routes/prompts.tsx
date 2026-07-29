@@ -174,9 +174,6 @@ function PromptsPage() {
             <Settings className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Настройки</h1>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Управление шаблонами AI-промтов и требованиями к текстам.
-          </p>
         </div>
       </div>
 
@@ -198,9 +195,7 @@ function PromptsPage() {
 
         <TabsContent value="prompts" className="space-y-4">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="text-sm text-muted-foreground">
-              Отдельный шаблон промта для каждой папки. Переменные подставляются автоматически.
-            </div>
+            <div className="text-xs text-muted-foreground">Свой промт на папку · переменные подставляются автоматически.</div>
             <div className="flex gap-2 items-center">
               <Select value={target} onValueChange={setTarget}>
                 <SelectTrigger className="w-64 h-9"><SelectValue /></SelectTrigger>
@@ -322,12 +317,10 @@ function PromptsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="p-4 space-y-1.5 text-[11px] text-muted-foreground">
-              <div className="font-medium text-foreground text-xs">Как это работает</div>
-              <div>• Промт папки имеет приоритет над глобальным.</div>
-              <div>• Точкой (•) отмечены папки с собственным промтом.</div>
-              <div>• Переменные подставляются на сервере перед вызовом OpenAI.</div>
-              <div>• Модель можно менять на любую совместимую с Chat Completions.</div>
+            <CardContent className="p-4 space-y-1 text-[11px] text-muted-foreground">
+              <div className="font-medium text-foreground text-xs mb-1">Подсказки</div>
+              <div>• Промт папки перекрывает глобальный.</div>
+              <div>• «•» — у папки свой промт.</div>
             </CardContent>
           </Card>
         </div>
@@ -519,11 +512,8 @@ function QualityThresholdsPanel({ scope }: { scope: string }) {
       </div>
 
       <Card>
-        <CardContent className="p-4 space-y-1.5 text-[11px] text-muted-foreground">
-          <div className="font-medium text-foreground text-xs">Как считается общий статус</div>
-          <div>• Каждой метрике присваивается зона: OK / Warning / Fail / Critical.</div>
-          <div>• Общий статус текста — худшая зона среди всех проверок.</div>
-          <div>• Пороги применяются по стриму URL; если для стрима не задано — берутся глобальные.</div>
+        <CardContent className="p-4 text-[11px] text-muted-foreground">
+          Общий статус = худшая зона (OK / Warning / Fail / Critical). Пороги стрима перекрывают глобальные.
         </CardContent>
       </Card>
     </div>
@@ -546,12 +536,7 @@ function RequirementsTab() {
     <div className="space-y-4">
       <Card>
         <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <div className="text-sm font-medium">Стрим / папка</div>
-            <div className="text-xs text-muted-foreground">
-              Глобальный переключатель стрима для всех настроек этого раздела.
-            </div>
-          </div>
+          <div className="text-sm font-medium">Стрим / папка</div>
           <FolderScopeSelect value={scope} onChange={setScope} marked={marked} />
         </CardContent>
       </Card>
@@ -675,12 +660,9 @@ function ApiKeysPanel() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardContent className="p-4 space-y-1">
+        <CardContent className="p-4">
           <div className="text-sm font-medium">API-ключи проекта</div>
-          <div className="text-xs text-muted-foreground">
-            Значения хранятся на сервере и подставляются автоматически. Ключ, сохранённый здесь,
-            имеет приоритет над переменной окружения — можно быстро заменить без деплоя.
-          </div>
+          <div className="text-xs text-muted-foreground">Ключ из БД перекрывает переменную окружения.</div>
         </CardContent>
       </Card>
 

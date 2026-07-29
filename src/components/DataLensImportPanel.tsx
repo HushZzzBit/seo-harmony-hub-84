@@ -182,14 +182,14 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       <div className="grid gap-4 md:grid-cols-2">
         <UploadCard
           title="DataLens Categories"
-          hint="GMV, товары, селлеры, иерархия категорий."
+          hint="GMV, товары, селлеры."
           type="categories"
           disabled={loading}
           onUpload={handleUpload}
         />
         <UploadCard
           title="DataLens Start URL"
-          hint="Визиты, пользователи, заказы, GMV, конверсии, доля Я/G."
+          hint="Визиты, заказы, GMV, доля Я/G."
           type="start_url"
           disabled={loading}
           onUpload={handleUpload}
@@ -293,7 +293,7 @@ function UploadCard({
           />
         </div>
         <div className="text-[11px] text-muted-foreground">
-          Стрим/папка/группа определяются автоматически по маппингу URL в Topvisor.
+          Стрим и группа — автоматически по маппингу Topvisor.
         </div>
       </CardContent>
     </Card>
