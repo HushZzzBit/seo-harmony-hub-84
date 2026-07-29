@@ -204,20 +204,6 @@ function Dashboard() {
   );
 }
 
-function StreamPicker({ folders, value, onChange }: { folders: string[]; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-muted-foreground">Стрим:</span>
-      <Select value={value || "__all"} onValueChange={(v) => onChange(v === "__all" ? "" : v)}>
-        <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Все" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all">Все</SelectItem>
-          {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
 
 function Section({ title, children, noCard }: { title: string; children: React.ReactNode; noCard?: boolean }) {
   return (
