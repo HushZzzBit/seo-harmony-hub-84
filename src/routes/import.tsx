@@ -70,7 +70,7 @@ function ImportPage() {
 
   const [log, setLog] = useState<string[]>([]);
   const add = (m: string) =>
-    setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 30));
+    setLog((l) => [`${new Date().toLocaleTimeString()} — ${m}`, ...l].slice(0, 500));
 
   // ---- XmlRiver seasonality (config declared before pull so we can chain) ----
   const seasonFn = useServerFn(pullXmlriverSeasonalityFn);
