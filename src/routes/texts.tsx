@@ -21,6 +21,7 @@ import { getActiveRequirementsForGroup, type ActiveRequirements } from "@/lib/ls
 import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, providerLabel, providerMetrics, providerMetricsWith, zoneClass } from "@/lib/quality";
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 
 const QUALITY_MAX_RUNS = 5;
 const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
