@@ -972,10 +972,102 @@ export interface XmlriverParams {
 }
 
 interface XmlriverPoint {
-  startTimestamp: number;
-  absoluteValue: string;
-  value: string;
-  text: string;
+  startTimestamp?: number;
+  absoluteValue?: string | number;
+  value?: string | number;
+  text?: string;
+  year?: number;
+  month?: number | null;
+  x?: string;
+  y?: string | number;
+}
+
+const RU_MONTHS = [
+  "январ", "феврал", "март", "апрел", "ма", "июн",
+  "июл", "август", "сентябр", "октябр", "ноябр", "декабр",
+];
+
+function xmlriverDate(value?: string): string | undefined {
+  if (!value) return undefined;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return undefined;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function firstDayOfMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+function lastDayOfMonth(d: Date): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0));
+}
+
+function addMonths(d: Date, delta: number): Date {
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + delta, 1));
+}
+
+function normalizeXmlriverPeriod(p: XmlriverParams): { start?: string; end?: string } {
+  if (p.groupBy !== "month") return { start: xmlriverDate(p.dateFrom), end: xmlriverDate(p.dateTo) };
+
+  const today = new Date();
+  const lastCompletedMonth = lastDayOfMonth(addMonths(today, -1));
+  const requestedEnd = p.dateTo ? new Date(p.dateTo) : lastCompletedMonth;
+  const safeRequestedEnd = Number.isNaN(requestedEnd.getTime()) ? lastCompletedMonth : requestedEnd;
+  const cappedEnd = safeRequestedEnd.getTime() > lastCompletedMonth.getTime() ? lastCompletedMonth : safeRequestedEnd;
+  const endDate = lastDayOfMonth(cappedEnd);
+
+  const requestedStart = p.dateFrom ? new Date(p.dateFrom) : addMonths(endDate, -11);
+  const safeRequestedStart = Number.isNaN(requestedStart.getTime()) ? addMonths(endDate, -11) : requestedStart;
+  let startDate = firstDayOfMonth(safeRequestedStart);
+  const minStart = addMonths(endDate, -2);
+  if (startDate.getTime() > minStart.getTime()) startDate = minStart;
+
+  return { start: xmlriverDate(isoDate(startDate)), end: xmlriverDate(isoDate(endDate)) };
+}
+
+function xmlriverPointMonth(point: XmlriverPoint): number | null {
+  if (typeof point.month === "number") {
+    if (point.month >= 0 && point.month <= 11) return point.month;
+    if (point.month >= 1 && point.month <= 12) return point.month - 1;
+  }
+  if (typeof point.startTimestamp === "number") {
+    const ts = point.startTimestamp < 10_000_000_000 ? point.startTimestamp * 1000 : point.startTimestamp;
+    const d = new Date(ts);
+    if (!Number.isNaN(d.getTime())) return d.getUTCMonth();
+  }
+  if (point.x) {
+    const d = new Date(point.x);
+    if (!Number.isNaN(d.getTime())) return d.getUTCMonth();
+  }
+  if (point.text) {
+    const text = point.text.toLowerCase();
+    const idx = RU_MONTHS.findIndex((m) => text.includes(m));
+    if (idx >= 0) return idx;
+  }
+  return null;
+}
+
+function xmlriverPointValue(point: XmlriverPoint): number {
+  const value = point.absoluteValue ?? point.y ?? point.value ?? 0;
+  return Number(String(value).replace(/\s/g, "").replace(",", ".")) || 0;
+}
+
+function xmlriverPoints(response: {
+  graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[]; preparedValues?: { absolute?: XmlriverPoint[] } } } };
+  tableData?: XmlriverPoint[] | unknown;
+}): XmlriverPoint[] {
+  const raw = response.graph?.images?.timeSeries?.rawValues;
+  if (Array.isArray(raw) && raw.length) return raw;
+  const prepared = response.graph?.images?.timeSeries?.preparedValues?.absolute;
+  if (Array.isArray(prepared) && prepared.length) return prepared;
+  if (Array.isArray(response.tableData) && response.tableData.length) return response.tableData;
+  return [];
 }
 
 /** Возвращает `phrase → number[12]` (сумма absoluteValue по месяцам). */
@@ -994,11 +1086,13 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
   const params = new URLSearchParams();
   params.set("user", user);
   params.set("key", key);
+  params.set("pagetype", "history");
   if (p.device) params.set("device", p.device);
   if (p.regions) params.set("regions", p.regions);
-  if (p.groupBy) params.set("groupBy", p.groupBy);
-  if (p.dateFrom) params.set("dateFrom", p.dateFrom);
-  if (p.dateTo) params.set("dateTo", p.dateTo);
+  if (p.groupBy) params.set("period", p.groupBy);
+  const { start, end } = normalizeXmlriverPeriod(p);
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
 
   // sequential to avoid overloading the API
   for (const phrase of p.phrases) {
@@ -1008,20 +1102,26 @@ export async function pullXmlriverSeasonality(p: XmlriverParams): Promise<{
       const res = await fetch(`https://xmlriver.com/wordstat/new/json?${q.toString()}`);
       if (!res.ok) { errors.push(`${phrase}: HTTP ${res.status}`); continue; }
       const j = (await res.json()) as {
-        graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[] } } };
+        graph?: { images?: { timeSeries?: { rawValues?: XmlriverPoint[]; preparedValues?: { absolute?: XmlriverPoint[] } } } };
+        tableData?: XmlriverPoint[] | unknown;
         error?: string;
         code?: number;
+        noData?: boolean;
+        isQueryInvalid?: boolean;
       };
       if (j.error) { errors.push(`${phrase}: ${j.error}`); continue; }
-      const points = j.graph?.images?.timeSeries?.rawValues ?? [];
+      if (j.isQueryInvalid) { errors.push(`${phrase}: некорректный запрос для Wordstat`); continue; }
+      const points = xmlriverPoints(j);
+      if (!points.length || j.noData) { errors.push(`${phrase}: XMLRiver не вернул динамику`); continue; }
       raw[phrase] = points;
       const months = new Array(12).fill(0) as number[];
       for (const pt of points) {
-        const d = new Date(pt.startTimestamp);
-        const m = d.getUTCMonth();
-        const n = Number(String(pt.absoluteValue).replace(/\s/g, "")) || 0;
+        const m = xmlriverPointMonth(pt);
+        if (m == null) continue;
+        const n = xmlriverPointValue(pt);
         months[m] += n;
       }
+      if (!months.some((v) => v > 0)) { errors.push(`${phrase}: XMLRiver вернул только нулевые значения`); continue; }
       map[phrase.toLowerCase().trim()] = months;
     } catch (e) {
       errors.push(`${phrase}: ${(e as Error).message}`);

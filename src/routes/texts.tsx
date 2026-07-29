@@ -34,6 +34,16 @@ async function sha1Hex(s: string): Promise<string> {
 
 export const Route = createFileRoute("/texts")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "SEO GGSEL — SEO тексты" },
+      { name: "description", content: "Редактор SEO GGSEL для копирайтинга, проверки качества текстов и контроля статусов." },
+      { property: "og:title", content: "SEO GGSEL — SEO тексты" },
+      { property: "og:description", content: "Копирайтинг, проверка качества текстов и контроль статусов." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: () => <ClientOnly fallback={null}><TextsPage /></ClientOnly>,
 });
 

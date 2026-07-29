@@ -32,6 +32,16 @@ import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle }
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "SEO GGSEL — мета-теги" },
+      { name: "description", content: "Рабочая область SEO GGSEL для генерации, редактирования и контроля мета-тегов по URL." },
+      { property: "og:title", content: "SEO GGSEL — мета-теги" },
+      { property: "og:description", content: "Генерация, редактирование и контроль мета-тегов по URL." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: () => (
     <ClientOnly fallback={null}>
       <MetaPage />

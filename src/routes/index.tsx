@@ -20,6 +20,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export const Route = createFileRoute("/")({
   ssr: false,
+  head: () => ({
+    meta: [
+      { title: "SEO GGSEL — дашборд" },
+      { name: "description", content: "Дашборд SEO GGSEL для контроля мета-тегов, SEO-текстов, позиций и сезонности по стримам." },
+      { property: "og:title", content: "SEO GGSEL — дашборд" },
+      { property: "og:description", content: "Контроль мета-тегов, SEO-текстов, позиций и сезонности по стримам." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
   component: () => (
     <ClientOnly fallback={null}>
       <Dashboard />
