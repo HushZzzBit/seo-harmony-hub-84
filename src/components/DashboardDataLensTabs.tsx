@@ -1,0 +1,334 @@
+import { useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getDataLensMetrics } from "@/lib/datalens.functions";
+import { useStore } from "@/lib/store";
+import { normalizeUrl } from "@/lib/datalens";
+import type { Query } from "@/lib/types";
+
+interface CategoryMetric {
+  normalized_url: string | null;
+  category_name: string | null;
+  category_url: string | null;
+  active_goods: number | null;
+  sellers: number | null;
+  gmv: number | null;
+  matched_url_id: string | null;
+  matched_group_id: string | null;
+  match_status: string;
+}
+interface StartUrlMetric {
+  normalized_url: string | null;
+  url: string | null;
+  page_name: string | null;
+  visits: number | null;
+  users: number | null;
+  orders: number | null;
+  gmv: number | null;
+  visit_to_order: number | null;
+  bounce_rate: number | null;
+  yandex_traffic_percent: number | null;
+  google_traffic_percent: number | null;
+  matched_url_id: string | null;
+  matched_group_id: string | null;
+  match_status: string;
+}
+
+const sum = (arr: (number | null | undefined)[]) =>
+  arr.reduce((a: number, b) => a + (typeof b === "number" && Number.isFinite(b) ? b : 0), 0);
+
+export function useDataLens(stream: string | null) {
+  const fn = useServerFn(getDataLensMetrics);
+  const [data, setData] = useState<{ categories: CategoryMetric[]; startUrls: StartUrlMetric[] }>({
+    categories: [],
+    startUrls: [],
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fn({ data: { stream } })
+      .then((res) => {
+        if (!cancelled) setData({ categories: res.categories, startUrls: res.startUrls });
+      })
+      .catch(() => {
+        if (!cancelled) setData({ categories: [], startUrls: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stream]);
+
+  return { ...data, loading };
+}
+
+export function BusinessMetricsTab({ stream }: { stream: string | null }) {
+  const { categories, startUrls, loading } = useDataLens(stream);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const texts = useStore((s) => s.texts);
+  const urls = useStore((s) => s.urls);
+
+  const catGmv = sum(categories.map((c) => c.gmv));
+  const urlGmv = sum(startUrls.map((u) => u.gmv));
+  const totalGoods = sum(categories.map((c) => c.active_goods));
+  const totalSellers = sum(categories.map((c) => c.sellers));
+  const totalVisits = sum(startUrls.map((u) => u.visits));
+  const totalUsers = sum(startUrls.map((u) => u.users));
+  const totalOrders = sum(startUrls.map((u) => u.orders));
+  const conv = totalVisits > 0 ? (totalOrders / totalVisits) * 100 : 0;
+
+  const gmvUnworked = sum(
+    startUrls
+      .filter((u) => {
+        const url = u.matched_url_id;
+        const metaDone = url ? metaEdits[url]?.status === "done" : false;
+        const textDone = url ? texts[url]?.status === "done" : false;
+        return !(metaDone && textDone);
+      })
+      .map((u) => u.gmv),
+  );
+  const gmvNoMeta = sum(
+    startUrls
+      .filter((u) => {
+        const url = u.matched_url_id;
+        return !url || !(metaEdits[url]?.title || urls[url]?.title);
+      })
+      .map((u) => u.gmv),
+  );
+  const gmvNoText = sum(
+    startUrls
+      .filter((u) => {
+        const url = u.matched_url_id;
+        return !url || !(urls[url]?.hasText || texts[url]?.text);
+      })
+      .map((u) => u.gmv),
+  );
+
+  if (loading) {
+    return <div className="text-sm text-muted-foreground">Загружаем данные DataLens…</div>;
+  }
+  if (!categories.length && !startUrls.length) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Нет данных DataLens{stream ? ` для стрима «${stream}»` : ""}. Загрузите файлы в разделе Импорт/Экспорт.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Kpi label="GMV суммарный" value={fmtNum(catGmv + urlGmv)} />
+        <Kpi label="GMV (Categories)" value={fmtNum(catGmv)} />
+        <Kpi label="GMV (Start URL)" value={fmtNum(urlGmv)} />
+        <Kpi label="Товары" value={fmtNum(totalGoods)} />
+        <Kpi label="Селлеры" value={fmtNum(totalSellers)} />
+        <Kpi label="Визиты" value={fmtNum(totalVisits)} />
+        <Kpi label="Пользователи" value={fmtNum(totalUsers)} />
+        <Kpi label="Заказы" value={fmtNum(totalOrders)} />
+        <Kpi label="Конверсия Visit→Order" value={`${conv.toFixed(2)}%`} />
+        <Kpi label="GMV непроработанных URL" value={fmtNum(gmvUnworked)} tone="destructive" />
+        <Kpi label="GMV без мета" value={fmtNum(gmvNoMeta)} tone="destructive" />
+        <Kpi label="GMV без текста" value={fmtNum(gmvNoText)} tone="destructive" />
+      </div>
+    </div>
+  );
+}
+
+export function UrlAnalyticsTab({ stream }: { stream: string | null }) {
+  const { startUrls, categories, loading } = useDataLens(stream);
+  const queries = useStore((s) => s.queries);
+  const urls = useStore((s) => s.urls);
+  const metaEdits = useStore((s) => s.metaEdits);
+  const texts = useStore((s) => s.texts);
+
+  const [sortBy, setSortBy] = useState<"gmv" | "visits" | "orders" | "top10g">("gmv");
+  const [onlyNoMeta, setOnlyNoMeta] = useState(false);
+  const [onlyNoText, setOnlyNoText] = useState(false);
+  const [outsideTop10, setOutsideTop10] = useState(false);
+
+  // Aggregate: one row per normalized URL merging both DataLens sources.
+  const rows = useMemo(() => {
+    const catByUrl = new Map<string, CategoryMetric>();
+    for (const c of categories) if (c.normalized_url) catByUrl.set(c.normalized_url, c);
+
+    // Build queries index by matched SEO url
+    const qByUrl = new Map<string, Query[]>();
+    for (const q of queries) {
+      if (!q.url) continue;
+      const arr = qByUrl.get(q.url) ?? [];
+      arr.push(q);
+      qByUrl.set(q.url, arr);
+    }
+
+    return startUrls.map((u) => {
+      const cat = u.normalized_url ? catByUrl.get(u.normalized_url) : undefined;
+      const matched = u.matched_url_id ?? null;
+      const qs = matched ? qByUrl.get(matched) ?? [] : [];
+      const gp = qs.filter((q) => (q.googlePosition ?? 0) > 0).map((q) => q.googlePosition!);
+      const yp = qs.filter((q) => (q.yandexPosition ?? 0) > 0).map((q) => q.yandexPosition!);
+      const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+      const pctIn = (a: number[], n: number) => (a.length ? (a.filter((v) => v <= n).length / a.length) * 100 : null);
+      const folder = matched && urls[matched]?.folder ? urls[matched]!.folder! : (qs[0]?.folder ?? null);
+      const group = matched && urls[matched]?.group ? urls[matched]!.group! : (qs[0]?.group ?? null);
+      const metaStatus = matched ? metaEdits[matched]?.status ?? "—" : "—";
+      const textStatus = matched ? texts[matched]?.status ?? "—" : "—";
+      const updatedAt = Math.max(
+        matched ? metaEdits[matched]?.updatedAt ?? 0 : 0,
+        matched ? texts[matched]?.updatedAt ?? 0 : 0,
+      );
+      return {
+        url: u.url ?? u.normalized_url ?? "",
+        folder,
+        group,
+        gmv: (u.gmv ?? 0) + (cat?.gmv ?? 0),
+        goods: cat?.active_goods ?? null,
+        sellers: cat?.sellers ?? null,
+        visits: u.visits ?? 0,
+        orders: u.orders ?? 0,
+        avgY: avg(yp),
+        avgG: avg(gp),
+        top3Y: pctIn(yp, 3),
+        top10Y: pctIn(yp, 10),
+        top3G: pctIn(gp, 3),
+        top10G: pctIn(gp, 10),
+        metaStatus,
+        textStatus,
+        updatedAt,
+        hasKeys: qs.length > 0,
+        match_status: u.match_status,
+      };
+    });
+  }, [startUrls, categories, queries, urls, metaEdits, texts]);
+
+  const filtered = useMemo(() => {
+    let r = rows;
+    if (onlyNoMeta) r = r.filter((x) => x.metaStatus === "—" || x.metaStatus === "not_started");
+    if (onlyNoText) r = r.filter((x) => x.textStatus === "—" || x.textStatus === "not_assigned");
+    if (outsideTop10) r = r.filter((x) => (x.top10G ?? 0) < 50 && (x.top10Y ?? 0) < 50);
+    return [...r].sort((a, b) => {
+      switch (sortBy) {
+        case "visits": return b.visits - a.visits;
+        case "orders": return b.orders - a.orders;
+        case "top10g": return (b.top10G ?? -1) - (a.top10G ?? -1);
+        default: return b.gmv - a.gmv;
+      }
+    });
+  }, [rows, sortBy, onlyNoMeta, onlyNoText, outsideTop10]);
+
+  if (loading) return <div className="text-sm text-muted-foreground">Загружаем данные DataLens…</div>;
+  if (!rows.length) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Нет URL-строк из DataLens{stream ? ` для стрима «${stream}»` : ""}.
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3 text-xs">
+        <label className="flex items-center gap-1">
+          Сортировка:
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className="h-7 px-2 rounded-md border border-input bg-background"
+          >
+            <option value="gmv">GMV ↓</option>
+            <option value="visits">Визиты ↓</option>
+            <option value="orders">Заказы ↓</option>
+            <option value="top10g">%TOP-10 G ↓</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoMeta} onChange={(e) => setOnlyNoMeta(e.target.checked)} /> без мета</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoText} onChange={(e) => setOnlyNoText(e.target.checked)} /> без текста</label>
+        <label className="flex items-center gap-1"><input type="checkbox" checked={outsideTop10} onChange={(e) => setOutsideTop10(e.target.checked)} /> вне TOP-10</label>
+        <span className="ml-auto text-muted-foreground">Всего: {filtered.length}</span>
+      </div>
+
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="text-xs w-full">
+              <thead className="text-muted-foreground bg-muted/30">
+                <tr className="text-left">
+                  <th className="py-1.5 px-2">URL</th>
+                  <th className="py-1.5 px-2">Папка</th>
+                  <th className="py-1.5 px-2">Группа</th>
+                  <th className="py-1.5 px-2 text-right">GMV</th>
+                  <th className="py-1.5 px-2 text-right">Товары</th>
+                  <th className="py-1.5 px-2 text-right">Селлеры</th>
+                  <th className="py-1.5 px-2 text-right">Визиты</th>
+                  <th className="py-1.5 px-2 text-right">Заказы</th>
+                  <th className="py-1.5 px-2 text-right">Ср.Y</th>
+                  <th className="py-1.5 px-2 text-right">Ср.G</th>
+                  <th className="py-1.5 px-2 text-right">TOP-3 Y</th>
+                  <th className="py-1.5 px-2 text-right">TOP-10 Y</th>
+                  <th className="py-1.5 px-2 text-right">TOP-3 G</th>
+                  <th className="py-1.5 px-2 text-right">TOP-10 G</th>
+                  <th className="py-1.5 px-2">Мета</th>
+                  <th className="py-1.5 px-2">Текст</th>
+                  <th className="py-1.5 px-2">Обновл.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.slice(0, 500).map((r, i) => (
+                  <tr key={i} className="border-t border-border/40">
+                    <td className="py-1 px-2 max-w-[260px] truncate" title={r.url}>{r.url}</td>
+                    <td className="py-1 px-2">{r.folder ?? "—"}</td>
+                    <td className="py-1 px-2">{r.group ?? "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.gmv)}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.goods ?? "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.sellers ?? "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.visits)}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.orders)}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.avgY?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.avgG?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3Y != null ? `${r.top3Y.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10Y != null ? `${r.top10Y.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3G != null ? `${r.top3G.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10G != null ? `${r.top10G.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2">{r.metaStatus}</td>
+                    <td className="py-1 px-2">{r.textStatus}</td>
+                    <td className="py-1 px-2 text-muted-foreground">{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {filtered.length > 500 && (
+            <div className="px-2 py-1 text-[11px] text-muted-foreground">Показаны первые 500 из {filtered.length}. Уточните фильтры.</div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function fmtNum(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(n);
+}
+
+function Kpi({ label, value, tone }: { label: string; value: string | number; tone?: "destructive" | "good" }) {
+  const color =
+    tone === "destructive" ? "text-destructive" : tone === "good" ? "text-chart-2" : "text-foreground";
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className={`text-2xl font-semibold ${color}`}>{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
