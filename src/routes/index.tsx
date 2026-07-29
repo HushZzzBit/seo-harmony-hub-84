@@ -111,113 +111,99 @@ function Dashboard() {
           </CardContent>
         </Card>
       ) : (
-        <Tabs defaultValue="seo" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="seo">SEO</TabsTrigger>
-            <TabsTrigger value="business">Бизнес-метрики</TabsTrigger>
-            <TabsTrigger value="urls">URL-аналитика</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="seo" className="space-y-4">
-            <Section title="Данные">
-              <div className="space-y-3">
-                <PickerRow
-                  label="Папка"
-                  count={folders.length}
-                  items={folders}
-                  selected={activeFolder}
-                  onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
-                  counts={(f) => (grouped.get(f) ?? []).length}
-                  countLabel="запр."
-                  hideSearch
-                />
-                <PickerRow
-                  label="Группа"
-                  count={groupList.length}
-                  items={groupList}
-                  selected={selectedGroup}
-                  onSelect={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
-                  counts={(g) => folderQs.filter((q) => q.group === g).length}
-                  countLabel="запр."
-                  allowClear
-                  emptyText="В выбранной папке нет групп"
-                />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Kpi label="URL в скоупе" value={scope.urls} />
-                  <Kpi label="Запросов" value={scopeQs.length} />
-                  <Kpi label="Групп" value={selectedGroup ? 1 : groupList.length} />
-                  <Kpi label="Папок" value={folders.length} />
-                </div>
-              </div>
-            </Section>
-
-            <Section title="Аналитика" noCard>
-              {activeFolder && (
-                <FolderCard
-                  key={activeFolder}
-                  folder={activeFolder}
-                  qs={folderQs}
-                  urls={urls}
-                  metaEdits={metaEdits}
-                  texts={texts}
-                  selectedGroup={selectedGroup}
-                  onSelectGroup={setSelectedGroup}
-                />
-              )}
-              <Card>
-                <CardContent className="p-4">
-                  <PriorityMonths
-                    qs={folderQs}
-                    selectedGroup={selectedGroup}
-                    onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
-                  />
-                </CardContent>
-              </Card>
-            </Section>
-
-            <Section title="Проработка">
+        <div className="space-y-4">
+          <Section title="Данные">
+            <div className="space-y-3">
+              <PickerRow
+                label="Папка"
+                count={folders.length}
+                items={folders}
+                selected={activeFolder}
+                onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
+                counts={(f) => (grouped.get(f) ?? []).length}
+                countLabel="запр."
+                hideSearch
+              />
+              <PickerRow
+                label="Группа"
+                count={groupList.length}
+                items={groupList}
+                selected={selectedGroup}
+                onSelect={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+                counts={(g) => folderQs.filter((q) => q.group === g).length}
+                countLabel="запр."
+                allowClear
+                emptyText="В выбранной папке нет групп"
+              />
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />
-                <Kpi label="Meta: в CSV" value={scope.metaCsv} />
-                <Kpi label="Meta: в работе" value={scope.metaProg} />
-                <Kpi label="Без Meta" value={scope.metaNo} tone="destructive" />
-                <Kpi label="Тексты: готово" value={`${scope.textDone} · ${pct(scope.textDone, scope.urls)}%`} tone="good" />
-                <Kpi label="Тексты: в CSV" value={scope.textCsv} />
-                <Kpi label="Тексты: готовы" value={scope.textReady} />
-                <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
+                <Kpi label="URL в скоупе" value={scope.urls} />
+                <Kpi label="Запросов" value={scopeQs.length} />
+                <Kpi label="Групп" value={selectedGroup ? 1 : groupList.length} />
+                <Kpi label="Папок" value={folders.length} />
               </div>
-            </Section>
-          </TabsContent>
+            </div>
+          </Section>
 
-          <TabsContent value="business" className="space-y-3">
-            <StreamPicker folders={folders} value={activeFolder} onChange={setSelectedFolder} />
-            <BusinessMetricsTab stream={activeFolder || null} />
-          </TabsContent>
+          <Tabs defaultValue="seo" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="seo">SEO</TabsTrigger>
+              <TabsTrigger value="business">Бизнес-метрики</TabsTrigger>
+              <TabsTrigger value="urls">URL-аналитика</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="urls" className="space-y-3">
-            <StreamPicker folders={folders} value={activeFolder} onChange={setSelectedFolder} />
-            <UrlAnalyticsTab stream={activeFolder || null} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="seo" className="space-y-4">
+              <Section title="Аналитика" noCard>
+                {activeFolder && (
+                  <FolderCard
+                    key={activeFolder}
+                    folder={activeFolder}
+                    qs={folderQs}
+                    urls={urls}
+                    metaEdits={metaEdits}
+                    texts={texts}
+                    selectedGroup={selectedGroup}
+                    onSelectGroup={setSelectedGroup}
+                  />
+                )}
+                <Card>
+                  <CardContent className="p-4">
+                    <PriorityMonths
+                      qs={folderQs}
+                      selectedGroup={selectedGroup}
+                      onSelectGroup={(g) => setSelectedGroup(selectedGroup === g ? null : g)}
+                    />
+                  </CardContent>
+                </Card>
+              </Section>
+
+              <Section title="Проработка">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Kpi label="Meta: готово" value={`${scope.metaDone} · ${pct(scope.metaDone, scope.urls)}%`} tone="good" />
+                  <Kpi label="Meta: в CSV" value={scope.metaCsv} />
+                  <Kpi label="Meta: в работе" value={scope.metaProg} />
+                  <Kpi label="Без Meta" value={scope.metaNo} tone="destructive" />
+                  <Kpi label="Тексты: готово" value={`${scope.textDone} · ${pct(scope.textDone, scope.urls)}%`} tone="good" />
+                  <Kpi label="Тексты: в CSV" value={scope.textCsv} />
+                  <Kpi label="Тексты: готовы" value={scope.textReady} />
+                  <Kpi label="Без текста" value={scope.textNo} tone="destructive" />
+                </div>
+              </Section>
+            </TabsContent>
+
+            <TabsContent value="business" className="space-y-3">
+              <BusinessMetricsTab stream={activeFolder || null} />
+            </TabsContent>
+
+            <TabsContent value="urls" className="space-y-3">
+              <UrlAnalyticsTab stream={activeFolder || null} />
+            </TabsContent>
+          </Tabs>
+        </div>
       )}
     </AppShell>
   );
 }
 
-function StreamPicker({ folders, value, onChange }: { folders: string[]; value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-muted-foreground">Стрим:</span>
-      <Select value={value || "__all"} onValueChange={(v) => onChange(v === "__all" ? "" : v)}>
-        <SelectTrigger className="h-8 w-56"><SelectValue placeholder="Все" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="__all">Все</SelectItem>
-          {folders.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
 
 function Section({ title, children, noCard }: { title: string; children: React.ReactNode; noCard?: boolean }) {
   return (
