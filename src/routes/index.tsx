@@ -62,9 +62,9 @@ function Dashboard() {
     () => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)),
     [grouped],
   );
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [selectedFolder, setSelectedFolder] = usePersistentState<string>("dash.folder", "");
   const activeFolder = folders.includes(selectedFolder) ? selectedFolder : folders[0] ?? "";
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [selectedGroup, setSelectedGroup] = usePersistentState<string | null>("dash.group", null);
 
   const folderQs = grouped.get(activeFolder) ?? [];
   const scopeQs = useMemo(
