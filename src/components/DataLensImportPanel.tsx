@@ -195,6 +195,11 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
         />
       </div>
 
+      {progress && (
+        <div className="text-xs text-muted-foreground px-1">{progress}</div>
+      )}
+
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle className="text-sm">История импортов DataLens ({imports.length})</CardTitle>
