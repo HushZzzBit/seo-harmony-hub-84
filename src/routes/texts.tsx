@@ -61,15 +61,15 @@ function TextsPage() {
   const urls = useStore((s) => s.urls);
   const texts = useStore((s) => s.texts);
   const setText = useStore((s) => s.setText);
-  const [folder, setFolder] = useState("all");
-  const [category, setCategory] = useState("all");
-  const [search, setSearch] = useState("");
+  const [folder, setFolder] = usePersistentState<string>("texts.folder", "all");
+  const [category, setCategory] = usePersistentState<string>("texts.category", "all");
+  const [search, setSearch] = usePersistentState<string>("texts.search", "");
   const deferredSearch = useDeferredValue(search);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = usePersistentState<string>("texts.status", "all");
+  const [priorityFilter, setPriorityFilter] = usePersistentState<string>("texts.priority", "all");
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const [sortKey, setSortKey] = useState<SortKey>("priority");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortKey, setSortKey] = usePersistentState<SortKey>("texts.sortKey", "priority");
+  const [sortDir, setSortDir] = usePersistentState<SortDir>("texts.sortDir", "asc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<TextStatus | "">("");
 
