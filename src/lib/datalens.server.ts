@@ -227,20 +227,19 @@ export async function deleteImport(id: string) {
   return { ok: true };
 }
 
-/** Latest import per type/stream (or latest overall when stream is null). */
-async function getLatestImportId(type: DataLensType, stream: string | null): Promise<string | null> {
-  let q = supabaseAdmin
+/** Latest ready import per type (stream is ignored — matching is by folder/group of matched URL). */
+async function getLatestImportId(type: DataLensType, _stream: string | null): Promise<string | null> {
+  const { data, error } = await supabaseAdmin
     .from("datalens_import")
     .select("id")
     .eq("type", type)
     .eq("status", "ready")
     .order("uploaded_at", { ascending: false })
     .limit(1);
-  if (stream) q = q.eq("stream", stream);
-  const { data, error } = await q;
   if (error) throw new Error(error.message);
   return data?.[0]?.id ?? null;
 }
+
 
 export interface CategoryMetric {
   normalized_url: string | null;
