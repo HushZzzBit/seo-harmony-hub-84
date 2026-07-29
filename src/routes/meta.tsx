@@ -125,8 +125,8 @@ function MetaPage() {
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values())
       .filter((r) => {
-        if (folder !== "all" && r.folder !== folder) return false;
-        if (group !== "all" && r.group !== group) return false;
+        if (folder !== "all" && !r.qs.some((q) => q.folder === folder)) return false;
+        if (group !== "all" && !r.qs.some((q) => q.group === group)) return false;
         if (
           deferredSearch &&
           !(r.url + r.group + r.folder).toLowerCase().includes(deferredSearch.toLowerCase())
