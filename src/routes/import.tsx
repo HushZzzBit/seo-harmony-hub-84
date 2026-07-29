@@ -358,6 +358,14 @@ function ImportPage() {
         </CardContent>
       </Card>
 
+      {/* --- DataLens импорты --- */}
+      <Card className="mb-6">
+        <CardHeader><CardTitle>DataLens: Categories и Start URL</CardTitle></CardHeader>
+        <CardContent>
+          <DataLensImportPanel onLog={add} />
+        </CardContent>
+      </Card>
+
       {/* --- Экспорт --- */}
       <Card className="mb-6">
         <CardHeader><CardTitle>Экспорт CSV для CMS</CardTitle></CardHeader>
