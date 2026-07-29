@@ -65,6 +65,7 @@ function Dashboard() {
   const [selectedFolder, setSelectedFolder] = usePersistentState<string>("dash.folder", "");
   const activeFolder = folders.includes(selectedFolder) ? selectedFolder : folders[0] ?? "";
   const [selectedGroup, setSelectedGroup] = usePersistentState<string | null>("dash.group", null);
+  const [dashTab, setDashTab] = usePersistentState<string>("dash.tab", "seo");
 
   const folderQs = grouped.get(activeFolder) ?? [];
   const scopeQs = useMemo(
