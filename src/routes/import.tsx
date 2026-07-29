@@ -230,8 +230,8 @@ function ImportPage() {
         <CardContent className="flex flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted-foreground max-w-2xl">
             Подтягивает все фразы из проектов Топвизора, настроенных в разделе «Настройки → API и Ключи»
-            (глобальный и/или пер-стрим project_id). Определяет папку по целевому URL,
-            группу — по группам Топвизора, частоту — из поля volume.
+            (глобальный и/или пер-стрим project_id). Папка берётся из поля group_folder_path,
+            группа — из group_name, как в ручной выгрузке Топвизора.
             Позиции и сезонность у существующих фраз сохраняются.
           </div>
           <div className="flex items-center gap-2">
