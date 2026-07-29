@@ -196,13 +196,6 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
   );
 }
 
-interface FormValues {
-  stream: string;
-  period_start: string;
-  period_end: string;
-  comment: string;
-}
-
 function UploadCard({
   title,
   hint,
@@ -214,40 +207,13 @@ function UploadCard({
   hint: string;
   type: DataLensType;
   disabled: boolean;
-  onUpload: (type: DataLensType, form: FormValues, file: File) => Promise<void>;
+  onUpload: (type: DataLensType, file: File) => Promise<void>;
 }) {
-  const [form, setForm] = useState<FormValues>({ stream: STREAMS[0], period_start: "", period_end: "", comment: "" });
-
   return (
     <Card>
       <CardHeader><CardTitle className="text-sm">{title}</CardTitle></CardHeader>
       <CardContent className="space-y-3">
         <div className="text-xs text-muted-foreground">{hint}</div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <Label className="text-xs mb-1 block">Стрим</Label>
-            <select
-              value={form.stream}
-              onChange={(e) => setForm((f) => ({ ...f, stream: e.target.value }))}
-              className="w-full h-8 text-xs px-2 rounded-md border border-input bg-background"
-            >
-              {STREAMS.map((s) => <option key={s} value={s}>{s}</option>)}
-              <option value="">— другое —</option>
-            </select>
-          </div>
-          <div>
-            <Label className="text-xs mb-1 block">Период с</Label>
-            <Input type="date" value={form.period_start} onChange={(e) => setForm((f) => ({ ...f, period_start: e.target.value }))} className="h-8 text-xs" />
-          </div>
-          <div>
-            <Label className="text-xs mb-1 block">Период по</Label>
-            <Input type="date" value={form.period_end} onChange={(e) => setForm((f) => ({ ...f, period_end: e.target.value }))} className="h-8 text-xs" />
-          </div>
-          <div>
-            <Label className="text-xs mb-1 block">Комментарий</Label>
-            <Input value={form.comment} onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))} className="h-8 text-xs" />
-          </div>
-        </div>
         <div>
           <Label className="text-xs mb-1 block">Файл (.xlsx / .csv)</Label>
           <Input
@@ -257,11 +223,14 @@ function UploadCard({
             onChange={async (e) => {
               const f = e.target.files?.[0];
               if (!f) return;
-              await onUpload(type, form, f);
+              await onUpload(type, f);
               e.target.value = "";
             }}
             className="h-8 text-xs"
           />
+        </div>
+        <div className="text-[11px] text-muted-foreground">
+          Стрим/папка/группа определяются автоматически по маппингу URL в Topvisor.
         </div>
       </CardContent>
     </Card>
