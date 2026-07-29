@@ -196,19 +196,24 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
 ): T[] {
   if (group) {
     return rows.filter((r) => {
-      const own = rowOwnership(r, ownership);
-      return own.group === group || r.matched_group_id === group;
+      const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
+      // If Topvisor knows this URL, trust it exclusively — don't fall back
+      // to matched_group_id (which can be a wrong `matched_by_name` hit like
+      // "drive-beyond-horizons" landing on Google Drive).
+      if (own) return own.group === group;
+      return r.matched_group_id === group;
     });
   }
   if (folderGroups) {
     return rows.filter((r) => {
-      const own = rowOwnership(r, ownership);
-      const g = own.group ?? r.matched_group_id;
+      const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
+      const g = own ? own.group : r.matched_group_id;
       return g != null && folderGroups.has(g);
     });
   }
   return rows;
 }
+
 
 
 export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
