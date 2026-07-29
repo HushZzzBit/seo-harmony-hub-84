@@ -117,8 +117,20 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const idx = buildMatchIndex(seoUrls, nameHints);
       let matched = 0;
       let unmatched = 0;
+      const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
       const enriched = parsed.map((r) => {
-        const m = matchOne(r.normalized_url, idx, sePriority);
+        let m = matchOne(r.normalized_url, idx, sePriority);
+        // For Categories: authoritative match by `Base category` name → Topvisor group.
+        // Applies always (even to overrule wrong `matched_by_name`/`group_conflict`).
+        if (type === "categories") {
+          const bc = (r as { base_category?: string | null }).base_category;
+          if (bc) {
+            const hit = groupByName.get(normName(bc));
+            if (hit) {
+              m = { matched_url_id: m.matched_url_id, matched_group_id: hit.group, match_status: "matched_by_base_category" };
+            }
+          }
+        }
         if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
         else matched++;
         return { ...r, ...m };
