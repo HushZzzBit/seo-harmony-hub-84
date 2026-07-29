@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
   matched_by_relevant_g: "По релевантной (Google)",
   matched_by_relevant_y: "По релевантной (Яндекс)",
   matched_by_target: "По целевой ссылке",
+  matched_by_base_category: "По Base category",
   matched_by_name: "По названию (fallback)",
   matched_by_slug: "По slug",
   group_conflict: "Конфликт групп",
