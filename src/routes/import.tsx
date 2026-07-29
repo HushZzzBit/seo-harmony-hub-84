@@ -207,7 +207,7 @@ function ImportPage() {
         title: metaReady ? (m.h1 ?? "") : "",
         seo_title: metaReady ? (m.title ?? "") : "",
         seo_desc: metaReady ? (m.description ?? "") : "",
-        seo_text: textReady ? (texts[u]?.text ?? "") : "",
+        seo_text: textReady ? stripLiParagraphs(texts[u]?.text ?? "") : "",
       };
     });
     downloadCsv(`seo-export-${Date.now()}.csv`, toCsv(out));
