@@ -191,11 +191,11 @@ function Dashboard() {
             </TabsContent>
 
             <TabsContent value="business" className="space-y-3">
-              <BusinessMetricsTab stream={activeFolder || null} />
+              <BusinessMetricsTab stream={activeFolder || null} group={selectedGroup} />
             </TabsContent>
 
             <TabsContent value="urls" className="space-y-3">
-              <UrlAnalyticsTab stream={activeFolder || null} />
+              <UrlAnalyticsTab stream={activeFolder || null} group={selectedGroup} />
             </TabsContent>
           </Tabs>
         </div>
