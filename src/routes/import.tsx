@@ -210,7 +210,7 @@ function ImportPage() {
         seo_text: textReady ? stripLiParagraphs(texts[u]?.text ?? "") : "",
       };
     });
-    downloadCsv(`seo-export-${Date.now()}.csv`, toCsv(out));
+    downloadCsv(`seo-export-${Date.now()}.csv`, toCsv(out, ["url", "title", "seo_title", "seo_desc", "seo_text"]));
     const at = Date.now();
     for (const u of exportUrls) {
       if (metaEdits[u]?.status === "in_csv") setMetaEdit(u, { status: "done", updatedAt: at });
