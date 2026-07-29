@@ -171,8 +171,16 @@ function ImportPage() {
   }
 
   // ---- Export ----
-  const normalizeUrl = (u: string): string =>
-    u.replace(/^https?:\/\/(?:www\.)?ggsel\.net/i, "") || u;
+  const normalizeUrl = (u: string): string => {
+    let s = u.replace(/^https?:\/\/(?:www\.)?ggsel\.net/i, "");
+    s = s.replace(/^\/+catalog\/+/i, "");
+    s = s.replace(/^\/+/, "").replace(/\/+$/, "");
+    return s || u;
+  };
+  const stripLiParagraphs = (html: string): string =>
+    html
+      .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/gi, "<li>$1</li>")
+      .replace(/<li([^>]*)>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/gi, "<li$1>$2</li>");
 
   const exportUrls = Array.from(
     new Set<string>([
