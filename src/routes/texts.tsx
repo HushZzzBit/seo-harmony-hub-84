@@ -22,6 +22,7 @@ import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, provi
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 const QUALITY_MAX_RUNS = 5;
 const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
