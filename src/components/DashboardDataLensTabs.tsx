@@ -42,6 +42,9 @@ const STATUS_LABEL: Record<string, string> = {
   matched_by_relevant_y: "По релевантной (Яндекс)",
   matched_by_target: "По целевой ссылке",
   matched_by_base_category: "По Base category",
+  matched_by_alias: "По alias Base category",
+  matched_by_manual: "Ручная привязка",
+  unmatched_base_category: "Base category не сопоставлена",
   matched_by_name: "По названию (fallback)",
   matched_by_slug: "По slug",
   group_conflict: "Конфликт групп",
@@ -187,11 +190,19 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
   ownership: Map<string, { folder: string | null; group: string | null }>,
 ): T[] {
   // Единый источник владения: сначала ownership registry, затем legacy fallback.
+  const AUTHORITATIVE = new Set(["matched_by_base_category", "matched_by_alias", "matched_by_manual"]);
   const effectiveGroup = (r: T): string | null => {
+    // Base category — основной ключ группы для DataLens Categories.
+    if (r.match_status && AUTHORITATIVE.has(r.match_status) && r.matched_group_id) return r.matched_group_id;
     const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
     if (own?.group) return own.group;
-    // Legacy: доверяем только жёстким матчам.
-    const trust = r.match_status && r.match_status !== "matched_by_name" && r.match_status !== "matched_by_slug" && r.match_status !== "ambiguous_slug" && r.match_status !== "unmatched";
+    const trust =
+      r.match_status &&
+      r.match_status !== "matched_by_name" &&
+      r.match_status !== "matched_by_slug" &&
+      r.match_status !== "ambiguous_slug" &&
+      r.match_status !== "unmatched" &&
+      r.match_status !== "unmatched_base_category";
     return trust ? r.matched_group_id : null;
   };
   if (group) return rows.filter((r) => effectiveGroup(r) === group);
@@ -334,10 +345,11 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       qByUrl.set(q.url, arr);
     }
 
-    // Показываем только URL, встречающиеся в Topvisor (пересечение).
+    // Business-first: все URL из DataLens Categories попадают в группу,
+    // даже если их нет в Topvisor (SEO-метрики будут пустыми).
     const keys = new Set<string>();
-    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k)) keys.add(k);
-    for (const k of catByUrl.keys()) if (topvisorUrls.has(k)) keys.add(k);
+    for (const k of catByUrl.keys()) keys.add(k);
+    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k) || catByUrl.has(k)) keys.add(k);
 
     return Array.from(keys).map((norm) => {
       const u = urlByNorm.get(norm);
@@ -351,7 +363,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
       const pctIn = (a: number[], n: number) => (a.length ? (a.filter((v) => v <= n).length / a.length) * 100 : null);
       const folder = matched && urls[matched]?.folder ? urls[matched]!.folder! : (qs[0]?.folder ?? null);
-      const group = matched && urls[matched]?.group ? urls[matched]!.group! : (qs[0]?.group ?? null);
+      const group = matched && urls[matched]?.group ? urls[matched]!.group! : (qs[0]?.group ?? matchedGroup ?? null);
       const metaStatus = matched ? metaEdits[matched]?.status ?? "—" : "—";
       const textStatus = matched ? texts[matched]?.status ?? "—" : "—";
       const updatedAt = Math.max(
@@ -377,6 +389,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         textStatus,
         updatedAt,
         hasKeys: qs.length > 0,
+        hasTopvisor: topvisorUrls.has(norm),
         match_status: matchStatus,
         matched_group_id: matchedGroup,
       };
@@ -459,7 +472,14 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
               <tbody>
                 {filtered.slice(0, 500).map((r, i) => (
                   <tr key={i} className="border-t border-border/40">
-                    <td className="py-1 px-2 max-w-[260px] truncate" title={r.url}>{r.url}</td>
+                    <td className="py-1 px-2 max-w-[260px] truncate" title={r.url}>
+                      <span className="truncate">{r.url}</span>
+                      {!r.hasTopvisor && (
+                        <span className="ml-1 text-[10px] px-1 rounded bg-muted text-muted-foreground whitespace-nowrap">
+                          нет данных Topvisor
+                        </span>
+                      )}
+                    </td>
                     <td className="py-1 px-2">{r.folder ?? "—"}</td>
                     <td className="py-1 px-2">{r.group ?? "—"}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.gmv)}</td>
@@ -469,10 +489,10 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
                     <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.orders)}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{r.avgY?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{r.avgG?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top3Y != null ? `${r.top3Y.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top10Y != null ? `${r.top10Y.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top3G != null ? `${r.top3G.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top10G != null ? `${r.top10G.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3Y != null ? `${r.top3Y.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10Y != null ? `${r.top10Y.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3G != null ? `${r.top3G.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10G != null ? `${r.top10G.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
                     <td className="py-1 px-2">{r.metaStatus}</td>
                     <td className="py-1 px-2">{r.textStatus}</td>
                     <td className="py-1 px-2 text-muted-foreground">{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : "—"}</td>

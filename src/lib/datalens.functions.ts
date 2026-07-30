@@ -4,6 +4,7 @@ import type {
   CreateImportInput,
   AppendChunkInput,
   FinalizeImportInput,
+  UpsertGroupMappingInput,
 } from "./datalens.server";
 
 export const createDataLensImport = createServerFn({ method: "POST" })
@@ -44,4 +45,23 @@ export const getDataLensMetrics = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { loadLatestMetrics } = await import("./datalens.server");
     return loadLatestMetrics(data.stream);
+  });
+
+export const listGroupMappingsFn = createServerFn({ method: "GET" }).handler(async () => {
+  const { listGroupMappings } = await import("./datalens.server");
+  return listGroupMappings();
+});
+
+export const upsertGroupMappingFn = createServerFn({ method: "POST" })
+  .inputValidator((data: UpsertGroupMappingInput) => data)
+  .handler(async ({ data }) => {
+    const { upsertGroupMapping } = await import("./datalens.server");
+    return upsertGroupMapping(data);
+  });
+
+export const deleteGroupMappingFn = createServerFn({ method: "POST" })
+  .inputValidator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const { deleteGroupMapping } = await import("./datalens.server");
+    return deleteGroupMapping(data.id);
   });
