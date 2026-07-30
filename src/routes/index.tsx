@@ -19,6 +19,7 @@ import { metaStatusColor, metaStatusLabel } from "@/lib/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessMetricsTab, UrlAnalyticsTab } from "@/components/DashboardDataLensTabs";
+import { UrlCoverageTab } from "@/components/UrlCoverageTab";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 
 export const Route = createFileRoute("/")({
@@ -151,6 +152,7 @@ function Dashboard() {
               <TabsTrigger value="seo">SEO</TabsTrigger>
               <TabsTrigger value="business">Бизнес-метрики</TabsTrigger>
               <TabsTrigger value="urls">URL-аналитика</TabsTrigger>
+              <TabsTrigger value="coverage">URL Coverage</TabsTrigger>
             </TabsList>
 
             <TabsContent value="seo" className="space-y-4">
@@ -198,6 +200,10 @@ function Dashboard() {
 
             <TabsContent value="urls" className="space-y-3">
               <UrlAnalyticsTab stream={activeFolder || null} group={selectedGroup} />
+            </TabsContent>
+
+            <TabsContent value="coverage" className="space-y-3">
+              <UrlCoverageTab stream={activeFolder || null} group={selectedGroup} />
             </TabsContent>
           </Tabs>
         </div>
