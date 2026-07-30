@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useGlobalFolder, useGlobalGroup, useGlobalSort } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 export const Route = createFileRoute("/meta")({
@@ -52,7 +53,8 @@ export const Route = createFileRoute("/meta")({
 });
 
 type Row = { folder: string; group: string; url: string; qs: Query[]; noTopvisor?: boolean };
-type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
+const META_SORT_KEYS = ["priority", "season", "coverage", "freq", "status", "url"] as const;
+type SortKey = (typeof META_SORT_KEYS)[number];
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 50;
@@ -200,11 +202,8 @@ function MetaPage() {
   const hasMore = rows.length > visible.length;
 
   const toggleSort = (k: SortKey) => {
-    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(k);
-      setSortDir("asc");
-    }
+    if (sortKey === k) setSort(k, sortDir === "asc" ? "desc" : "asc");
+    else setSort(k, "asc");
   };
 
   const sortLabel: Record<SortKey, string> = {
@@ -271,7 +270,7 @@ function MetaPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-1 rounded-md border border-border h-9 px-1">
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <Select value={sortKey} onValueChange={(v) => setSort(v as SortKey)}>
               <SelectTrigger className="h-7 border-0 shadow-none text-xs w-32 px-2">
                 <ArrowUpDown className="h-3 w-3 mr-1 opacity-60" />
                 <SelectValue />
