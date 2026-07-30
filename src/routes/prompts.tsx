@@ -338,6 +338,11 @@ function PromptsPage() {
           <DataLensMappingPanel />
         </TabsContent>
 
+        <TabsContent value="lsi" className="space-y-4">
+          <LsiPanel />
+        </TabsContent>
+
+
         <TabsContent value="apikeys" className="space-y-4">
           <ApiKeysPanel />
         </TabsContent>
