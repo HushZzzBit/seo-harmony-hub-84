@@ -4,7 +4,8 @@ import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useStore } from "@/lib/store";
 import { computeOwnership } from "@/lib/ownership";
-import { getDataLensMetrics } from "@/lib/datalens.functions";
+import { getDataLensMetrics, listGroupMappingsFn } from "@/lib/datalens.functions";
+import type { AliasEntry } from "@/lib/group-alias";
 import { saveOwnership, loadOwnership } from "@/lib/ownership.functions";
 
 export function useOwnershipSync() {
@@ -13,6 +14,7 @@ export function useOwnershipSync() {
   const getFn = useServerFn(getDataLensMetrics);
   const saveFn = useServerFn(saveOwnership);
   const loadFn = useServerFn(loadOwnership);
+  const mappingsFn = useServerFn(listGroupMappingsFn);
   const bootRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -37,7 +39,8 @@ export function useOwnershipSync() {
     debounceRef.current = setTimeout(async () => {
       try {
         const { categories, startUrls } = await getFn({ data: { stream: null } });
-        const own = computeOwnership(queries, categories, startUrls);
+        const aliases = (await mappingsFn().catch(() => [])) as AliasEntry[];
+        const own = computeOwnership(queries, categories, startUrls, aliases);
         const map: Record<string, { folder: string | null; group: string | null }> = {};
         for (const [k, v] of Object.entries(own)) map[k] = { folder: v.folder, group: v.group };
         setOwnership(map);
@@ -51,5 +54,5 @@ export function useOwnershipSync() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [queries, getFn, saveFn, setOwnership]);
+  }, [queries, getFn, saveFn, mappingsFn, setOwnership]);
 }

@@ -6,6 +6,7 @@
 //    40 tv_target       — Topvisor: targetUrl / url
 // Победитель — самая частая (folder, group) в максимальном тир‑уровне.
 import { normalizeUrl } from "./datalens";
+import { buildGroupResolver, type AliasEntry } from "./group-alias";
 import type { Query } from "./types";
 
 export interface OwnershipRow {
@@ -66,8 +67,9 @@ export function computeOwnership(
   queries: Query[],
   categories: CatVoteInput[],
   startUrls: UrlVoteInput[],
+  aliases: AliasEntry[] = [],
 ): Record<string, OwnershipRow> {
-  const groupByName = buildGroupNameIndex(queries);
+  const resolver = buildGroupResolver(queries, aliases);
   const votes = new Map<string, Vote[]>();
   const push = (norm: string | null | undefined, v: Vote) => {
     if (!norm) return;
@@ -78,8 +80,7 @@ export function computeOwnership(
 
   // 100: DataLens base_category → Topvisor group
   for (const c of categories) {
-    const bc = c.base_category ? normName(c.base_category) : "";
-    const hit = bc ? groupByName.get(bc) : undefined;
+    const hit = resolver.resolve(c.base_category ?? null);
     if (hit) push(c.normalized_url, { folder: hit.folder, group: hit.group, conf: 100, source: "datalens_base" });
   }
   // 80: DataLens matched_group_id
