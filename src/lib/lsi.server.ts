@@ -584,15 +584,7 @@ export function pickCompetitors(
 export interface MiratextResult {
   status: string;
   hash?: string;
-  data?: {
-    tz?: {
-      keywordsAll?: Array<{ word: string; count?: number; recommended?: number }>;
-    };
-    repeatWordsAll?: Array<{ word: string; count?: number; siteCount?: number }>;
-    repeatWords2All?: Array<{ word: string; count?: number; siteCount?: number }>;
-    repeatWords3All?: Array<{ word: string; count?: number; siteCount?: number }>;
-    stats?: { length?: number; wordsCount?: number; wateriness?: number; nusea?: number };
-  };
+  data?: Record<string, unknown>;
   error?: string;
   raw: unknown;
 }
@@ -667,6 +659,24 @@ export async function miratextPoll(hash: string): Promise<MiratextResult> {
   };
 }
 
+type MtRec = Record<string, unknown>;
+
+/** Miratext возвращает как массивы, так и объекты вида { ключ: {...} }. */
+function mtEntries(v: unknown): Array<[string, MtRec]> {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.map((x, i) => [String(i), (x ?? {}) as MtRec]);
+  if (typeof v === "object") return Object.entries(v as Record<string, MtRec>);
+  return [];
+}
+
+/** Медиана/среднее рекомендуемой длины текста из stats.length. */
+export function miratextRecommendedLength(data: MtRec | undefined): number | null {
+  const st = (data?.stats as MtRec | undefined)?.length as MtRec | number | undefined;
+  if (typeof st === "number") return st;
+  const stat = (st as MtRec | undefined)?.stat as MtRec | undefined;
+  return num(stat?.mediana) ?? num(stat?.avg);
+}
+
 /** Build LSI items rows from a Miratext response. */
 export function buildItemsFromMiratext(
   analysisId: string,
@@ -674,62 +684,84 @@ export function buildItemsFromMiratext(
 ): Array<Record<string, unknown>> {
   if (!data) return [];
   const items: Array<Record<string, unknown>> = [];
-  const tzWords = new Set<string>();
+  const seen = new Set<string>();
 
-  for (const kw of data.tz?.keywordsAll ?? []) {
-    if (!kw?.word) continue;
-    tzWords.add(kw.word.toLowerCase());
+  const push = (
+    value: string,
+    type: string,
+    source_field: string,
+    recommended: number | null,
+    siteCount: number | null,
+    status: string,
+    priority: string,
+  ) => {
+    const v = value.trim();
+    if (!v) return;
+    const key = `${type}:${v.toLowerCase()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
     items.push({
       analysis_id: analysisId,
-      type: "word",
-      value: kw.word,
-      source_field: "tz",
-      recommended_count: kw.recommended ?? kw.count ?? null,
-      priority: "high",
-      status: "required",
+      type,
+      value: v,
+      source_field,
+      recommended_count: recommended,
+      competitor_site_count: siteCount,
+      priority,
+      status,
     });
+  };
+
+  // --- ТЗ: обязательные слова ---
+  for (const [k, kw] of mtEntries((data.tz as MtRec | undefined)?.keywordsAll)) {
+    const word = (kw.word as string) ?? k;
+    const site = num(kw.site_count ?? kw.siteCount);
+    push(
+      word,
+      "word",
+      "tz",
+      num(kw.recomended ?? kw.recommended ?? kw.count),
+      site,
+      "required",
+      (site ?? 0) >= 2 ? "high" : "medium",
+    );
   }
-  for (const w of data.repeatWordsAll ?? []) {
-    if (!w?.word) continue;
-    const key = w.word.toLowerCase();
-    if (tzWords.has(key)) continue;
-    items.push({
-      analysis_id: analysisId,
-      type: "word",
-      value: w.word,
-      source_field: "repeatWordsAll",
-      recommended_count: w.count ?? null,
-      competitor_site_count: w.siteCount ?? null,
-      priority: (w.siteCount ?? 0) >= 2 ? "medium" : "low",
-      status: "recommended",
-    });
+
+  // --- Часто встречающиеся слова у конкурентов ---
+  for (const [k, w] of mtEntries(data.repeatWordsAll).slice(0, 200)) {
+    const word = (w.word as string) ?? k;
+    const site = num(w.count);
+    push(
+      word,
+      "word",
+      "repeatWordsAll",
+      num(w.words_count_avg) ?? num((w.words_count_stat as MtRec | undefined)?.avg),
+      site,
+      "recommended",
+      (site ?? 0) >= 2 ? "medium" : "low",
+    );
   }
-  for (const w of data.repeatWords2All ?? []) {
-    if (!w?.word) continue;
-    items.push({
-      analysis_id: analysisId,
-      type: "phrase_2",
-      value: w.word,
-      source_field: "repeatWords2All",
-      recommended_count: w.count ?? null,
-      competitor_site_count: w.siteCount ?? null,
-      priority: (w.siteCount ?? 0) >= 2 ? "medium" : "low",
-      status: "recommended",
-    });
-  }
-  for (const w of data.repeatWords3All ?? []) {
-    if (!w?.word) continue;
-    items.push({
-      analysis_id: analysisId,
-      type: "phrase_3",
-      value: w.word,
-      source_field: "repeatWords3All",
-      recommended_count: w.count ?? null,
-      competitor_site_count: w.siteCount ?? null,
-      priority: (w.siteCount ?? 0) >= 2 ? "medium" : "low",
-      status: "recommended",
-    });
-  }
+
+  // --- Биграммы / триграммы ---
+  const pushPhrases = (src: unknown, type: string, field: string, limit: number) => {
+    for (const [k, w] of mtEntries(src).slice(0, limit)) {
+      const all = w.wordsAll;
+      const phrase = Array.isArray(all) && all.length ? String(all[0]) : k.replace(/_/g, " ");
+      const site = num(w.count);
+      push(
+        phrase,
+        type,
+        field,
+        num(w.words_count_avg) ?? num((w.words_count_stat as MtRec | undefined)?.avg),
+        site,
+        "recommended",
+        (site ?? 0) >= 2 ? "medium" : "low",
+      );
+    }
+  };
+  pushPhrases(data.repeatWords2All, "phrase_2", "repeatWords2All", 150);
+  pushPhrases(data.repeatWords3All, "phrase_3", "repeatWords3All", 100);
+
   return items;
 }
 
