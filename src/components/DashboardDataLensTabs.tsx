@@ -447,19 +447,8 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <label className="flex items-center gap-1">
-          Сортировка:
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="h-7 px-2 rounded-md border border-input bg-background"
-          >
-            <option value="gmv">GMV ↓</option>
-            <option value="visits">Визиты ↓</option>
-            <option value="orders">Заказы ↓</option>
-            <option value="top10g">%TOP-10 G ↓</option>
-          </select>
-        </label>
+        <span className="text-muted-foreground">Сортировка — клик по заголовку столбца</span>
+
         <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoMeta} onChange={(e) => setOnlyNoMeta(e.target.checked)} /> без мета</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoText} onChange={(e) => setOnlyNoText(e.target.checked)} /> без текста</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={outsideTop10} onChange={(e) => setOutsideTop10(e.target.checked)} /> вне TOP-10</label>
