@@ -1,6 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
