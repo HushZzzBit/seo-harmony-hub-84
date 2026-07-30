@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStore } from "@/lib/store";
+import { useTableSort, SortTh } from "@/hooks/use-table-sort";
 import {
   useDataLens,
   useFolderGroups,
@@ -14,6 +15,20 @@ import {
   sourceLabel,
   type CoverageFilter,
 } from "@/lib/url-inventory";
+
+type CovSortKey =
+  | "url"
+  | "source"
+  | "hasSeoMetrics"
+  | "hasBusinessMetrics"
+  | "gmv"
+  | "goods"
+  | "sellers"
+  | "avgY"
+  | "avgG"
+  | "top10G"
+  | "metaStatus"
+  | "textStatus";
 
 const FILTERS: Array<{ v: CoverageFilter; label: string }> = [
   { v: "all", label: "Все URL" },
