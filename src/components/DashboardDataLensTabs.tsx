@@ -332,7 +332,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   const texts = useStore((s) => s.texts);
 
 
-  const [sortBy, setSortBy] = useState<"gmv" | "visits" | "orders" | "top10g">("gmv");
+  const sort = useTableSort<UrlSortKey>("gmv");
   const [onlyNoMeta, setOnlyNoMeta] = useState(false);
   const [onlyNoText, setOnlyNoText] = useState(false);
   const [outsideTop10, setOutsideTop10] = useState(false);
