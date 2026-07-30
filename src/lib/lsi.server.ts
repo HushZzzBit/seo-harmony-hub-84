@@ -669,11 +669,6 @@ function mtEntries(v: unknown): Array<[string, MtRec]> {
   return [];
 }
 
-function num(v: unknown): number | null {
-  const n = typeof v === "string" ? Number(v) : (v as number);
-  return typeof n === "number" && Number.isFinite(n) ? n : null;
-}
-
 /** Медиана/среднее рекомендуемой длины текста из stats.length. */
 export function miratextRecommendedLength(data: MtRec | undefined): number | null {
   const st = (data?.stats as MtRec | undefined)?.length as MtRec | number | undefined;
