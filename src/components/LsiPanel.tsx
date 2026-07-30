@@ -321,7 +321,36 @@ function GroupRow({
         <div className="text-[10px] text-muted-foreground">{g.folder}</div>
         <div className="font-medium">{g.group}</div>
       </td>
-      <td className="px-2 py-2 font-mono text-[11px] truncate max-w-[280px]">{g.url || "—"}</td>
+      <td className="px-2 py-2 font-mono text-[11px] max-w-[320px]">
+        {(g.urls?.length ?? 0) === 0 ? (
+          <span>{g.url || "—"}</span>
+        ) : (
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <span className="truncate max-w-[240px]">{g.urls![0]}</span>
+              {g.urls!.length > 1 && (
+                <button
+                  onClick={() => setUrlsOpen((v) => !v)}
+                  className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                >
+                  {urlsOpen ? "скрыть" : `+${g.urls!.length - 1}`}
+                </button>
+              )}
+            </div>
+            {urlsOpen &&
+              g.urls!.slice(1).map((u, i) => (
+                <div key={u} className="flex items-center gap-1 text-muted-foreground">
+                  <span className="truncate max-w-[240px]">{u}</span>
+                  {i + 1 >= (g.tvUrlCount ?? g.urls!.length) && (
+                    <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 text-[9px] text-amber-600">
+                      нет в TopVisor
+                    </span>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+      </td>
       <td className="px-2 py-2 text-right">{g.keywords.length}</td>
       <td className="px-2 py-2 text-[11px]">
         {g.hasSeason ? (
