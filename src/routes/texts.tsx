@@ -406,13 +406,22 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [tab, setTab] = useState("editor");
   const [highlight, setHighlight] = useState(true);
 
-  // Active LSI requirements for this group (loaded when popup opens).
+  // Active LSI requirements for this group — cached per group, prefetched on hover
+  // so the popup shows the final (LSI-based) keys immediately, without a flash of defaults.
   const getReq = useServerFn(getActiveRequirementsForGroup);
-  const [lsi, setLsi] = useState<ActiveRequirements | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    getReq({ data: { group_key: `${folder}::${group}` } }).then(setLsi).catch(() => setLsi(null));
-  }, [open, folder, group, getReq]);
+  const groupKey = `${folder}::${group}`;
+  const [armed, setArmed] = useState(false);
+  const lsiQuery = useQuery({
+    queryKey: ["lsi-active", groupKey],
+    queryFn: () => getReq({ data: { group_key: groupKey } }) as Promise<ActiveRequirements>,
+    enabled: armed || open,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    retry: false,
+  });
+  const lsi = lsiQuery.data ?? null;
+  const lsiLoading = (armed || open) && lsiQuery.isPending;
+
 
   const groupQueries = useMemo(
     () => queries.filter((q) => q.folder === folder && q.group === group),
