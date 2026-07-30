@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStore } from "@/lib/store";
+import { useTableSort, SortTh } from "@/hooks/use-table-sort";
 import {
   useDataLens,
   useFolderGroups,
@@ -14,6 +15,20 @@ import {
   sourceLabel,
   type CoverageFilter,
 } from "@/lib/url-inventory";
+
+type CovSortKey =
+  | "url"
+  | "source"
+  | "hasSeoMetrics"
+  | "hasBusinessMetrics"
+  | "gmv"
+  | "goods"
+  | "sellers"
+  | "avgY"
+  | "avgG"
+  | "top10G"
+  | "metaStatus"
+  | "textStatus";
 
 const FILTERS: Array<{ v: CoverageFilter; label: string }> = [
   { v: "all", label: "Все URL" },
@@ -42,6 +57,7 @@ export function UrlCoverageTab({ stream, group }: { stream: string | null; group
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const [filter, setFilter] = useState<CoverageFilter>("all");
+  const sort = useTableSort<CovSortKey>("gmv");
 
   const rows = useMemo(() => {
     const categories = filterByFolder(allCategories, folderGroups, group, ownership);
@@ -70,7 +86,13 @@ export function UrlCoverageTab({ stream, group }: { stream: string | null; group
     };
   }, [rows]);
 
-  const filtered = useMemo(() => applyCoverageFilter(rows, filter), [rows, filter]);
+  const filtered = useMemo(
+    () =>
+      sort.sort(applyCoverageFilter(rows, filter), (r, k) =>
+        k === "source" ? sourceLabel(r) : (r[k] as string | number | boolean | null),
+      ),
+    [rows, filter, sort],
+  );
 
   if (loading) return <div className="text-sm text-muted-foreground">Загружаем данные…</div>;
   if (!rows.length) {
@@ -114,18 +136,18 @@ export function UrlCoverageTab({ stream, group }: { stream: string | null; group
             <table className="text-xs w-full">
               <thead className="text-muted-foreground bg-muted/30">
                 <tr className="text-left">
-                  <th className="py-1.5 px-2">URL</th>
-                  <th className="py-1.5 px-2">Источник</th>
-                  <th className="py-1.5 px-2">SEO</th>
-                  <th className="py-1.5 px-2">Бизнес</th>
-                  <th className="py-1.5 px-2 text-right">GMV</th>
-                  <th className="py-1.5 px-2 text-right">Товары</th>
-                  <th className="py-1.5 px-2 text-right">Селлеры</th>
-                  <th className="py-1.5 px-2 text-right">Ср.Y</th>
-                  <th className="py-1.5 px-2 text-right">Ср.G</th>
-                  <th className="py-1.5 px-2 text-right">TOP-3 / TOP-10</th>
-                  <th className="py-1.5 px-2">Мета</th>
-                  <th className="py-1.5 px-2">Текст</th>
+                  <SortTh sortKey="url" sort={sort}>URL</SortTh>
+                  <SortTh sortKey="source" sort={sort}>Источник</SortTh>
+                  <SortTh sortKey="hasSeoMetrics" sort={sort}>SEO</SortTh>
+                  <SortTh sortKey="hasBusinessMetrics" sort={sort}>Бизнес</SortTh>
+                  <SortTh sortKey="gmv" sort={sort} align="right">GMV</SortTh>
+                  <SortTh sortKey="goods" sort={sort} align="right">Товары</SortTh>
+                  <SortTh sortKey="sellers" sort={sort} align="right">Селлеры</SortTh>
+                  <SortTh sortKey="avgY" sort={sort} align="right">Ср.Y</SortTh>
+                  <SortTh sortKey="avgG" sort={sort} align="right">Ср.G</SortTh>
+                  <SortTh sortKey="top10G" sort={sort} align="right">TOP-3 / TOP-10</SortTh>
+                  <SortTh sortKey="metaStatus" sort={sort}>Мета</SortTh>
+                  <SortTh sortKey="textStatus" sort={sort}>Текст</SortTh>
                 </tr>
               </thead>
               <tbody>

@@ -4,7 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDataLensMetrics } from "@/lib/datalens.functions";
 import { useStore } from "@/lib/store";
 import { normalizeUrl } from "@/lib/datalens";
+import { useTableSort, SortTh } from "@/hooks/use-table-sort";
 import type { Query } from "@/lib/types";
+
+type UrlSortKey =
+  | "url"
+  | "folder"
+  | "group"
+  | "gmv"
+  | "goods"
+  | "sellers"
+  | "visits"
+  | "orders"
+  | "avgY"
+  | "avgG"
+  | "top3Y"
+  | "top10Y"
+  | "top3G"
+  | "top10G"
+  | "metaStatus"
+  | "textStatus"
+  | "updatedAt";
 
 interface CategoryMetric {
   normalized_url: string | null;
@@ -332,7 +352,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   const texts = useStore((s) => s.texts);
 
 
-  const [sortBy, setSortBy] = useState<"gmv" | "visits" | "orders" | "top10g">("gmv");
+  const sort = useTableSort<UrlSortKey>("gmv");
   const [onlyNoMeta, setOnlyNoMeta] = useState(false);
   const [onlyNoText, setOnlyNoText] = useState(false);
   const [outsideTop10, setOutsideTop10] = useState(false);
@@ -410,15 +430,8 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
     if (onlyNoMeta) r = r.filter((x) => x.metaStatus === "—" || x.metaStatus === "not_started");
     if (onlyNoText) r = r.filter((x) => x.textStatus === "—" || x.textStatus === "not_assigned");
     if (outsideTop10) r = r.filter((x) => (x.top10G ?? 0) < 50 && (x.top10Y ?? 0) < 50);
-    return [...r].sort((a, b) => {
-      switch (sortBy) {
-        case "visits": return b.visits - a.visits;
-        case "orders": return b.orders - a.orders;
-        case "top10g": return (b.top10G ?? -1) - (a.top10G ?? -1);
-        default: return b.gmv - a.gmv;
-      }
-    });
-  }, [rows, sortBy, onlyNoMeta, onlyNoText, outsideTop10]);
+    return sort.sort(r, (row, k) => row[k] as never);
+  }, [rows, sort, onlyNoMeta, onlyNoText, outsideTop10]);
 
   if (loading) return <div className="text-sm text-muted-foreground">Загружаем данные DataLens…</div>;
   if (!rows.length) {
@@ -434,19 +447,8 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <label className="flex items-center gap-1">
-          Сортировка:
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="h-7 px-2 rounded-md border border-input bg-background"
-          >
-            <option value="gmv">GMV ↓</option>
-            <option value="visits">Визиты ↓</option>
-            <option value="orders">Заказы ↓</option>
-            <option value="top10g">%TOP-10 G ↓</option>
-          </select>
-        </label>
+        <span className="text-muted-foreground">Сортировка — клик по заголовку столбца</span>
+
         <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoMeta} onChange={(e) => setOnlyNoMeta(e.target.checked)} /> без мета</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={onlyNoText} onChange={(e) => setOnlyNoText(e.target.checked)} /> без текста</label>
         <label className="flex items-center gap-1"><input type="checkbox" checked={outsideTop10} onChange={(e) => setOutsideTop10(e.target.checked)} /> вне TOP-10</label>
@@ -459,23 +461,23 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
             <table className="text-xs w-full">
               <thead className="text-muted-foreground bg-muted/30">
                 <tr className="text-left">
-                  <th className="py-1.5 px-2">URL</th>
-                  <th className="py-1.5 px-2">Папка</th>
-                  <th className="py-1.5 px-2">Группа</th>
-                  <th className="py-1.5 px-2 text-right">GMV</th>
-                  <th className="py-1.5 px-2 text-right">Товары</th>
-                  <th className="py-1.5 px-2 text-right">Селлеры</th>
-                  <th className="py-1.5 px-2 text-right">Визиты</th>
-                  <th className="py-1.5 px-2 text-right">Заказы</th>
-                  <th className="py-1.5 px-2 text-right">Ср.Y</th>
-                  <th className="py-1.5 px-2 text-right">Ср.G</th>
-                  <th className="py-1.5 px-2 text-right">TOP-3 Y</th>
-                  <th className="py-1.5 px-2 text-right">TOP-10 Y</th>
-                  <th className="py-1.5 px-2 text-right">TOP-3 G</th>
-                  <th className="py-1.5 px-2 text-right">TOP-10 G</th>
-                  <th className="py-1.5 px-2">Мета</th>
-                  <th className="py-1.5 px-2">Текст</th>
-                  <th className="py-1.5 px-2">Обновл.</th>
+                  <SortTh sortKey="url" sort={sort}>URL</SortTh>
+                  <SortTh sortKey="folder" sort={sort}>Папка</SortTh>
+                  <SortTh sortKey="group" sort={sort}>Группа</SortTh>
+                  <SortTh sortKey="gmv" sort={sort} align="right">GMV</SortTh>
+                  <SortTh sortKey="goods" sort={sort} align="right">Товары</SortTh>
+                  <SortTh sortKey="sellers" sort={sort} align="right">Селлеры</SortTh>
+                  <SortTh sortKey="visits" sort={sort} align="right">Визиты</SortTh>
+                  <SortTh sortKey="orders" sort={sort} align="right">Заказы</SortTh>
+                  <SortTh sortKey="avgY" sort={sort} align="right">Ср.Y</SortTh>
+                  <SortTh sortKey="avgG" sort={sort} align="right">Ср.G</SortTh>
+                  <SortTh sortKey="top3Y" sort={sort} align="right">TOP-3 Y</SortTh>
+                  <SortTh sortKey="top10Y" sort={sort} align="right">TOP-10 Y</SortTh>
+                  <SortTh sortKey="top3G" sort={sort} align="right">TOP-3 G</SortTh>
+                  <SortTh sortKey="top10G" sort={sort} align="right">TOP-10 G</SortTh>
+                  <SortTh sortKey="metaStatus" sort={sort}>Мета</SortTh>
+                  <SortTh sortKey="textStatus" sort={sort}>Текст</SortTh>
+                  <SortTh sortKey="updatedAt" sort={sort}>Обновл.</SortTh>
                 </tr>
               </thead>
               <tbody>
