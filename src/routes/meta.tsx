@@ -628,6 +628,11 @@ const MetaRow = memo(function MetaRow({
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               <span className="truncate">{row.folder} · {row.group}</span>
               <KeywordsTooltip qs={row.qs} />
+              {row.noTopvisor && (
+                <span className="shrink-0 normal-case tracking-normal inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-muted text-muted-foreground border-border">
+                  Нет в TopVisor
+                </span>
+              )}
             </div>
             <div className="text-xs font-mono text-foreground/80 truncate" title={row.url}>
               {row.url || "—"}
