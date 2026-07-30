@@ -1,6 +1,7 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -406,13 +407,22 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [tab, setTab] = useState("editor");
   const [highlight, setHighlight] = useState(true);
 
-  // Active LSI requirements for this group (loaded when popup opens).
+  // Active LSI requirements for this group — cached per group, prefetched on hover
+  // so the popup shows the final (LSI-based) keys immediately, without a flash of defaults.
   const getReq = useServerFn(getActiveRequirementsForGroup);
-  const [lsi, setLsi] = useState<ActiveRequirements | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    getReq({ data: { group_key: `${folder}::${group}` } }).then(setLsi).catch(() => setLsi(null));
-  }, [open, folder, group, getReq]);
+  const groupKey = `${folder}::${group}`;
+  const [armed, setArmed] = useState(false);
+  const lsiQuery = useQuery({
+    queryKey: ["lsi-active", groupKey],
+    queryFn: () => getReq({ data: { group_key: groupKey } }) as Promise<ActiveRequirements>,
+    enabled: armed || open,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    retry: false,
+  });
+  const lsi = lsiQuery.data ?? null;
+  const lsiLoading = (armed || open) && lsiQuery.isPending;
+
 
   const groupQueries = useMemo(
     () => queries.filter((q) => q.folder === folder && q.group === group),
@@ -530,7 +540,14 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" title="Редактировать текст" aria-label="Редактировать текст">
+        <Button
+          size="sm"
+          variant="outline"
+          title="Редактировать текст"
+          aria-label="Редактировать текст"
+          onPointerEnter={() => setArmed(true)}
+          onFocus={() => setArmed(true)}
+        >
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -700,10 +717,22 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
 
               <section>
                 <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
-                  {lsi?.version ? "LSI-слова" : "Слова"} ({visibleWords.length})
+                  {lsiLoading ? "Слова" : lsi?.version ? "LSI-слова" : "Слова"} ({lsiLoading ? "…" : visibleWords.length})
                 </div>
+                {lsiLoading ? (
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from({ length: 14 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-[20px] rounded-full bg-muted animate-pulse"
+                        style={{ width: `${40 + ((i * 17) % 60)}px` }}
+                      />
+                    ))}
+                  </div>
+                ) : (
                 <div className="flex flex-wrap gap-1">
                   {visibleWords.slice(0, 80).map((w) => (
+
                     <button
                       key={w.word}
                       type="button"
@@ -720,6 +749,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                     </button>
                   ))}
                 </div>
+                )}
               </section>
 
               {stopwords.length > 0 && (
