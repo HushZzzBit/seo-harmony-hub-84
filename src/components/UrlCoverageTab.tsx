@@ -57,6 +57,7 @@ export function UrlCoverageTab({ stream, group }: { stream: string | null; group
   const metaEdits = useStore((s) => s.metaEdits);
   const texts = useStore((s) => s.texts);
   const [filter, setFilter] = useState<CoverageFilter>("all");
+  const sort = useTableSort<CovSortKey>("gmv");
 
   const rows = useMemo(() => {
     const categories = filterByFolder(allCategories, folderGroups, group, ownership);
