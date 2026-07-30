@@ -38,7 +38,8 @@ export function useOwnershipSync() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const { categories, startUrls } = await getFn({ data: { stream: null } });
+        const groups = Array.from(new Set(queries.map((q) => q.group).filter(Boolean) as string[]));
+        const { categories, startUrls } = await getFn({ data: { stream: null, groups: groups.length ? groups : null } });
         const aliases = (await mappingsFn().catch(() => [])) as AliasEntry[];
         const own = computeOwnership(queries, categories, startUrls, aliases);
         const map: Record<string, { folder: string | null; group: string | null }> = {};

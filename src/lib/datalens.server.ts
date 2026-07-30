@@ -159,33 +159,56 @@ export interface StartUrlMetric {
   match_status: string;
 }
 
-export async function loadLatestMetrics(stream: string | null) {
+/**
+ * PostgREST отдаёт максимум 1000 строк за запрос, поэтому читаем страницами.
+ * Опциональный фильтр по группам резко уменьшает объём (дашборд всегда знает,
+ * какие группы ему нужны).
+ */
+const PAGE = 1000;
+const MAX_ROWS = 120000;
+
+async function fetchPaged<T>(
+  table: "datalens_category_metric" | "datalens_start_url_metric",
+  select: string,
+  importId: string,
+  groups: string[] | null,
+): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE) {
+    let q = supabaseAdmin.from(table).select(select).eq("import_id", importId);
+    if (groups && groups.length) q = q.in("matched_group_id", groups);
+    const { data, error } = await q.range(from, from + PAGE - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as unknown as T[];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
+export async function loadLatestMetrics(stream: string | null, groups: string[] | null = null) {
   const catId = await getLatestImportId("categories", stream);
   const urlId = await getLatestImportId("start_url", stream);
 
-  const cats: CategoryMetric[] = [];
-  const urls: StartUrlMetric[] = [];
-
-  if (catId) {
-    const { data, error } = await supabaseAdmin
-      .from("datalens_category_metric")
-      .select("normalized_url, base_category, category_name, category_url, active_goods, sellers, gmv, matched_url_id, matched_group_id, match_status")
-      .eq("import_id", catId)
-      .limit(20000);
-    if (error) throw new Error(error.message);
-    cats.push(...((data ?? []) as CategoryMetric[]));
-  }
-  if (urlId) {
-    const { data, error } = await supabaseAdmin
-      .from("datalens_start_url_metric")
-      .select("normalized_url, url, page_name, visits, users, orders, gmv, visit_to_order, bounce_rate, yandex_traffic_percent, google_traffic_percent, matched_url_id, matched_group_id, match_status")
-      .eq("import_id", urlId)
-      .limit(20000);
-    if (error) throw new Error(error.message);
-    urls.push(...((data ?? []) as StartUrlMetric[]));
-  }
+  const cats: CategoryMetric[] = catId
+    ? await fetchPaged<CategoryMetric>(
+        "datalens_category_metric",
+        "normalized_url, base_category, category_name, category_url, active_goods, sellers, gmv, matched_url_id, matched_group_id, match_status",
+        catId,
+        groups,
+      )
+    : [];
+  const urls: StartUrlMetric[] = urlId
+    ? await fetchPaged<StartUrlMetric>(
+        "datalens_start_url_metric",
+        "normalized_url, url, page_name, visits, users, orders, gmv, visit_to_order, bounce_rate, yandex_traffic_percent, google_traffic_percent, matched_url_id, matched_group_id, match_status",
+        urlId,
+        groups,
+      )
+    : [];
   return { categoryImportId: catId, startUrlImportId: urlId, categories: cats, startUrls: urls };
 }
+
 
 /* ---------------- Маппинг внешних названий групп (external_group_mapping) --------------- */
 

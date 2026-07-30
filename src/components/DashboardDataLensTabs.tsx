@@ -114,18 +114,19 @@ function MatchingSummary({
   );
 }
 
-export function useDataLens(stream: string | null) {
+export function useDataLens(stream: string | null, groups?: string[] | null) {
   const fn = useServerFn(getDataLensMetrics);
   const [data, setData] = useState<{ categories: CategoryMetric[]; startUrls: StartUrlMetric[] }>({
     categories: [],
     startUrls: [],
   });
   const [loading, setLoading] = useState(false);
+  const groupsKey = groups && groups.length ? groups.slice().sort().join("|") : "";
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fn({ data: { stream } })
+    fn({ data: { stream, groups: groupsKey ? groupsKey.split("|") : null } })
       .then((res) => {
         if (!cancelled) setData({ categories: res.categories, startUrls: res.startUrls });
       })
@@ -139,7 +140,7 @@ export function useDataLens(stream: string | null) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream]);
+  }, [stream, groupsKey]);
 
   return { ...data, loading };
 }
@@ -216,8 +217,12 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
 
 
 export function BusinessMetricsTab({ stream, group }: { stream: string | null; group?: string | null }) {
-  const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
+  const requestGroups = useMemo(
+    () => (group ? [group] : folderGroups ? Array.from(folderGroups) : null),
+    [group, folderGroups],
+  );
+  const { categories: allCategories, startUrls: allStartUrls, loading } = useDataLens(null, requestGroups);
   const ownership = useUrlOwnershipMap();
   const categories = useMemo(() => filterByFolder(allCategories, folderGroups, group, ownership), [allCategories, folderGroups, group, ownership]);
   const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
@@ -311,8 +316,12 @@ export function BusinessMetricsTab({ stream, group }: { stream: string | null; g
 }
 
 export function UrlAnalyticsTab({ stream, group }: { stream: string | null; group?: string | null }) {
-  const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
+  const requestGroups = useMemo(
+    () => (group ? [group] : folderGroups ? Array.from(folderGroups) : null),
+    [group, folderGroups],
+  );
+  const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null, requestGroups);
   const ownership = useUrlOwnershipMap();
   const topvisorUrls = useTopvisorUrlSet();
   const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);

@@ -41,10 +41,12 @@ export const deleteDataLensImport = createServerFn({ method: "POST" })
   });
 
 export const getDataLensMetrics = createServerFn({ method: "POST" })
-  .inputValidator((data: { stream: string | null } | undefined) => data ?? { stream: null })
+  .inputValidator((data: { stream: string | null; groups?: string[] | null } | undefined) =>
+    data ?? { stream: null, groups: null },
+  )
   .handler(async ({ data }) => {
     const { loadLatestMetrics } = await import("./datalens.server");
-    return loadLatestMetrics(data.stream);
+    return loadLatestMetrics(data.stream, data.groups ?? null);
   });
 
 export const listGroupMappingsFn = createServerFn({ method: "GET" }).handler(async () => {
