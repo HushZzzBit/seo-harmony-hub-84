@@ -32,6 +32,8 @@ import {
   type VersionRow,
 } from "@/lib/lsi.functions";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
+import { normalizeUrl } from "@/lib/datalens";
 
 
 const STATUS_LABEL: Record<string, string> = {
