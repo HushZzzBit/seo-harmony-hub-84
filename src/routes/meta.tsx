@@ -50,7 +50,7 @@ export const Route = createFileRoute("/meta")({
   ),
 });
 
-type Row = { folder: string; group: string; url: string; qs: Query[] };
+type Row = { folder: string; group: string; url: string; qs: Query[]; noTopvisor?: boolean };
 type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
 type SortDir = "asc" | "desc";
 
