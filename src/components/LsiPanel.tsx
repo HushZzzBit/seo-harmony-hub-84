@@ -32,6 +32,7 @@ import {
   type VersionRow,
 } from "@/lib/lsi.functions";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useGlobalFolder } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 import { normalizeUrl } from "@/lib/datalens";
 
@@ -50,7 +51,7 @@ export function LsiPanel() {
   const queries = useStore((s) => s.queries);
   const listA = useServerFn(listAnalyses);
   const [analyses, setAnalyses] = useState<AnalysisRow[]>([]);
-  const [folderFilter, setFolderFilter] = usePersistentState<string>("lsi.folder", "all");
+  const [folderFilter, setFolderFilter] = useGlobalFolder();
   const [prioFilter, setPrioFilter] = usePersistentState<"all" | Priority>("lsi.prio", "all");
   const [search, setSearch] = usePersistentState<string>("lsi.search", "");
   const [limit, setLimit] = useState(20);
