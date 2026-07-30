@@ -312,10 +312,11 @@ export const pollMiratext = createServerFn({ method: "POST" })
     const { miratextPoll, buildItemsFromMiratext, miratextRecommendedLength } = await import("./lsi.server");
     const res = await miratextPoll(row.miratext_hash);
 
-    if (res.status === "draft" || res.status === "working") {
+    const hasData = !!res.data && Object.keys(res.data).length > 0;
+    if (!hasData && (res.status === "draft" || res.status === "working")) {
       return { status: "working" as const };
     }
-    if (res.status === "error" || res.error) {
+    if (!hasData && (res.status === "error" || res.error)) {
       await sb
         .from("text_requirement_analysis")
         .update({
@@ -327,7 +328,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
         .eq("id", data.analysisId);
       return { status: "failed" as const, error: res.error };
     }
-    if (res.status === "accepted") {
+    if (hasData) {
       // wipe previous items so re-runs don't duplicate
       await sb.from("text_requirement_item").delete().eq("analysis_id", data.analysisId).eq("is_manual", false);
       const rows = buildItemsFromMiratext(data.analysisId, res.data);
