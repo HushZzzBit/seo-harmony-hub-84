@@ -70,18 +70,38 @@ export function LsiPanel() {
   }, [folderFilter, prioFilter, search]);
 
 
+  // URL из DataLens, которых нет в Topvisor — чтобы состав группы был полным
+  const extraUrls = useDataLensExtraUrls(folderFilter, "all");
+
   // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
     const map = new Map<
       string,
-      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[] }
+      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[]; urls: string[]; urlSet: Set<string>; tvUrlCount: number }
     >();
     for (const q of queries) {
       const key = `${q.folder}::${q.group}`;
-      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [] });
+      if (!map.has(key))
+        map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [], urls: [], urlSet: new Set(), tvUrlCount: 0 });
       const g = map.get(key)!;
       g.keywords.push(q.phrase);
       g.qs.push(q);
+      if (!g.url && q.url) g.url = q.url;
+      for (const u of [q.url, q.targetUrl, q.relevantGoogle, q.relevantYandex]) {
+        const n = normalizeUrl(u ?? null);
+        if (!n || g.urlSet.has(n)) continue;
+        g.urlSet.add(n);
+        g.urls.push(u as string);
+        g.tvUrlCount++;
+      }
+    }
+    for (const e of extraUrls) {
+      const key = `${e.folder}::${e.group}`;
+      const g = map.get(key);
+      const n = normalizeUrl(e.url);
+      if (!g || !n || g.urlSet.has(n)) continue;
+      g.urlSet.add(n);
+      g.urls.push(e.url);
     }
     const now = new Date().getMonth();
     return Array.from(map.values()).map((g) => {
@@ -91,7 +111,7 @@ export function LsiPanel() {
       const dist = (planMonth - now + 12) % 12;
       return { ...g, season, planMonth, prio, dist, hasSeason: season.some((v) => v > 0) };
     });
-  }, [queries]);
+  }, [queries, extraUrls]);
 
   const folders = useMemo(() => Array.from(new Set(groups.map((g) => g.folder))).sort(), [groups]);
 
