@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useGlobalFolder, useGlobalGroup, useGlobalSort } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 export const Route = createFileRoute("/meta")({
@@ -52,7 +53,8 @@ export const Route = createFileRoute("/meta")({
 });
 
 type Row = { folder: string; group: string; url: string; qs: Query[]; noTopvisor?: boolean };
-type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
+const META_SORT_KEYS = ["priority", "season", "coverage", "freq", "status", "url"] as const;
+type SortKey = (typeof META_SORT_KEYS)[number];
 type SortDir = "asc" | "desc";
 
 const PAGE_SIZE = 50;
@@ -64,14 +66,13 @@ function MetaPage() {
   const setMetaEdit = useStore((s) => s.setMetaEdit);
   const setMetaEditsBulk = useStore((s) => s.setMetaEditsBulk);
   const prompts = useStore((s) => s.prompts);
-  const [folder, setFolder] = usePersistentState<string>("meta.folder", "all");
-  const [group, setGroup] = usePersistentState<string>("meta.group", "all");
+  const [folder, setFolder] = useGlobalFolder();
+  const [group, setGroup] = useGlobalGroup();
   const [search, setSearch] = usePersistentState<string>("meta.search", "");
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistentState<string>("meta.status", "all");
   const [priorityFilter, setPriorityFilter] = usePersistentState<string>("meta.priority", "all");
-  const [sortKey, setSortKey] = usePersistentState<SortKey>("meta.sortKey", "priority");
-  const [sortDir, setSortDir] = usePersistentState<SortDir>("meta.sortDir", "asc");
+  const [sortKey, sortDir, setSort] = useGlobalSort(META_SORT_KEYS, "priority");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<Status | "">("");
@@ -201,11 +202,8 @@ function MetaPage() {
   const hasMore = rows.length > visible.length;
 
   const toggleSort = (k: SortKey) => {
-    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else {
-      setSortKey(k);
-      setSortDir("asc");
-    }
+    if (sortKey === k) setSort(k, sortDir === "asc" ? "desc" : "asc");
+    else setSort(k, "asc");
   };
 
   const sortLabel: Record<SortKey, string> = {
@@ -272,7 +270,7 @@ function MetaPage() {
             </SelectContent>
           </Select>
           <div className="flex items-center gap-1 rounded-md border border-border h-9 px-1">
-            <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
+            <Select value={sortKey} onValueChange={(v) => setSort(v as SortKey)}>
               <SelectTrigger className="h-7 border-0 shadow-none text-xs w-32 px-2">
                 <ArrowUpDown className="h-3 w-3 mr-1 opacity-60" />
                 <SelectValue />

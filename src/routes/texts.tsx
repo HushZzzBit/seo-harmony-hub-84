@@ -23,6 +23,7 @@ import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, provi
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useGlobalFolder, useGlobalGroup, useGlobalSort } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 const QUALITY_MAX_RUNS = 5;
@@ -55,7 +56,8 @@ const statusLabel = textStatusLabel;
 
 const PAGE_SIZE = 50;
 
-type SortKey = "priority" | "group" | "url" | "planMonth" | "hasText" | "length" | "assignee" | "status";
+const TEXTS_SORT_KEYS = ["priority", "group", "url", "planMonth", "hasText", "length", "assignee", "status"] as const;
+type SortKey = (typeof TEXTS_SORT_KEYS)[number];
 type SortDir = "asc" | "desc";
 
 function TextsPage() {
@@ -63,15 +65,14 @@ function TextsPage() {
   const urls = useStore((s) => s.urls);
   const texts = useStore((s) => s.texts);
   const setText = useStore((s) => s.setText);
-  const [folder, setFolder] = usePersistentState<string>("texts.folder", "all");
-  const [category, setCategory] = usePersistentState<string>("texts.category", "all");
+  const [folder, setFolder] = useGlobalFolder();
+  const [category, setCategory] = useGlobalGroup();
   const [search, setSearch] = usePersistentState<string>("texts.search", "");
   const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = usePersistentState<string>("texts.status", "all");
   const [priorityFilter, setPriorityFilter] = usePersistentState<string>("texts.priority", "all");
   const [limit, setLimit] = useState(PAGE_SIZE);
-  const [sortKey, setSortKey] = usePersistentState<SortKey>("texts.sortKey", "priority");
-  const [sortDir, setSortDir] = usePersistentState<SortDir>("texts.sortDir", "asc");
+  const [sortKey, sortDir, setSort] = useGlobalSort(TEXTS_SORT_KEYS, "priority");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<TextStatus | "">("");
 
@@ -81,7 +82,6 @@ function TextsPage() {
     return Array.from(new Set(src.map((q) => q.group))).sort();
   }, [queries, folder]);
 
-  useEffect(() => { setCategory("all"); }, [folder]);
 
   const extraUrls = useDataLensExtraUrls(folder, category);
 
@@ -142,8 +142,8 @@ function TextsPage() {
   const hasMore = rows.length > visible.length;
 
   const toggleSort = (k: SortKey) => {
-    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    else { setSortKey(k); setSortDir("asc"); }
+    if (sortKey === k) setSort(k, sortDir === "asc" ? "desc" : "asc");
+    else setSort(k, "asc");
   };
 
   const SortHeader = ({ k, children, className = "" }: { k: SortKey; children: React.ReactNode; className?: string }) => {
