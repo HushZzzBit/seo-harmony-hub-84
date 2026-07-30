@@ -717,10 +717,22 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
 
               <section>
                 <div className="text-[10px] font-semibold uppercase text-muted-foreground px-1 mb-1">
-                  {lsi?.version ? "LSI-слова" : "Слова"} ({visibleWords.length})
+                  {lsiLoading ? "Слова" : lsi?.version ? "LSI-слова" : "Слова"} ({lsiLoading ? "…" : visibleWords.length})
                 </div>
+                {lsiLoading ? (
+                  <div className="flex flex-wrap gap-1">
+                    {Array.from({ length: 14 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="h-[20px] rounded-full bg-muted animate-pulse"
+                        style={{ width: `${40 + ((i * 17) % 60)}px` }}
+                      />
+                    ))}
+                  </div>
+                ) : (
                 <div className="flex flex-wrap gap-1">
                   {visibleWords.slice(0, 80).map((w) => (
+
                     <button
                       key={w.word}
                       type="button"
