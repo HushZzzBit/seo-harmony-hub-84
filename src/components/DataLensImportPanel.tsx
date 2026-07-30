@@ -83,24 +83,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const key = `${tokens.join("+")}::${folder}::${group}`;
       if (!hintMap.has(key)) hintMap.set(key, { tokens, folder, group });
     };
-    // Direct group-name → {folder, group} lookup for DataLens `Base category`.
-    const gbn = new Map<string, { folder: string | null; group: string }>();
-    const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
-    for (const q of queries) {
-      add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
-      add(q.relevantYandex, q.folder ?? null, q.group ?? null, "relevant_y");
-      add(q.targetUrl, q.folder ?? null, q.group ?? null, "target");
-      if (q.url && !q.targetUrl && !q.relevantGoogle && !q.relevantYandex) {
-        add(q.url, q.folder ?? null, q.group ?? null, "target");
-      }
-      if (q.group) {
-        addHint(q.group, q.folder ?? null, q.group ?? null);
-        const key = normName(q.group);
-        if (!gbn.has(key)) gbn.set(key, { folder: q.folder ?? null, group: q.group });
-      }
-      if (q.folder) addHint(q.folder, q.folder ?? null, q.group ?? null);
-    }
-    return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()), groupByName: gbn };
+    return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()) };
   }, [queries]);
 
   async function handleUpload(type: DataLensType, file: File) {
@@ -115,26 +98,43 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       // Match on the client — pure logic, no server memory pressure.
       setProgress(`Матчинг ${rows_total} строк…`);
       const idx = buildMatchIndex(seoUrls, nameHints);
+      const aliases = (await listMappingsFn()) as AliasEntry[];
+      const resolver = buildGroupResolver(queries, aliases);
       let matched = 0;
       let unmatched = 0;
-      const normName = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+      const unresolvedNames = new Map<string, number>();
       const enriched = parsed.map((r) => {
-        let m = matchOne(r.normalized_url, idx, sePriority);
-        // For Categories: authoritative match by `Base category` name → Topvisor group.
-        // Applies always (even to overrule wrong `matched_by_name`/`group_conflict`).
         if (type === "categories") {
-          const bc = (r as { base_category?: string | null }).base_category;
-          if (bc) {
-            const hit = groupByName.get(normName(bc));
-            if (hit) {
-              m = { matched_url_id: m.matched_url_id, matched_group_id: hit.group, match_status: "matched_by_base_category" };
-            }
+          // Group-first: Base category — основной ключ. URL из Category URL
+          // подтягивается в группу и не обязан существовать в Topvisor.
+          const bc = (r as { base_category?: string | null }).base_category ?? null;
+          const hit = resolver.resolve(bc);
+          const urlMatch = matchOne(r.normalized_url, idx, sePriority);
+          if (hit) {
+            matched++;
+            const status =
+              hit.match_type === "manual"
+                ? "matched_by_manual"
+                : hit.match_type === "alias"
+                  ? "matched_by_alias"
+                  : "matched_by_base_category";
+            return { ...r, matched_url_id: urlMatch.matched_url_id, matched_group_id: hit.group, match_status: status };
           }
+          unmatched++;
+          if (bc) unresolvedNames.set(bc, (unresolvedNames.get(bc) ?? 0) + 1);
+          return { ...r, matched_url_id: urlMatch.matched_url_id, matched_group_id: null, match_status: "unmatched_base_category" };
         }
+        const m = matchOne(r.normalized_url, idx, sePriority);
         if (m.match_status === "unmatched" || m.match_status === "ambiguous_slug") unmatched++;
         else matched++;
         return { ...r, ...m };
       });
+      setUnresolved(
+        Array.from(unresolvedNames.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count),
+      );
+
 
       // Create import, then stream chunks. On any failure — mark import failed.
       const { importId } = await createFn({ data: { type, file_name: file.name, rows_total } });
