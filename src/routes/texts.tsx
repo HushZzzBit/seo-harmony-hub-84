@@ -134,7 +134,7 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, extraUrls, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
   useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
