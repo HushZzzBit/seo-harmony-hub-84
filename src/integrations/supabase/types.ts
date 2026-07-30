@@ -255,6 +255,45 @@ export type Database = {
           },
         ]
       }
+      external_group_mapping: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          external_name_normalized: string
+          external_name_raw: string
+          id: string
+          match_type: string
+          matched_folder: string | null
+          matched_group_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          external_name_normalized: string
+          external_name_raw: string
+          id?: string
+          match_type?: string
+          matched_folder?: string | null
+          matched_group_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          external_name_normalized?: string
+          external_name_raw?: string
+          id?: string
+          match_type?: string
+          matched_folder?: string | null
+          matched_group_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lsi_settings: {
         Row: {
           blacklist_domains: string[]
