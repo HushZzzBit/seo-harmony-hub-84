@@ -114,18 +114,19 @@ function MatchingSummary({
   );
 }
 
-export function useDataLens(stream: string | null) {
+export function useDataLens(stream: string | null, groups?: string[] | null) {
   const fn = useServerFn(getDataLensMetrics);
   const [data, setData] = useState<{ categories: CategoryMetric[]; startUrls: StartUrlMetric[] }>({
     categories: [],
     startUrls: [],
   });
   const [loading, setLoading] = useState(false);
+  const groupsKey = groups && groups.length ? groups.slice().sort().join("|") : "";
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fn({ data: { stream } })
+    fn({ data: { stream, groups: groupsKey ? groupsKey.split("|") : null } })
       .then((res) => {
         if (!cancelled) setData({ categories: res.categories, startUrls: res.startUrls });
       })
@@ -139,7 +140,7 @@ export function useDataLens(stream: string | null) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stream]);
+  }, [stream, groupsKey]);
 
   return { ...data, loading };
 }
