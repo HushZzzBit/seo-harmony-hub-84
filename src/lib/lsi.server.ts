@@ -584,15 +584,7 @@ export function pickCompetitors(
 export interface MiratextResult {
   status: string;
   hash?: string;
-  data?: {
-    tz?: {
-      keywordsAll?: Array<{ word: string; count?: number; recommended?: number }>;
-    };
-    repeatWordsAll?: Array<{ word: string; count?: number; siteCount?: number }>;
-    repeatWords2All?: Array<{ word: string; count?: number; siteCount?: number }>;
-    repeatWords3All?: Array<{ word: string; count?: number; siteCount?: number }>;
-    stats?: { length?: number; wordsCount?: number; wateriness?: number; nusea?: number };
-  };
+  data?: Record<string, unknown>;
   error?: string;
   raw: unknown;
 }
