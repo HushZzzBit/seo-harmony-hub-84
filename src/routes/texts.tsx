@@ -82,17 +82,24 @@ function TextsPage() {
 
   useEffect(() => { setCategory("all"); }, [folder]);
 
+  const extraUrls = useDataLensExtraUrls(folder, category);
+
   const rows = useMemo(() => {
-    const byUrl = new Map<string, { folder: string; group: string; url: string; qs: typeof queries }>();
+    const byUrl = new Map<string, { folder: string; group: string; url: string; qs: typeof queries; noTopvisor?: boolean }>();
     for (const q of queries) {
       const key = q.url ?? `~${q.folder}/${q.group}`;
       if (!byUrl.has(key)) byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
     }
+    // URL из DataLens, которых нет в Topvisor.
+    for (const e of extraUrls) {
+      if (!e.url || byUrl.has(e.url)) continue;
+      byUrl.set(e.url, { folder: e.folder, group: e.group, url: e.url, qs: [], noTopvisor: true });
+    }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values()).filter((r) => {
-      if (folder !== "all" && !r.qs.some((q) => q.folder === folder)) return false;
-      if (category !== "all" && !r.qs.some((q) => q.group === category)) return false;
+      if (folder !== "all" && !(r.noTopvisor ? r.folder === folder : r.qs.some((q) => q.folder === folder))) return false;
+      if (category !== "all" && !(r.noTopvisor ? r.group === category : r.qs.some((q) => q.group === category))) return false;
       if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
