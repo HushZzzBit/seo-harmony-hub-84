@@ -116,6 +116,8 @@ function MetaPage() {
     [queries, folder],
   );
 
+  const extraUrls = useDataLensExtraUrls(folder, group);
+
   const rows = useMemo(() => {
     const byUrl = new Map<string, Row>();
     for (const q of queries) {
@@ -123,6 +125,11 @@ function MetaPage() {
       if (!byUrl.has(key))
         byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
+    }
+    // URL из DataLens, которых нет в Topvisor — показываем с пометкой.
+    for (const e of extraUrls) {
+      if (!e.url || byUrl.has(e.url)) continue;
+      byUrl.set(e.url, { folder: e.folder, group: e.group, url: e.url, qs: [], noTopvisor: true });
     }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values())
