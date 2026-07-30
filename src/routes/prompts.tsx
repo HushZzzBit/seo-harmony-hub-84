@@ -189,6 +189,7 @@ function PromptsPage() {
           </TabsTrigger>
           <TabsTrigger value="requirements">Требования и примеры текстов</TabsTrigger>
           <TabsTrigger value="datalens">DataLens · маппинг групп</TabsTrigger>
+          <TabsTrigger value="lsi">LSI · ТЗ по конкурентам</TabsTrigger>
           <TabsTrigger value="apikeys" className="gap-1.5">
             <KeyRound className="h-3.5 w-3.5" /> API и Ключи
           </TabsTrigger>
