@@ -17,7 +17,9 @@ import {
   finalizeDataLensImport,
   listDataLensImports,
   deleteDataLensImport,
+  listGroupMappingsFn,
 } from "@/lib/datalens.functions";
+import { buildGroupResolver, type AliasEntry } from "@/lib/group-alias";
 import { buildMatchIndex, matchOne, type SePriority } from "@/lib/datalens-match";
 import { useStore } from "@/lib/store";
 import { normalizeUrl } from "@/lib/datalens";
@@ -46,11 +48,13 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
   const finalizeFn = useServerFn(finalizeDataLensImport);
   const listFn = useServerFn(listDataLensImports);
   const delFn = useServerFn(deleteDataLensImport);
+  const listMappingsFn = useServerFn(listGroupMappingsFn);
 
   const [imports, setImports] = useState<ImportRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [sePriority, setSePriority] = useState<SePriority>("any");
+  const [unresolved, setUnresolved] = useState<Array<{ name: string; count: number }>>([]);
 
   const refresh = async () => {
     try {
@@ -65,7 +69,7 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { seoUrls, nameHints, groupByName } = useMemo(() => {
+  const { seoUrls, nameHints } = useMemo(() => {
     const dedup = new Map<string, { url: string; normalized: string | null; folder: string | null; group: string | null; source: "relevant_g" | "relevant_y" | "target" }>();
     const add = (u: string | undefined, folder: string | null, group: string | null, source: "relevant_g" | "relevant_y" | "target") => {
       if (!u) return;
@@ -229,6 +233,27 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
         <div className="text-xs text-muted-foreground px-1">{progress}</div>
       )}
 
+
+      {unresolved.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-destructive">
+              Несопоставленные Base category ({unresolved.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1 text-xs max-h-48 overflow-auto">
+            {unresolved.map((u) => (
+              <div key={u.name} className="flex justify-between gap-2">
+                <span className="truncate" title={u.name}>{u.name}</span>
+                <span className="tabular-nums text-muted-foreground">{u.count}</span>
+              </div>
+            ))}
+            <div className="pt-2 text-muted-foreground">
+              Привязать вручную: Настройки → DataLens → Маппинг групп.
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
