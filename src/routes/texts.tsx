@@ -22,6 +22,7 @@ import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, provi
 import { normTextStatus, priorityRank, priorityLabel, priorityStyle, stripHtml, textStatusLabel } from "@/lib/ui";
 import { toast } from "sonner";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 const QUALITY_MAX_RUNS = 5;
 const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
@@ -81,17 +82,24 @@ function TextsPage() {
 
   useEffect(() => { setCategory("all"); }, [folder]);
 
+  const extraUrls = useDataLensExtraUrls(folder, category);
+
   const rows = useMemo(() => {
-    const byUrl = new Map<string, { folder: string; group: string; url: string; qs: typeof queries }>();
+    const byUrl = new Map<string, { folder: string; group: string; url: string; qs: typeof queries; noTopvisor?: boolean }>();
     for (const q of queries) {
       const key = q.url ?? `~${q.folder}/${q.group}`;
       if (!byUrl.has(key)) byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
     }
+    // URL из DataLens, которых нет в Topvisor.
+    for (const e of extraUrls) {
+      if (!e.url || byUrl.has(e.url)) continue;
+      byUrl.set(e.url, { folder: e.folder, group: e.group, url: e.url, qs: [], noTopvisor: true });
+    }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values()).filter((r) => {
-      if (folder !== "all" && !r.qs.some((q) => q.folder === folder)) return false;
-      if (category !== "all" && !r.qs.some((q) => q.group === category)) return false;
+      if (folder !== "all" && !(r.noTopvisor ? r.folder === folder : r.qs.some((q) => q.folder === folder))) return false;
+      if (category !== "all" && !(r.noTopvisor ? r.group === category : r.qs.some((q) => q.group === category))) return false;
       if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;
       const st = normStatus(texts[r.url]?.status);
       if (statusFilter !== "all" && st !== statusFilter) return false;
@@ -126,7 +134,7 @@ function TextsPage() {
       }
     };
     return enriched.sort(cmp);
-  }, [queries, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
+  }, [queries, extraUrls, folder, category, deferredSearch, statusFilter, priorityFilter, texts, urls, sortKey, sortDir]);
 
   useEffect(() => { setLimit(PAGE_SIZE); }, [folder, category, deferredSearch, statusFilter, priorityFilter, sortKey, sortDir]);
   const visible = rows.slice(0, limit);
@@ -292,6 +300,11 @@ function TextsPage() {
                     <td className="px-1.5 py-1 align-middle overflow-hidden">
                       <div className="flex items-center gap-1">
                         <div className="truncate text-[11px] flex-1">{r.url || "—"}</div>
+                        {r.noTopvisor && (
+                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-muted text-muted-foreground border-border" title="URL найден только в DataLens">
+                            Нет в TopVisor
+                          </span>
+                        )}
                         {r.url && (
                           <a
                             href={r.url}

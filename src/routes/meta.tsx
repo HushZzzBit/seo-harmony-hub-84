@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/tooltip";
 import { metaStatusLabel, posColor, priorityLabel, priorityRank, priorityStyle } from "@/lib/ui";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
 export const Route = createFileRoute("/meta")({
   ssr: false,
@@ -50,7 +51,7 @@ export const Route = createFileRoute("/meta")({
   ),
 });
 
-type Row = { folder: string; group: string; url: string; qs: Query[] };
+type Row = { folder: string; group: string; url: string; qs: Query[]; noTopvisor?: boolean };
 type SortKey = "priority" | "season" | "coverage" | "freq" | "status" | "url";
 type SortDir = "asc" | "desc";
 
@@ -115,6 +116,8 @@ function MetaPage() {
     [queries, folder],
   );
 
+  const extraUrls = useDataLensExtraUrls(folder, group);
+
   const rows = useMemo(() => {
     const byUrl = new Map<string, Row>();
     for (const q of queries) {
@@ -123,11 +126,18 @@ function MetaPage() {
         byUrl.set(key, { folder: q.folder, group: q.group, url: q.url ?? "", qs: [] });
       byUrl.get(key)!.qs.push(q);
     }
+    // URL из DataLens, которых нет в Topvisor — показываем с пометкой.
+    for (const e of extraUrls) {
+      if (!e.url || byUrl.has(e.url)) continue;
+      byUrl.set(e.url, { folder: e.folder, group: e.group, url: e.url, qs: [], noTopvisor: true });
+    }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values())
       .filter((r) => {
-        if (folder !== "all" && !r.qs.some((q) => q.folder === folder)) return false;
-        if (group !== "all" && !r.qs.some((q) => q.group === group)) return false;
+        if (folder !== "all" && !(r.noTopvisor ? r.folder === folder : r.qs.some((q) => q.folder === folder)))
+          return false;
+        if (group !== "all" && !(r.noTopvisor ? r.group === group : r.qs.some((q) => q.group === group)))
+          return false;
         if (
           deferredSearch &&
           !(r.url + r.group + r.folder).toLowerCase().includes(deferredSearch.toLowerCase())
@@ -181,7 +191,7 @@ function MetaPage() {
       }
     });
     return enriched;
-  }, [queries, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
+  }, [queries, extraUrls, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
@@ -618,6 +628,11 @@ const MetaRow = memo(function MetaRow({
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               <span className="truncate">{row.folder} · {row.group}</span>
               <KeywordsTooltip qs={row.qs} />
+              {row.noTopvisor && (
+                <span className="shrink-0 normal-case tracking-normal inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-muted text-muted-foreground border-border">
+                  Нет в TopVisor
+                </span>
+              )}
             </div>
             <div className="text-xs font-mono text-foreground/80 truncate" title={row.url}>
               {row.url || "—"}
