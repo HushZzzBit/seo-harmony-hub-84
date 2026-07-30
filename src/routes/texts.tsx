@@ -749,6 +749,7 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                     </button>
                   ))}
                 </div>
+                )}
               </section>
 
               {stopwords.length > 0 && (
