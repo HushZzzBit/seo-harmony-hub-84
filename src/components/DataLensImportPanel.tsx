@@ -83,6 +83,16 @@ export function DataLensImportPanel({ onLog }: { onLog?: (m: string) => void }) 
       const key = `${tokens.join("+")}::${folder}::${group}`;
       if (!hintMap.has(key)) hintMap.set(key, { tokens, folder, group });
     };
+    for (const q of queries) {
+      add(q.relevantGoogle, q.folder ?? null, q.group ?? null, "relevant_g");
+      add(q.relevantYandex, q.folder ?? null, q.group ?? null, "relevant_y");
+      add(q.targetUrl, q.folder ?? null, q.group ?? null, "target");
+      if (q.url && !q.targetUrl && !q.relevantGoogle && !q.relevantYandex) {
+        add(q.url, q.folder ?? null, q.group ?? null, "target");
+      }
+      if (q.group) addHint(q.group, q.folder ?? null, q.group ?? null);
+      if (q.folder) addHint(q.folder, q.folder ?? null, q.group ?? null);
+    }
     return { seoUrls: Array.from(dedup.values()), nameHints: Array.from(hintMap.values()) };
   }, [queries]);
 
