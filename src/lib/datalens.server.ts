@@ -132,6 +132,7 @@ async function getLatestImportId(type: DataLensType, _stream: string | null): Pr
 
 export interface CategoryMetric {
   normalized_url: string | null;
+  base_category: string | null;
   category_name: string | null;
   category_url: string | null;
   active_goods: number | null;
@@ -168,7 +169,7 @@ export async function loadLatestMetrics(stream: string | null) {
   if (catId) {
     const { data, error } = await supabaseAdmin
       .from("datalens_category_metric")
-      .select("normalized_url, category_name, category_url, active_goods, sellers, gmv, matched_url_id, matched_group_id, match_status")
+      .select("normalized_url, base_category, category_name, category_url, active_goods, sellers, gmv, matched_url_id, matched_group_id, match_status")
       .eq("import_id", catId)
       .limit(20000);
     if (error) throw new Error(error.message);
@@ -184,4 +185,60 @@ export async function loadLatestMetrics(stream: string | null) {
     urls.push(...((data ?? []) as StartUrlMetric[]));
   }
   return { categoryImportId: catId, startUrlImportId: urlId, categories: cats, startUrls: urls };
+}
+
+/* ---------------- Маппинг внешних названий групп (external_group_mapping) --------------- */
+
+export interface GroupMappingRow {
+  id: string;
+  source: string;
+  external_name_raw: string;
+  external_name_normalized: string;
+  matched_group_id: string | null;
+  matched_folder: string | null;
+  match_type: string;
+  created_at: string;
+}
+
+export async function listGroupMappings(): Promise<GroupMappingRow[]> {
+  const { data, error } = await supabaseAdmin
+    .from("external_group_mapping")
+    .select("id, source, external_name_raw, external_name_normalized, matched_group_id, matched_folder, match_type, created_at")
+    .order("external_name_normalized", { ascending: true })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as GroupMappingRow[];
+}
+
+export interface UpsertGroupMappingInput {
+  external_name_raw: string;
+  external_name_normalized: string;
+  matched_group_id: string | null;
+  matched_folder: string | null;
+  match_type?: string;
+  source?: string;
+}
+
+export async function upsertGroupMapping(input: UpsertGroupMappingInput) {
+  const { error } = await supabaseAdmin
+    .from("external_group_mapping")
+    .upsert(
+      {
+        source: input.source ?? "datalens_categories",
+        external_name_raw: input.external_name_raw,
+        external_name_normalized: input.external_name_normalized,
+        matched_group_id: input.matched_group_id,
+        matched_folder: input.matched_folder,
+        match_type: input.match_type ?? "manual",
+      },
+      { onConflict: "source,external_name_normalized" },
+    );
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function deleteGroupMapping(id: string) {
+  const { error } = await supabaseAdmin.from("external_group_mapping").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  return { ok: true };
 }
