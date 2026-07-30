@@ -32,6 +32,8 @@ import {
   type VersionRow,
 } from "@/lib/lsi.functions";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
+import { normalizeUrl } from "@/lib/datalens";
 
 
 const STATUS_LABEL: Record<string, string> = {
@@ -68,18 +70,38 @@ export function LsiPanel() {
   }, [folderFilter, prioFilter, search]);
 
 
+  // URL из DataLens, которых нет в Topvisor — чтобы состав группы был полным
+  const extraUrls = useDataLensExtraUrls(folderFilter, "all");
+
   // groups from local store (folder::group), enriched with seasonality/priority
   const groups = useMemo(() => {
     const map = new Map<
       string,
-      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[] }
+      { key: string; folder: string; group: string; url: string; keywords: string[]; qs: Query[]; urls: string[]; urlSet: Set<string>; tvUrlCount: number }
     >();
     for (const q of queries) {
       const key = `${q.folder}::${q.group}`;
-      if (!map.has(key)) map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [] });
+      if (!map.has(key))
+        map.set(key, { key, folder: q.folder, group: q.group, url: q.url ?? "", keywords: [], qs: [], urls: [], urlSet: new Set(), tvUrlCount: 0 });
       const g = map.get(key)!;
       g.keywords.push(q.phrase);
       g.qs.push(q);
+      if (!g.url && q.url) g.url = q.url;
+      for (const u of [q.url, q.targetUrl, q.relevantGoogle, q.relevantYandex]) {
+        const n = normalizeUrl(u ?? null);
+        if (!n || g.urlSet.has(n)) continue;
+        g.urlSet.add(n);
+        g.urls.push(u as string);
+        g.tvUrlCount++;
+      }
+    }
+    for (const e of extraUrls) {
+      const key = `${e.folder}::${e.group}`;
+      const g = map.get(key);
+      const n = normalizeUrl(e.url);
+      if (!g || !n || g.urlSet.has(n)) continue;
+      g.urlSet.add(n);
+      g.urls.push(e.url);
     }
     const now = new Date().getMonth();
     return Array.from(map.values()).map((g) => {
@@ -89,7 +111,7 @@ export function LsiPanel() {
       const dist = (planMonth - now + 12) % 12;
       return { ...g, season, planMonth, prio, dist, hasSeason: season.some((v) => v > 0) };
     });
-  }, [queries]);
+  }, [queries, extraUrls]);
 
   const folders = useMemo(() => Array.from(new Set(groups.map((g) => g.folder))).sort(), [groups]);
 
@@ -214,7 +236,7 @@ function GroupRow({
   analysis,
   onChanged,
 }: {
-  g: { key: string; folder: string; group: string; url: string; keywords: string[]; prio: Priority; planMonth: number; hasSeason: boolean };
+  g: { key: string; folder: string; group: string; url: string; keywords: string[]; urls?: string[]; tvUrlCount?: number; prio: Priority; planMonth: number; hasSeason: boolean };
   analysis: AnalysisRow | undefined;
   onChanged: () => Promise<void>;
 }) {
@@ -226,6 +248,7 @@ function GroupRow({
   const [busy, setBusy] = useState<string>("");
   const [editOpen, setEditOpen] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
+  const [urlsOpen, setUrlsOpen] = useState(false);
 
   const st = analysis?.status ?? "—";
   const badgeCls =
@@ -299,7 +322,36 @@ function GroupRow({
         <div className="text-[10px] text-muted-foreground">{g.folder}</div>
         <div className="font-medium">{g.group}</div>
       </td>
-      <td className="px-2 py-2 font-mono text-[11px] truncate max-w-[280px]">{g.url || "—"}</td>
+      <td className="px-2 py-2 font-mono text-[11px] max-w-[320px]">
+        {(g.urls?.length ?? 0) === 0 ? (
+          <span>{g.url || "—"}</span>
+        ) : (
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-1">
+              <span className="truncate max-w-[240px]">{g.urls![0]}</span>
+              {g.urls!.length > 1 && (
+                <button
+                  onClick={() => setUrlsOpen((v) => !v)}
+                  className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted"
+                >
+                  {urlsOpen ? "скрыть" : `+${g.urls!.length - 1}`}
+                </button>
+              )}
+            </div>
+            {urlsOpen &&
+              g.urls!.slice(1).map((u, i) => (
+                <div key={u} className="flex items-center gap-1 text-muted-foreground">
+                  <span className="truncate max-w-[240px]">{u}</span>
+                  {i + 1 >= (g.tvUrlCount ?? g.urls!.length) && (
+                    <span className="shrink-0 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 text-[9px] text-amber-600">
+                      нет в TopVisor
+                    </span>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
+      </td>
       <td className="px-2 py-2 text-right">{g.keywords.length}</td>
       <td className="px-2 py-2 text-[11px]">
         {g.hasSeason ? (
