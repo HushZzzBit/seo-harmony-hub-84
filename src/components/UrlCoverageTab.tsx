@@ -86,7 +86,13 @@ export function UrlCoverageTab({ stream, group }: { stream: string | null; group
     };
   }, [rows]);
 
-  const filtered = useMemo(() => applyCoverageFilter(rows, filter), [rows, filter]);
+  const filtered = useMemo(
+    () =>
+      sort.sort(applyCoverageFilter(rows, filter), (r, k) =>
+        k === "source" ? sourceLabel(r) : (r[k] as string | number | boolean | null),
+      ),
+    [rows, filter, sort],
+  );
 
   if (loading) return <div className="text-sm text-muted-foreground">Загружаем данные…</div>;
   if (!rows.length) {
