@@ -363,7 +363,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
       const pctIn = (a: number[], n: number) => (a.length ? (a.filter((v) => v <= n).length / a.length) * 100 : null);
       const folder = matched && urls[matched]?.folder ? urls[matched]!.folder! : (qs[0]?.folder ?? null);
-      const group = matched && urls[matched]?.group ? urls[matched]!.group! : (qs[0]?.group ?? null);
+      const group = matched && urls[matched]?.group ? urls[matched]!.group! : (qs[0]?.group ?? matchedGroup ?? null);
       const metaStatus = matched ? metaEdits[matched]?.status ?? "—" : "—";
       const textStatus = matched ? texts[matched]?.status ?? "—" : "—";
       const updatedAt = Math.max(
@@ -472,7 +472,14 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
               <tbody>
                 {filtered.slice(0, 500).map((r, i) => (
                   <tr key={i} className="border-t border-border/40">
-                    <td className="py-1 px-2 max-w-[260px] truncate" title={r.url}>{r.url}</td>
+                    <td className="py-1 px-2 max-w-[260px] truncate" title={r.url}>
+                      <span className="truncate">{r.url}</span>
+                      {!r.hasTopvisor && (
+                        <span className="ml-1 text-[10px] px-1 rounded bg-muted text-muted-foreground whitespace-nowrap">
+                          нет данных Topvisor
+                        </span>
+                      )}
+                    </td>
                     <td className="py-1 px-2">{r.folder ?? "—"}</td>
                     <td className="py-1 px-2">{r.group ?? "—"}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.gmv)}</td>
@@ -482,10 +489,10 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
                     <td className="py-1 px-2 text-right tabular-nums">{fmtNum(r.orders)}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{r.avgY?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
                     <td className="py-1 px-2 text-right tabular-nums">{r.avgG?.toFixed(1) ?? (r.hasKeys ? "—" : "н/д")}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top3Y != null ? `${r.top3Y.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top10Y != null ? `${r.top10Y.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top3G != null ? `${r.top3G.toFixed(0)}%` : "—"}</td>
-                    <td className="py-1 px-2 text-right tabular-nums">{r.top10G != null ? `${r.top10G.toFixed(0)}%` : "—"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3Y != null ? `${r.top3Y.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10Y != null ? `${r.top10Y.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top3G != null ? `${r.top3G.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
+                    <td className="py-1 px-2 text-right tabular-nums">{r.top10G != null ? `${r.top10G.toFixed(0)}%` : r.hasTopvisor ? "—" : "н/д"}</td>
                     <td className="py-1 px-2">{r.metaStatus}</td>
                     <td className="py-1 px-2">{r.textStatus}</td>
                     <td className="py-1 px-2 text-muted-foreground">{r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : "—"}</td>
