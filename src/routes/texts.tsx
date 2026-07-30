@@ -540,7 +540,14 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" variant="outline" title="Редактировать текст" aria-label="Редактировать текст">
+        <Button
+          size="sm"
+          variant="outline"
+          title="Редактировать текст"
+          aria-label="Редактировать текст"
+          onPointerEnter={() => setArmed(true)}
+          onFocus={() => setArmed(true)}
+        >
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
