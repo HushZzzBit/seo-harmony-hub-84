@@ -42,6 +42,9 @@ const STATUS_LABEL: Record<string, string> = {
   matched_by_relevant_y: "По релевантной (Яндекс)",
   matched_by_target: "По целевой ссылке",
   matched_by_base_category: "По Base category",
+  matched_by_alias: "По alias Base category",
+  matched_by_manual: "Ручная привязка",
+  unmatched_base_category: "Base category не сопоставлена",
   matched_by_name: "По названию (fallback)",
   matched_by_slug: "По slug",
   group_conflict: "Конфликт групп",
@@ -187,11 +190,19 @@ function filterByFolder<T extends { matched_group_id: string | null; normalized_
   ownership: Map<string, { folder: string | null; group: string | null }>,
 ): T[] {
   // Единый источник владения: сначала ownership registry, затем legacy fallback.
+  const AUTHORITATIVE = new Set(["matched_by_base_category", "matched_by_alias", "matched_by_manual"]);
   const effectiveGroup = (r: T): string | null => {
+    // Base category — основной ключ группы для DataLens Categories.
+    if (r.match_status && AUTHORITATIVE.has(r.match_status) && r.matched_group_id) return r.matched_group_id;
     const own = r.normalized_url ? ownership.get(r.normalized_url) : undefined;
     if (own?.group) return own.group;
-    // Legacy: доверяем только жёстким матчам.
-    const trust = r.match_status && r.match_status !== "matched_by_name" && r.match_status !== "matched_by_slug" && r.match_status !== "ambiguous_slug" && r.match_status !== "unmatched";
+    const trust =
+      r.match_status &&
+      r.match_status !== "matched_by_name" &&
+      r.match_status !== "matched_by_slug" &&
+      r.match_status !== "ambiguous_slug" &&
+      r.match_status !== "unmatched" &&
+      r.match_status !== "unmatched_base_category";
     return trust ? r.matched_group_id : null;
   };
   if (group) return rows.filter((r) => effectiveGroup(r) === group);
@@ -334,10 +345,11 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
       qByUrl.set(q.url, arr);
     }
 
-    // Показываем только URL, встречающиеся в Topvisor (пересечение).
+    // Business-first: все URL из DataLens Categories попадают в группу,
+    // даже если их нет в Topvisor (SEO-метрики будут пустыми).
     const keys = new Set<string>();
-    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k)) keys.add(k);
-    for (const k of catByUrl.keys()) if (topvisorUrls.has(k)) keys.add(k);
+    for (const k of catByUrl.keys()) keys.add(k);
+    for (const k of urlByNorm.keys()) if (topvisorUrls.has(k) || catByUrl.has(k)) keys.add(k);
 
     return Array.from(keys).map((norm) => {
       const u = urlByNorm.get(norm);
@@ -377,6 +389,7 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
         textStatus,
         updatedAt,
         hasKeys: qs.length > 0,
+        hasTopvisor: topvisorUrls.has(norm),
         match_status: matchStatus,
         matched_group_id: matchedGroup,
       };
