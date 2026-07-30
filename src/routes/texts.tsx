@@ -300,6 +300,11 @@ function TextsPage() {
                     <td className="px-1.5 py-1 align-middle overflow-hidden">
                       <div className="flex items-center gap-1">
                         <div className="truncate text-[11px] flex-1">{r.url || "—"}</div>
+                        {r.noTopvisor && (
+                          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border bg-muted text-muted-foreground border-border" title="URL найден только в DataLens">
+                            Нет в TopVisor
+                          </span>
+                        )}
                         {r.url && (
                           <a
                             href={r.url}
