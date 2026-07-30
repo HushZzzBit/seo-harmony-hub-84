@@ -248,6 +248,7 @@ function GroupRow({
   const [busy, setBusy] = useState<string>("");
   const [editOpen, setEditOpen] = useState(false);
   const [histOpen, setHistOpen] = useState(false);
+  const [urlsOpen, setUrlsOpen] = useState(false);
 
   const st = analysis?.status ?? "—";
   const badgeCls =
