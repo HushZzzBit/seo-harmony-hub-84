@@ -461,23 +461,23 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
             <table className="text-xs w-full">
               <thead className="text-muted-foreground bg-muted/30">
                 <tr className="text-left">
-                  <th className="py-1.5 px-2">URL</th>
-                  <th className="py-1.5 px-2">Папка</th>
-                  <th className="py-1.5 px-2">Группа</th>
-                  <th className="py-1.5 px-2 text-right">GMV</th>
-                  <th className="py-1.5 px-2 text-right">Товары</th>
-                  <th className="py-1.5 px-2 text-right">Селлеры</th>
-                  <th className="py-1.5 px-2 text-right">Визиты</th>
-                  <th className="py-1.5 px-2 text-right">Заказы</th>
-                  <th className="py-1.5 px-2 text-right">Ср.Y</th>
-                  <th className="py-1.5 px-2 text-right">Ср.G</th>
-                  <th className="py-1.5 px-2 text-right">TOP-3 Y</th>
-                  <th className="py-1.5 px-2 text-right">TOP-10 Y</th>
-                  <th className="py-1.5 px-2 text-right">TOP-3 G</th>
-                  <th className="py-1.5 px-2 text-right">TOP-10 G</th>
-                  <th className="py-1.5 px-2">Мета</th>
-                  <th className="py-1.5 px-2">Текст</th>
-                  <th className="py-1.5 px-2">Обновл.</th>
+                  <SortTh sortKey="url" sort={sort}>URL</SortTh>
+                  <SortTh sortKey="folder" sort={sort}>Папка</SortTh>
+                  <SortTh sortKey="group" sort={sort}>Группа</SortTh>
+                  <SortTh sortKey="gmv" sort={sort} align="right">GMV</SortTh>
+                  <SortTh sortKey="goods" sort={sort} align="right">Товары</SortTh>
+                  <SortTh sortKey="sellers" sort={sort} align="right">Селлеры</SortTh>
+                  <SortTh sortKey="visits" sort={sort} align="right">Визиты</SortTh>
+                  <SortTh sortKey="orders" sort={sort} align="right">Заказы</SortTh>
+                  <SortTh sortKey="avgY" sort={sort} align="right">Ср.Y</SortTh>
+                  <SortTh sortKey="avgG" sort={sort} align="right">Ср.G</SortTh>
+                  <SortTh sortKey="top3Y" sort={sort} align="right">TOP-3 Y</SortTh>
+                  <SortTh sortKey="top10Y" sort={sort} align="right">TOP-10 Y</SortTh>
+                  <SortTh sortKey="top3G" sort={sort} align="right">TOP-3 G</SortTh>
+                  <SortTh sortKey="top10G" sort={sort} align="right">TOP-10 G</SortTh>
+                  <SortTh sortKey="metaStatus" sort={sort}>Мета</SortTh>
+                  <SortTh sortKey="textStatus" sort={sort}>Текст</SortTh>
+                  <SortTh sortKey="updatedAt" sort={sort}>Обновл.</SortTh>
                 </tr>
               </thead>
               <tbody>
