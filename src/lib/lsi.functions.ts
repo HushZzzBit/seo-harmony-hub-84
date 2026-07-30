@@ -309,7 +309,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row?.miratext_hash) throw new Error("Miratext hash не найден — запустите анализ заново");
 
-    const { miratextPoll, buildItemsFromMiratext } = await import("./lsi.server");
+    const { miratextPoll, buildItemsFromMiratext, miratextRecommendedLength } = await import("./lsi.server");
     const res = await miratextPoll(row.miratext_hash);
 
     if (res.status === "draft" || res.status === "working") {
@@ -341,7 +341,7 @@ export const pollMiratext = createServerFn({ method: "POST" })
         .order("version_number", { ascending: false })
         .limit(1);
       const nextNum = existing && existing[0] ? (existing[0].version_number as number) + 1 : 1;
-      const len = res.data?.stats?.length ?? null;
+      const len = miratextRecommendedLength(res.data);
       await sb.from("text_requirement_version").insert({
         group_key: row.group_key as string,
         analysis_id: data.analysisId,
