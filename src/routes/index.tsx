@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BusinessMetricsTab, UrlAnalyticsTab } from "@/components/DashboardDataLensTabs";
 import { UrlCoverageTab } from "@/components/UrlCoverageTab";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useGlobalFolder, useGlobalGroup } from "@/hooks/use-global-scope";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -63,9 +64,12 @@ function Dashboard() {
     () => Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b)),
     [grouped],
   );
-  const [selectedFolder, setSelectedFolder] = usePersistentState<string>("dash.folder", "");
-  const activeFolder = folders.includes(selectedFolder) ? selectedFolder : folders[0] ?? "";
-  const [selectedGroup, setSelectedGroup] = usePersistentState<string | null>("dash.group", null);
+  const [globalFolder, setGlobalFolder] = useGlobalFolder();
+  const activeFolder = folders.includes(globalFolder) ? globalFolder : folders[0] ?? "";
+  const setSelectedFolder = setGlobalFolder;
+  const [globalGroup, setGlobalGroup] = useGlobalGroup();
+  const selectedGroup = globalGroup !== "all" ? globalGroup : null;
+  const setSelectedGroup = useCallback((g: string | null) => setGlobalGroup(g ?? "all"), [setGlobalGroup]);
   const [dashTab, setDashTab] = usePersistentState<string>("dash.tab", "seo");
 
   const folderQs = grouped.get(activeFolder) ?? [];
@@ -122,7 +126,7 @@ function Dashboard() {
                 count={folders.length}
                 items={folders}
                 selected={activeFolder}
-                onSelect={(f) => { setSelectedFolder(f); setSelectedGroup(null); }}
+                onSelect={(f) => setSelectedFolder(f)}
                 counts={(f) => (grouped.get(f) ?? []).length}
                 countLabel="запр."
                 hideSearch
