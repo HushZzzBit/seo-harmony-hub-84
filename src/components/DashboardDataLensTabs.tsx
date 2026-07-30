@@ -145,7 +145,7 @@ export function useDataLens(stream: string | null, groups?: string[] | null) {
   return { ...data, loading };
 }
 
-function useFolderGroups(stream: string | null): Set<string> | null {
+export function useFolderGroups(stream: string | null): Set<string> | null {
   const queries = useStore((s) => s.queries);
   return useMemo(() => {
     if (!stream) return null;
@@ -159,7 +159,7 @@ function useFolderGroups(stream: string | null): Set<string> | null {
  * Единый реестр владения URL, поддерживаемый useOwnershipSync().
  * DataLens → Topvisor group; при отсутствии — legacy matched_group_id.
  */
-function useUrlOwnershipMap(): Map<string, { folder: string | null; group: string | null }> {
+export function useUrlOwnershipMap(): Map<string, { folder: string | null; group: string | null }> {
   const ownership = useStore((s) => s.ownership);
   return useMemo(() => {
     const m = new Map<string, { folder: string | null; group: string | null }>();
@@ -184,7 +184,7 @@ function useTopvisorUrlSet(): Set<string> {
   }, [queries]);
 }
 
-function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null; match_status?: string }>(
+export function filterByFolder<T extends { matched_group_id: string | null; normalized_url: string | null; match_status?: string }>(
   rows: T[],
   folderGroups: Set<string> | null,
   group: string | null | undefined,
