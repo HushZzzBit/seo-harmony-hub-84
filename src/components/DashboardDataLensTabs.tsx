@@ -316,8 +316,12 @@ export function BusinessMetricsTab({ stream, group }: { stream: string | null; g
 }
 
 export function UrlAnalyticsTab({ stream, group }: { stream: string | null; group?: string | null }) {
-  const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null);
   const folderGroups = useFolderGroups(stream);
+  const requestGroups = useMemo(
+    () => (group ? [group] : folderGroups ? Array.from(folderGroups) : null),
+    [group, folderGroups],
+  );
+  const { startUrls: allStartUrls, categories: allCategories, loading } = useDataLens(null, requestGroups);
   const ownership = useUrlOwnershipMap();
   const topvisorUrls = useTopvisorUrlSet();
   const startUrls = useMemo(() => filterByFolder(allStartUrls, folderGroups, group, ownership), [allStartUrls, folderGroups, group, ownership]);
