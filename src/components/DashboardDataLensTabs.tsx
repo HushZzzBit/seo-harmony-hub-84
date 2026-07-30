@@ -4,7 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDataLensMetrics } from "@/lib/datalens.functions";
 import { useStore } from "@/lib/store";
 import { normalizeUrl } from "@/lib/datalens";
+import { useTableSort, SortTh } from "@/hooks/use-table-sort";
 import type { Query } from "@/lib/types";
+
+type UrlSortKey =
+  | "url"
+  | "folder"
+  | "group"
+  | "gmv"
+  | "goods"
+  | "sellers"
+  | "visits"
+  | "orders"
+  | "avgY"
+  | "avgG"
+  | "top3Y"
+  | "top10Y"
+  | "top3G"
+  | "top10G"
+  | "metaStatus"
+  | "textStatus"
+  | "updatedAt";
 
 interface CategoryMetric {
   normalized_url: string | null;
