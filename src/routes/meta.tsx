@@ -191,7 +191,7 @@ function MetaPage() {
       }
     });
     return enriched;
-  }, [queries, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
+  }, [queries, extraUrls, folder, group, deferredSearch, statusFilter, priorityFilter, metaEdits, urls, sortKey, sortDir]);
 
   useEffect(() => {
     setLimit(PAGE_SIZE);
