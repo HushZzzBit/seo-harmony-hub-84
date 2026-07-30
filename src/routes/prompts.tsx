@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { DataLensMappingPanel } from "@/components/DataLensMappingPanel";
 import { z } from "zod";
 import { useStore } from "@/lib/store";
 import type { PromptTemplate, Query } from "@/lib/types";
@@ -187,6 +188,7 @@ function PromptsPage() {
             <Wand2 className="h-3.5 w-3.5" /> AI Промты
           </TabsTrigger>
           <TabsTrigger value="requirements">Требования и примеры текстов</TabsTrigger>
+          <TabsTrigger value="datalens">DataLens · маппинг групп</TabsTrigger>
           <TabsTrigger value="apikeys" className="gap-1.5">
             <KeyRound className="h-3.5 w-3.5" /> API и Ключи
           </TabsTrigger>
@@ -329,6 +331,10 @@ function PromptsPage() {
 
         <TabsContent value="requirements" className="space-y-4">
           <RequirementsTab />
+        </TabsContent>
+
+        <TabsContent value="datalens" className="space-y-4">
+          <DataLensMappingPanel />
         </TabsContent>
 
         <TabsContent value="apikeys" className="space-y-4">
