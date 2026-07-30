@@ -37,7 +37,7 @@ export const Route = createFileRoute("/prompts")({
     ],
   }),
   validateSearch: z.object({
-    tab: z.enum(["prompts", "requirements", "apikeys"]).optional(),
+    tab: z.enum(["prompts", "requirements", "datalens", "lsi", "apikeys"]).optional(),
   }),
   component: () => (
     <ClientOnly fallback={null}>
