@@ -410,15 +410,8 @@ export function UrlAnalyticsTab({ stream, group }: { stream: string | null; grou
     if (onlyNoMeta) r = r.filter((x) => x.metaStatus === "—" || x.metaStatus === "not_started");
     if (onlyNoText) r = r.filter((x) => x.textStatus === "—" || x.textStatus === "not_assigned");
     if (outsideTop10) r = r.filter((x) => (x.top10G ?? 0) < 50 && (x.top10Y ?? 0) < 50);
-    return [...r].sort((a, b) => {
-      switch (sortBy) {
-        case "visits": return b.visits - a.visits;
-        case "orders": return b.orders - a.orders;
-        case "top10g": return (b.top10G ?? -1) - (a.top10G ?? -1);
-        default: return b.gmv - a.gmv;
-      }
-    });
-  }, [rows, sortBy, onlyNoMeta, onlyNoText, outsideTop10]);
+    return sort.sort(r, (row, k) => row[k] as never);
+  }, [rows, sort, onlyNoMeta, onlyNoText, outsideTop10]);
 
   if (loading) return <div className="text-sm text-muted-foreground">Загружаем данные DataLens…</div>;
   if (!rows.length) {
