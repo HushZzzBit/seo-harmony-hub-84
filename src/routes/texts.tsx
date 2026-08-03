@@ -16,7 +16,10 @@ import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink, RefreshCw, Loader2, Chec
 import { VariableHint } from "@/components/VariableHint";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { RoundCheckbox } from "@/components/RoundCheckbox";
-import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider } from "@/lib/types";
+import type { TextStatus, TextQualityCheck, QualityProviderResult, QualityProvider, TextComment } from "@/lib/types";
+import { TextCommentsPanel } from "@/components/TextCommentsPanel";
+import { applyCommentMark, removeCommentMark, focusComment } from "@/lib/comment-mark";
+
 import { checkTextQuality } from "@/lib/quality.functions";
 import { getActiveRequirementsForGroup, type ActiveRequirements } from "@/lib/lsi.functions";
 import { overallDot, overallFromCheck, overallFromCheckWith, overallLabel, providerLabel, providerMetrics, providerMetricsWith, zoneClass } from "@/lib/quality";
@@ -26,7 +29,9 @@ import { usePersistentState } from "@/hooks/use-persistent-state";
 import { useGlobalFolder, useGlobalGroup, useGlobalSort } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
 
+const EMPTY_COMMENTS: TextComment[] = [];
 const QUALITY_MAX_RUNS = 5;
+
 const QUALITY_MIN_INTERVAL_MS = 60_000; // 1 минута
 const QUALITY_MIN_DIFF_CHARS = 10;
 
@@ -407,6 +412,60 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
   const [tab, setTab] = useState("editor");
   const [highlight, setHighlight] = useState(true);
 
+  // --- Комментарии (как в Google Docs) ---
+  const comments = useStore((s) => s.textComments?.[url]) ?? EMPTY_COMMENTS;
+  const addTextComment = useStore((s) => s.addTextComment);
+  const updateTextComment = useStore((s) => s.updateTextComment);
+  const deleteTextComment = useStore((s) => s.deleteTextComment);
+  const [draft, setDraft] = useState<{ id: string; quote: string } | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const { from, to } = editor.state.selection;
+      setHasSelection(to > from);
+    };
+    update();
+    editor.on("selectionUpdate", update);
+    editor.on("transaction", update);
+    return () => {
+      editor.off("selectionUpdate", update);
+      editor.off("transaction", update);
+    };
+  }, [editor]);
+
+  const startComment = () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    if (to <= from) return;
+    const quote = editor.state.doc.textBetween(from, to, " ").trim();
+    const id = `c${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+    applyCommentMark(editor, id);
+    setDraft({ id, quote });
+  };
+
+  const submitDraft = (body: string) => {
+    if (!draft) return;
+    addTextComment({
+      id: draft.id,
+      url,
+      quote: draft.quote,
+      body,
+      resolved: false,
+      createdAt: Date.now(),
+    });
+    setValue(editor?.getHTML() ?? value);
+    setDraft(null);
+  };
+
+  const cancelDraft = () => {
+    if (draft && editor) removeCommentMark(editor, draft.id);
+    setDraft(null);
+    setValue(editor?.getHTML() ?? value);
+  };
+
+
   // Active LSI requirements for this group — cached per group, prefetched on hover
   // so the popup shows the final (LSI-based) keys immediately, without a flash of defaults.
   const getReq = useServerFn(getActiveRequirementsForGroup);
@@ -575,7 +634,10 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
                   onChange={setValue}
                   onEditor={setEditorRef}
                   placeholder={writerRequirements?.trim() || undefined}
+                  onAddComment={startComment}
+                  canAddComment={hasSelection && !draft}
                 />
+
 
               </TabsContent>
 
@@ -614,7 +676,35 @@ function TextEditor({ url, folder, group }: { url: string; folder: string; group
 
           {/* Keywords sidebar */}
           <aside className="w-[340px] shrink-0 border-l flex flex-col bg-muted/20">
+            <div className="p-3 border-b max-h-[45%] overflow-auto">
+              <TextCommentsPanel
+                comments={comments}
+                draftQuote={draft?.quote ?? null}
+                onSubmitDraft={submitDraft}
+                onCancelDraft={cancelDraft}
+                onToggleResolved={(c, resolved) => {
+                  updateTextComment(url, c.id, { resolved, resolvedAt: resolved ? Date.now() : undefined });
+                  if (resolved && editor) {
+                    removeCommentMark(editor, c.id);
+                    setValue(editor.getHTML());
+                  }
+                }}
+                onDelete={(c) => {
+                  deleteTextComment(url, c.id);
+                  if (editor) {
+                    removeCommentMark(editor, c.id);
+                    setValue(editor.getHTML());
+                  }
+                }}
+                onJump={(c) => {
+                  if (c.resolved || !editor) return;
+                  setTab("editor");
+                  focusComment(editor, c.id);
+                }}
+              />
+            </div>
             <div className="p-3 border-b space-y-2">
+
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold">Требования к тексту</div>
                 {lsi?.version ? (

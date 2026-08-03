@@ -4,12 +4,14 @@ import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
+import { CommentMark } from "@/lib/comment-mark";
+
 import { Button } from "@/components/ui/button";
 import { useEffect } from "react";
 import {
   Bold, Italic, Underline as UIcon, Strikethrough, Heading1, Heading2, Heading3,
   List, ListOrdered, Quote, Undo2, Redo2, AlignLeft, AlignCenter, AlignRight,
-  Link as LinkIcon, Code, Eraser, Pilcrow,
+  Link as LinkIcon, Code, Eraser, Pilcrow, MessageSquarePlus,
 } from "lucide-react";
 
 interface Props {
@@ -17,9 +19,12 @@ interface Props {
   onChange: (html: string) => void;
   onEditor?: (e: Editor | null) => void;
   placeholder?: string;
+  /** Кнопка «Комментарий» в тулбаре (Google-Docs-стиль). */
+  onAddComment?: () => void;
+  canAddComment?: boolean;
 }
 
-export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props) {
+export function RichTextEditor({ value, onChange, onEditor, placeholder, onAddComment, canAddComment }: Props) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
@@ -27,8 +32,10 @@ export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props
       Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { class: "text-primary underline" } }),
       Placeholder.configure({ placeholder: placeholder ?? "Начните писать текст..." }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      CommentMark,
     ],
     content: value || "<p></p>",
+
     editorProps: {
       attributes: {
         class:
@@ -52,7 +59,7 @@ export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props
 
   return (
     <div className="flex flex-col h-full min-h-0 border rounded-md bg-background overflow-hidden">
-      <Toolbar editor={editor} />
+      <Toolbar editor={editor} onAddComment={onAddComment} canAddComment={canAddComment} />
       <div className="flex-1 min-h-0 overflow-auto">
         <EditorContent editor={editor} className="h-full" />
       </div>
@@ -61,7 +68,8 @@ export function RichTextEditor({ value, onChange, onEditor, placeholder }: Props
 }
 
 
-function Toolbar({ editor }: { editor: Editor }) {
+function Toolbar({ editor, onAddComment, canAddComment }: { editor: Editor; onAddComment?: () => void; canAddComment?: boolean }) {
+
   const btn = (active: boolean) =>
     `h-8 w-8 p-0 ${active ? "bg-accent text-accent-foreground" : ""}`;
   const setLink = () => {
@@ -98,7 +106,24 @@ function Toolbar({ editor }: { editor: Editor }) {
       <Sep />
       <Button size="sm" variant="ghost" className={btn(editor.isActive("link"))} onClick={setLink} title="Ссылка"><LinkIcon className="h-4 w-4" /></Button>
       <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} title="Очистить форматирование"><Eraser className="h-4 w-4" /></Button>
+      {onAddComment && (
+        <>
+          <Sep />
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2 gap-1 text-xs"
+            disabled={!canAddComment}
+            onClick={onAddComment}
+            title="Комментарий к выделенному фрагменту"
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+            Комментарий
+          </Button>
+        </>
+      )}
     </div>
+
   );
 }
 

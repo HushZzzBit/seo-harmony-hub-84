@@ -1,3 +1,4 @@
+import { stripCommentSpans } from "@/lib/comment-mark";
 import { createFileRoute, ClientOnly, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -178,9 +179,10 @@ function ImportPage() {
     return s || u;
   };
   const stripLiParagraphs = (html: string): string =>
-    html
+    stripCommentSpans(html)
       .replace(/<li>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/gi, "<li>$1</li>")
       .replace(/<li([^>]*)>\s*<p>([\s\S]*?)<\/p>\s*<\/li>/gi, "<li$1>$2</li>");
+
 
   const exportUrls = Array.from(
     new Set<string>([

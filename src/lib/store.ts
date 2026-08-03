@@ -59,11 +59,13 @@ import type {
   PromptTemplate,
   QualityThresholds,
   Query,
+  TextComment,
   TextQualityCheck,
   TextRow,
   UrlRow,
 } from "./types";
 import { DEFAULT_THRESHOLDS, applyThresholds } from "./quality";
+
 
 interface State {
   queries: Query[];
@@ -71,8 +73,11 @@ interface State {
   metaEdits: Record<string, MetaEdit>;
   metaHistory: MetaHistoryEntry[];
   texts: Record<string, TextRow>;
+  /** Комментарии SEO-специалиста к тексту: url → список комментариев. */
+  textComments: Record<string, TextComment[]>;
   folderState: Record<string, FolderState>;
   groupState: Record<string, GroupState>;
+
   prompts: Record<string, PromptTemplate>;
   qualityChecks: Record<string, TextQualityCheck>;
   /** Per-folder thresholds. Ключ '__default' — глобальные значения (используются как фолбэк). */
@@ -90,6 +95,10 @@ interface State {
   setMetaEditsBulk: (urls: string[], patch: Partial<MetaEdit>) => void;
   setText: (url: string, patch: Partial<TextRow>) => void;
   setTextsBulk: (urls: string[], patch: Partial<TextRow>) => void;
+  addTextComment: (c: TextComment) => void;
+  updateTextComment: (url: string, id: string, patch: Partial<TextComment>) => void;
+  deleteTextComment: (url: string, id: string) => void;
+
   setFolderState: (folder: string, patch: Partial<FolderState>) => void;
   setGroupState: (folder: string, group: string, patch: Partial<GroupState>) => void;
   setPrompt: (folder: string, patch: Partial<PromptTemplate>) => void;
@@ -138,6 +147,8 @@ export const useStore = create<State>()(
       metaEdits: {},
       metaHistory: [],
       texts: {},
+      textComments: {},
+
       folderState: {},
       groupState: {},
       prompts: {},
@@ -276,6 +287,26 @@ export const useStore = create<State>()(
         }
         set({ texts: next });
       },
+      addTextComment: (c) => {
+        const map = get().textComments ?? {};
+        set({ textComments: { ...map, [c.url]: [...(map[c.url] ?? []), c] } });
+      },
+      updateTextComment: (url, id, patch) => {
+        const map = get().textComments ?? {};
+        const list = map[url] ?? [];
+        set({
+          textComments: {
+            ...map,
+            [url]: list.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+          },
+        });
+      },
+      deleteTextComment: (url, id) => {
+        const map = get().textComments ?? {};
+        const list = (map[url] ?? []).filter((c) => c.id !== id);
+        set({ textComments: { ...map, [url]: list } });
+      },
+
       setFolderState: (folder, patch) => {
         const prev = get().folderState[folder] ?? { folder, status: "not_started" as const };
         set({ folderState: { ...get().folderState, [folder]: { ...prev, ...patch } } });
