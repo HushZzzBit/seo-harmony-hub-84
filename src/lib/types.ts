@@ -63,6 +63,20 @@ export interface TextRow {
   updatedAt?: number;
 }
 
+/** Комментарий SEO-специалиста к фрагменту текста (как в Google Docs). */
+export interface TextComment {
+  id: string;
+  url: string;
+  /** Процитированный фрагмент текста, к которому оставлен комментарий. */
+  quote: string;
+  body: string;
+  author?: string;
+  resolved: boolean;
+  createdAt: number;
+  resolvedAt?: number;
+}
+
+
 export interface FolderState {
   folder: string;
   status: Status;
