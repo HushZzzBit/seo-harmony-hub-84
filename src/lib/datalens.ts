@@ -198,3 +198,12 @@ export function parseStartUrlRows(rows: Record<string, unknown>[]): StartUrlRow[
     };
   });
 }
+
+/**
+ * Карточки товара (URL, содержащие сегмент /product/) не прорабатываются:
+ * они исключаются из мета-тегов, SEO-текстов, LSI, инвентаря и экспорта.
+ */
+export function isProductUrl(u: string | null | undefined): boolean {
+  if (!u) return false;
+  return /(^|[/])product([/]|$)/i.test(String(u).split(/[?#]/)[0]);
+}
