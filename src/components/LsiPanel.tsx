@@ -34,7 +34,7 @@ import {
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import { useGlobalFolder } from "@/hooks/use-global-scope";
 import { useDataLensExtraUrls } from "@/hooks/use-datalens-extra-urls";
-import { normalizeUrl } from "@/lib/datalens";
+import { normalizeUrl, isProductUrl } from "@/lib/datalens";
 
 
 const STATUS_LABEL: Record<string, string> = {
@@ -90,7 +90,7 @@ export function LsiPanel() {
       if (!g.url && q.url) g.url = q.url;
       for (const u of [q.url, q.targetUrl, q.relevantGoogle, q.relevantYandex]) {
         const n = normalizeUrl(u ?? null);
-        if (!n || g.urlSet.has(n)) continue;
+        if (!n || isProductUrl(n) || g.urlSet.has(n)) continue;
         g.urlSet.add(n);
         g.urls.push(u as string);
         g.tvUrlCount++;
