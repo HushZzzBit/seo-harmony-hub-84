@@ -1,4 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
+import { isProductUrl } from "@/lib/datalens";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
@@ -104,6 +105,7 @@ function TextsPage() {
     }
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values()).filter((r) => {
+      if (isProductUrl(r.url)) return false;
       if (folder !== "all" && !(r.noTopvisor ? r.folder === folder : r.qs.some((q) => q.folder === folder))) return false;
       if (category !== "all" && !(r.noTopvisor ? r.group === category : r.qs.some((q) => q.group === category))) return false;
       if (deferredSearch && !(r.url + r.group).toLowerCase().includes(deferredSearch.toLowerCase())) return false;

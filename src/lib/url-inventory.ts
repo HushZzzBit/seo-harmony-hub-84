@@ -3,7 +3,7 @@
 //   DataLens Categories (Category URL сматченных Base category)
 //   DataLens Start URL
 // URL не удаляется из группы, если он отсутствует во втором источнике.
-import { normalizeUrl } from "./datalens";
+import { normalizeUrl, isProductUrl } from "./datalens";
 import type { Query, UrlRow, MetaEdit, TextRow } from "./types";
 
 export interface InventoryCategoryRow {
@@ -115,6 +115,7 @@ export function buildGroupUrlInventory(input: InventoryInput): InventoryRow[] {
 
   const out: InventoryRow[] = [];
   for (const norm of keys) {
+    if (isProductUrl(norm)) continue;
     const t = tv.get(norm);
     const c = catByUrl.get(norm);
     const s = suByUrl.get(norm);

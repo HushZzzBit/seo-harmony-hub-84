@@ -1,4 +1,5 @@
 import { stripCommentSpans } from "@/lib/comment-mark";
+import { isProductUrl } from "@/lib/datalens";
 import { createFileRoute, ClientOnly, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -188,9 +189,9 @@ function ImportPage() {
     new Set<string>([
       ...queries
         .map((q) => q.url)
-        .filter((u): u is string => !!u && metaEdits[u]?.status === "in_csv"),
+        .filter((u): u is string => !!u && !isProductUrl(u) && metaEdits[u]?.status === "in_csv"),
       ...Object.values(texts)
-        .filter((t) => t.status === "in_csv")
+        .filter((t) => t.status === "in_csv" && !isProductUrl(t.url))
         .map((t) => t.url),
     ]),
   );

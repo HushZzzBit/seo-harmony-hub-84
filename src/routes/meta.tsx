@@ -1,4 +1,5 @@
 import { createFileRoute, ClientOnly } from "@tanstack/react-router";
+import { isProductUrl } from "@/lib/datalens";
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -135,6 +136,7 @@ function MetaPage() {
     const now = new Date().getMonth();
     const enriched = Array.from(byUrl.values())
       .filter((r) => {
+        if (isProductUrl(r.url)) return false;
         if (folder !== "all" && !(r.noTopvisor ? r.folder === folder : r.qs.some((q) => q.folder === folder)))
           return false;
         if (group !== "all" && !(r.noTopvisor ? r.group === group : r.qs.some((q) => q.group === group)))

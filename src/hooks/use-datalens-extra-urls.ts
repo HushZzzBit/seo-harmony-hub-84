@@ -9,7 +9,7 @@ import {
   useUrlOwnershipMap,
   filterByFolder,
 } from "@/components/DashboardDataLensTabs";
-import { normalizeUrl } from "@/lib/datalens";
+import { normalizeUrl, isProductUrl } from "@/lib/datalens";
 
 export interface ExtraUrlRow {
   url: string;
@@ -55,7 +55,7 @@ export function useDataLensExtraUrls(folder: string, group: string): ExtraUrlRow
     const sus = filterByFolder(startUrls, folderGroups, activeGroup, ownership);
     const out = new Map<string, ExtraUrlRow>();
     const push = (norm: string | null, original: string | null, g: string | null) => {
-      if (!norm || topvisorUrls.has(norm) || out.has(norm)) return;
+      if (!norm || isProductUrl(norm) || isProductUrl(original) || topvisorUrls.has(norm) || out.has(norm)) return;
       const own = ownership.get(norm);
       const grp = own?.group ?? g ?? "";
       if (!grp) return;
